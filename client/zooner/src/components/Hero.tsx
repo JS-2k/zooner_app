@@ -69,17 +69,17 @@ export const Hero: React.FC<HeroProps> = ({
               </span>
             </div>
 
-            {/* Clear Concept Headline */}
+            {/* Clear Concept Headline (Foods, Clothes, Gadgets - Search Anything) */}
             <h1 className="text-4xl sm:text-6xl lg:text-6xl font-extrabold text-slate-950 dark:text-white tracking-tight leading-[1.08] mb-6 font-['Outfit']">
-              Don’t wait 3 days for delivery.{' '}
+              Search anything locally.{' '}
               <span className="bg-gradient-to-r from-indigo-500 via-violet-400 to-emerald-400 bg-clip-text text-transparent block sm:inline">
-                Find local store stock near you now.
+                Foods, clothes, gadgets & more.
               </span>
             </h1>
 
-            {/* Clear Concept Subtext */}
+            {/* Clear Multi-Category Subtext */}
             <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto lg:mx-0 font-normal leading-relaxed mb-8">
-              Search live shelf inventory in your neighborhood or broadcast a request to local shops. Nearby merchants reply with stock & price in minutes so you can walk in, try it on, and buy today.
+              Why wait 3 days for delivery? Search live shelf inventory across local bakeries, boutiques, gadget hubs & pharmacies nearby — or broadcast what you need and walk in today.
             </p>
 
             {/* Concept Comparison Pill Card (Human-crafted feel) */}
@@ -223,7 +223,7 @@ export const Hero: React.FC<HeroProps> = ({
                     <input 
                       type="text"
                       readOnly
-                      value="Nike running shoes, linen shirt..."
+                      value="Foods, clothes, smartphones, shoes..."
                       className="w-full rounded-xl bg-slate-100 dark:bg-slate-800/90 py-1.5 pl-8 pr-3 text-[11px] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700/60 focus:outline-none cursor-pointer"
                     />
                   </div>
@@ -238,7 +238,7 @@ export const Hero: React.FC<HeroProps> = ({
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}
                     >
-                      All Stores (14)
+                      All Stores
                     </button>
                     <button 
                       onClick={() => setActiveHeroTab('shoes')}
@@ -248,7 +248,7 @@ export const Hero: React.FC<HeroProps> = ({
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}
                     >
-                      Shoes & Sports
+                      🍎 Foods & Bakery
                     </button>
                     <button 
                       onClick={() => setActiveHeroTab('fashion')}
@@ -258,7 +258,7 @@ export const Hero: React.FC<HeroProps> = ({
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}
                     >
-                      Men's Shirts
+                      👕 Clothes & Gadgets
                     </button>
                   </div>
                 </div>
