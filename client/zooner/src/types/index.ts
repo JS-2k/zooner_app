@@ -59,4 +59,6 @@ export interface LocationArea {
   city: string;
   storesCount: number;
   activeRequests: number;
+  lat?: number;
+  lng?: number;
 }

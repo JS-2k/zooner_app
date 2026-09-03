@@ -13,15 +13,21 @@ using Zooner.Api.Services.Realtime;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configure Database Provider (PostgreSQL by default in Docker / Production, SQLite locally)
-var dbProvider = builder.Configuration["DatabaseProvider"] ?? "Sqlite";
-var connectionString = dbProvider.Equals("PostgreSql", StringComparison.OrdinalIgnoreCase)
-    ? builder.Configuration.GetConnectionString("PostgreSql")
-    : builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=locallive.db";
+// 1. Configure Database Provider (SqlServer, PostgreSql, or Sqlite)
+var dbProvider = builder.Configuration["DatabaseProvider"] ?? "SqlServer";
+var connectionString = dbProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase)
+    ? (builder.Configuration.GetConnectionString("SqlServer") ?? builder.Configuration.GetConnectionString("DefaultConnection"))
+    : dbProvider.Equals("PostgreSql", StringComparison.OrdinalIgnoreCase)
+        ? builder.Configuration.GetConnectionString("PostgreSql")
+        : builder.Configuration.GetConnectionString("Sqlite") ?? "Data Source=locallive.db";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    if (dbProvider.Equals("PostgreSql", StringComparison.OrdinalIgnoreCase))
+    if (dbProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
+    {
+        options.UseSqlServer(connectionString);
+    }
+    else if (dbProvider.Equals("PostgreSql", StringComparison.OrdinalIgnoreCase))
     {
         options.UseNpgsql(connectionString);
     }

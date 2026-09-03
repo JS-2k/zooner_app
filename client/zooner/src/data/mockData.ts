@@ -1,13 +1,16 @@
 import type { Product, Store, LocationArea, RetailerResponse } from '../types';
 
-export const LOCATIONS: LocationArea[] = [
-  { id: 'rs-puram', name: 'RS Puram', city: 'Coimbatore', storesCount: 0, activeRequests: 0 },
-  { id: 'race-course', name: 'Race Course', city: 'Coimbatore', storesCount: 0, activeRequests: 0 },
-  { id: 'gandhipuram', name: 'Gandhipuram', city: 'Coimbatore', storesCount: 0, activeRequests: 0 },
-  { id: 'peelamedu', name: 'Peelamedu / Avinashi Rd', city: 'Coimbatore', storesCount: 0, activeRequests: 0 },
-  { id: 'saibaba-colony', name: 'Saibaba Colony', city: 'Coimbatore', storesCount: 0, activeRequests: 0 },
-  { id: 'saravanampatti', name: 'Saravanampatti', city: 'Coimbatore', storesCount: 0, activeRequests: 0 }
-];
+export const DEFAULT_LOCATION: LocationArea = {
+  id: 'live-gps',
+  name: 'Current Location (GPS)',
+  city: 'Coimbatore',
+  storesCount: 0,
+  activeRequests: 0,
+  lat: 11.0168,
+  lng: 76.9558
+};
+
+export const LOCATIONS: LocationArea[] = [];
 
 export const CATEGORIES = [
   { id: 'all', label: 'All Nearby', icon: 'Sparkles' },

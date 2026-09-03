@@ -13,18 +13,41 @@ import { LocationModal } from './components/LocationModal';
 import { RetailerModal } from './components/RetailerModal';
 import { SignInModal } from './components/SignInModal';
 import { VendorLandingPage } from './pages/VendorLandingPage';
-import { LOCATIONS } from './data/mockData';
+import { DEFAULT_LOCATION } from './data/mockData';
 import type { LocationArea } from './types';
 
 export function AppContent() {
   const [currentPage, setCurrentPage] = useState<'customer' | 'vendor'>(() => {
     return window.location.hash.includes('vendor') ? 'vendor' : 'customer';
   });
-  const [currentLocation, setCurrentLocation] = useState<LocationArea>(LOCATIONS[0]);
+  const [currentLocation, setCurrentLocation] = useState<LocationArea>(DEFAULT_LOCATION);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isRetailerModalOpen, setIsRetailerModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const [requestPrefill, setRequestPrefill] = useState<string>('Nike Running Shoes');
+
+  // Auto-detect real-time browser GPS location on startup
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation({
+            id: 'live-gps',
+            name: 'Current Location (GPS)',
+            city: 'Coimbatore',
+            storesCount: 0,
+            activeRequests: 0,
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        () => {
+          // Silent fallback to default Coimbatore location if permission not granted yet
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+      );
+    }
+  }, []);
 
   // Sync with browser hash changes for back/forward navigation
   useEffect(() => {

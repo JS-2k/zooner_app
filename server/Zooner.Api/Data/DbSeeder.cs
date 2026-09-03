@@ -54,11 +54,12 @@ public static class DbSeeder
                     IsActive = true,
                     CreatedAtUtc = DateTime.UtcNow
                 };
-                clothing.SubCategories.AddRange(
+                clothing.SubCategories.AddRange(new[]
+                {
                     new SubCategory { Id = Guid.NewGuid(), CategoryId = clothing.Id, Name = "Men's Wear", Slug = "mens-wear", Icon = "shirt", DisplayOrder = 1 },
                     new SubCategory { Id = Guid.NewGuid(), CategoryId = clothing.Id, Name = "Women's Wear", Slug = "womens-wear", Icon = "dress", DisplayOrder = 2 },
                     new SubCategory { Id = Guid.NewGuid(), CategoryId = clothing.Id, Name = "Footwear", Slug = "footwear", Icon = "shoe", DisplayOrder = 3 }
-                );
+                });
 
                 var electronics = new Category
                 {
@@ -71,10 +72,11 @@ public static class DbSeeder
                     IsActive = true,
                     CreatedAtUtc = DateTime.UtcNow
                 };
-                electronics.SubCategories.AddRange(
+                electronics.SubCategories.AddRange(new[]
+                {
                     new SubCategory { Id = Guid.NewGuid(), CategoryId = electronics.Id, Name = "Mobile Accessories", Slug = "mobile-accessories", Icon = "cable", DisplayOrder = 1 },
                     new SubCategory { Id = Guid.NewGuid(), CategoryId = electronics.Id, Name = "Computers & Laptops", Slug = "computers-laptops", Icon = "laptop", DisplayOrder = 2 }
-                );
+                });
 
                 var grocery = new Category
                 {
