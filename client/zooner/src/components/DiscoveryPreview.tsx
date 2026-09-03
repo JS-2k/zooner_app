@@ -71,7 +71,7 @@ export const DiscoveryPreview: React.FC<DiscoveryPreviewProps> = ({
   }, [searchQuery, selectedCategory]);
 
   return (
-    <section id="discover" className="relative py-20 md:py-32 bg-white dark:bg-[#070A12] border-t border-slate-200 dark:border-slate-800/80 transition-colors duration-200">
+    <section id="discover" className="relative py-20 md:py-32 bg-white dark:bg-[#0B0F19] border-t border-slate-200 dark:border-slate-800/80 transition-colors duration-200">
       {/* Background visual elements */}
       <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-indigo-500/[0.06] rounded-full blur-3xl pointer-events-none" />
 

@@ -33,7 +33,7 @@ export const ProductRequest: React.FC<ProductRequestProps> = ({ prefillProduct }
   };
 
   return (
-    <section id="request-feature" className="relative py-20 md:py-32 bg-slate-50 dark:bg-[#070A12] border-t border-slate-200 dark:border-slate-900 overflow-hidden transition-colors duration-200">
+    <section id="request-feature" className="relative py-20 md:py-32 bg-slate-50 dark:bg-[#0B0F19] border-t border-slate-200 dark:border-slate-900 overflow-hidden transition-colors duration-200">
       {/* Background radial highlight */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 
