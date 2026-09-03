@@ -63,61 +63,52 @@ export const Hero: React.FC<HeroProps> = ({
               <span className="text-xs font-bold text-white uppercase tracking-wider">
                 HYPER-LOCAL PRODUCT DISCOVERY
               </span>
-              <span className="text-slate-600">•</span>
-              <span className="text-xs font-medium text-emerald-400">
-                100% Free • Walk In Today
-              </span>
             </div>
 
-            {/* Clear Concept Headline (Foods, Clothes, Gadgets - Search Anything) */}
+            {/* Clear Minimalist Headline */}
             <h1 className="text-4xl sm:text-6xl lg:text-6xl font-extrabold text-slate-950 dark:text-white tracking-tight leading-[1.08] mb-6 font-['Outfit']">
-              Search anything locally.{' '}
+              Search anything near you.{' '}
               <span className="bg-gradient-to-r from-indigo-500 via-violet-400 to-emerald-400 bg-clip-text text-transparent block sm:inline">
-                Foods, clothes, gadgets & more.
+                Walk in today.
               </span>
             </h1>
 
-            {/* Clear Multi-Category Subtext */}
-            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto lg:mx-0 font-normal leading-relaxed mb-8">
-              Why wait 3 days for delivery? Search live shelf inventory across local bakeries, boutiques, gadget hubs & pharmacies nearby — or broadcast what you need and walk in today.
+            {/* Simple Subtext */}
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto lg:mx-0 font-normal leading-relaxed mb-8">
+              Foods, clothes, gadgets, shoes & more. Discover real physical shelf inventory at local stores right in your neighborhood.
             </p>
 
-            {/* Concept Comparison Pill Card (Human-crafted feel) */}
-            <div className="mb-8 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-4 shadow-sm text-left max-w-xl">
-              <div className="grid grid-cols-2 gap-4 divide-x divide-slate-100 dark:divide-slate-800">
-                <div>
-                  <div className="text-[11px] font-bold text-red-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <span>❌</span> Online E-Commerce
-                  </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400">3–5 days shipping wait, wrong sizes, return hassles</div>
-                </div>
-                <div className="pl-4">
-                  <div className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <span>⚡</span> Zooner Local
-                  </div>
-                  <div className="text-xs text-slate-900 dark:text-slate-200 font-medium">Instant shop replies, try in store, walk home with it today</div>
-                </div>
+            {/* Hero Quick Search Action */}
+            <div className="mb-10 max-w-xl">
+              <div className="relative flex items-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 shadow-lg dark:shadow-2xl">
+                <Search className="h-5 w-5 text-slate-400 ml-3 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search foods, clothes, gadgets, shoes..."
+                  onClick={() => {
+                    const el = document.getElementById('discover');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="w-full bg-transparent px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none cursor-pointer"
+                />
+                <a
+                  href="#discover"
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 text-sm font-bold shadow-md shadow-indigo-600/30 transition-all shrink-0"
+                >
+                  <span>Search</span>
+                  <ArrowRight className="h-4 w-4" />
+                </a>
               </div>
-            </div>
 
-            {/* Primary & Secondary CTAs */}
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-10">
-              <a
-                href="#discover"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-7 py-4 text-base font-bold text-white transition-all shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/45 hover:-translate-y-0.5"
-              >
-                <Compass className="h-5 w-5 stroke-[2.2]" />
-                <span>Explore Nearby Inventory</span>
-                <ArrowRight className="h-4 w-4" />
-              </a>
-
-              <button
-                onClick={onOpenRetailerModal}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl border border-slate-300 dark:border-slate-700/80 bg-white dark:bg-slate-900/80 px-7 py-4 text-base font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
-              >
-                <Store className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                <span>Register Store (0% Commission)</span>
-              </button>
+              <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium px-1">
+                <span>Popular: Foods, Sneakers, T-Shirts, Gadgets</span>
+                <button
+                  onClick={onOpenRetailerModal}
+                  className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+                >
+                  Own a shop? Join free →
+                </button>
+              </div>
             </div>
 
             {/* Proof Points (Zero Wait, Try In-Store, Real Stocks) */}
