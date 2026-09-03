@@ -1,0 +1,46 @@
+@Zooner.Api_HostAddress = http://localhost:5000
+
+### 1. Register a new user
+POST {{Zooner.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Surya Developer",
+  "email": "surya@example.com",
+  "password": "Password123!",
+  "role": "Retailer"
+}
+
+### 2. Login to get JWT Token
+# @name login
+POST {{Zooner.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "surya@example.com",
+  "password": "Password123!"
+}
+
+### Set token variable from login response if using REST Client:
+@authToken = {{login.response.body.data.accessToken}}
+@refreshToken = {{login.response.body.data.refreshToken}}
+
+### 3. Get Authenticated User Profile (Requires Bearer Token)
+GET {{Zooner.Api_HostAddress}}/api/auth/me
+Authorization: Bearer {{authToken}}
+
+### 4. Refresh Token
+POST {{Zooner.Api_HostAddress}}/api/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 5. Sign Out / Revoke Token
+POST {{Zooner.Api_HostAddress}}/api/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
