@@ -389,86 +389,41 @@ export const ZoonerCityAnimation: React.FC = () => {
         }}
       />
 
-      {/* Concept Explainer Story Card Overlay */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-slate-900/90 border border-indigo-500/40 rounded-2xl p-4 shadow-2xl backdrop-blur-md z-20 transition-all">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2.5">
-          <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="text-[11px] font-black uppercase tracking-wider text-white font-['Outfit']">
-              HOW ZOONER WORKS
-            </span>
+      {/* Authentic Human Chat Story Bubble */}
+      <div className="absolute top-16 left-1/2 -translate-x-1/2 w-[92%] max-w-md z-20 space-y-2.5 transition-all">
+        {/* Customer Message */}
+        <div className="flex items-start gap-2.5 bg-slate-900/95 border border-slate-700/80 rounded-2xl p-3 shadow-xl backdrop-blur-md">
+          <div className="h-8 w-8 rounded-full bg-indigo-600 text-white font-extrabold flex items-center justify-center text-xs shrink-0 shadow-sm">
+            S
           </div>
-          <span className="text-[10px] font-bold text-indigo-400 bg-indigo-500/20 px-2 py-0.5 rounded-full">
-            Step {overlayScene === 0 ? 1 : overlayScene} of 4
-          </span>
+          <div className="text-left flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white">Surya · Local Shopper</span>
+              <span className="text-[10px] text-indigo-400 font-medium">RS Puram</span>
+            </div>
+            <p className="text-xs text-slate-200 mt-0.5 font-normal">
+              "Does any store nearby have <span className="text-indigo-300 font-semibold">Nike Air Max 270 (Size 9)</span> in stock right now?"
+            </p>
+          </div>
         </div>
 
-        <div className="text-left">
-          {overlayScene === 0 && (
-            <div className="flex items-start gap-3">
-              <div className="text-xl">📍</div>
-              <div>
-                <div className="text-xs font-bold text-white">Live Local Shelf Discovery</div>
-                <div className="text-[11px] text-slate-300">Find real physical stock inside shops within 5 km of your location.</div>
+        {/* Store Response Message (shows when scene >= 3) */}
+        {(overlayScene >= 3 || overlayScene === 0) && (
+          <div className="flex items-start gap-2.5 bg-emerald-950/90 border border-emerald-500/50 rounded-2xl p-3 shadow-2xl backdrop-blur-md animate-fadeIn">
+            <div className="h-8 w-8 rounded-full bg-emerald-600 text-white font-extrabold flex items-center justify-center text-xs shrink-0 shadow-sm">
+              🏪
+            </div>
+            <div className="text-left flex-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-300">Apex Footwear & Sports</span>
+                <span className="text-[10px] text-emerald-400 font-semibold">400m away · 5 min walk</span>
               </div>
+              <p className="text-xs text-slate-100 mt-0.5">
+                "Yes! We have 2 pairs in Size 9 for <strong className="text-white font-bold">₹6,499</strong>. We've reserved 1 pair for 30 mins — walk in & try it on!"
+              </p>
             </div>
-          )}
-
-          {overlayScene === 1 && (
-            <div className="flex items-start gap-3">
-              <div className="text-xl">🔍</div>
-              <div>
-                <div className="text-xs font-bold text-white">1. Customer Sends Request</div>
-                <div className="text-[11px] text-indigo-300 font-medium">"Need Nike Air Max 270 (Size 9) near RS Puram"</div>
-              </div>
-            </div>
-          )}
-
-          {overlayScene === 2 && (
-            <div className="flex items-start gap-3">
-              <div className="text-xl">📡</div>
-              <div>
-                <div className="text-xs font-bold text-white">2. Real-Time Radar Broadcast</div>
-                <div className="text-[11px] text-slate-300">Pinging 12 verified local sports & footwear shops nearby.</div>
-              </div>
-            </div>
-          )}
-
-          {overlayScene === 3 && (
-            <div className="flex items-start gap-3">
-              <div className="text-xl">💬</div>
-              <div>
-                <div className="text-xs font-bold text-emerald-400">3. Local Merchant Replies with Stock</div>
-                <div className="text-[11px] text-white font-semibold">Apex Footwear: "In Stock! 2 pairs left for ₹6,499. Hold for 30m."</div>
-              </div>
-            </div>
-          )}
-
-          {overlayScene === 4 && (
-            <div className="flex items-start gap-3">
-              <div className="text-xl">🛍️</div>
-              <div>
-                <div className="text-xs font-bold text-indigo-400">4. Walk In & Buy Today</div>
-                <div className="text-[11px] text-slate-200">5-min walk away. Try before buying — 0 shipping wait, 0 size risk!</div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Scene progress dots */}
-        <div className="flex items-center justify-center gap-1.5 mt-3 pt-2 border-t border-slate-800/80">
-          {['Request', 'Radar', 'Shop Reply', 'Walk In'].map((label, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <div className={`h-1.5 rounded-full transition-all duration-500 ${i + 1 === overlayScene || (overlayScene === 0 && i === 0) ? 'w-6 bg-indigo-500' : 'w-1.5 bg-slate-700'}`} />
-              <span className={`text-[9px] font-semibold ${i + 1 === overlayScene || (overlayScene === 0 && i === 0) ? 'text-indigo-300' : 'text-slate-500'}`}>
-                {label}
-              </span>
-            </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
