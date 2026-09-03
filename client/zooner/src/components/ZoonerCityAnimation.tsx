@@ -389,16 +389,86 @@ export const ZoonerCityAnimation: React.FC = () => {
         }}
       />
 
-      {/* Scene indicator pill — repositioned above text */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 z-10">
-        {['Idle', 'Searching', 'Broadcasting', 'Shops Reply', 'Walk In!'].map((label, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            <div className={`h-1.5 rounded-full transition-all duration-500 ${i === overlayScene ? 'w-10 bg-indigo-400' : 'w-2 bg-slate-700'}`} />
-            {i === overlayScene && (
-              <span className="text-[10px] font-bold text-indigo-300 whitespace-nowrap">{label}</span>
-            )}
+      {/* Concept Explainer Story Card Overlay */}
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-slate-900/90 border border-indigo-500/40 rounded-2xl p-4 shadow-2xl backdrop-blur-md z-20 transition-all">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2.5">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-[11px] font-black uppercase tracking-wider text-white font-['Outfit']">
+              HOW ZOONER WORKS
+            </span>
           </div>
-        ))}
+          <span className="text-[10px] font-bold text-indigo-400 bg-indigo-500/20 px-2 py-0.5 rounded-full">
+            Step {overlayScene === 0 ? 1 : overlayScene} of 4
+          </span>
+        </div>
+
+        <div className="text-left">
+          {overlayScene === 0 && (
+            <div className="flex items-start gap-3">
+              <div className="text-xl">📍</div>
+              <div>
+                <div className="text-xs font-bold text-white">Live Local Shelf Discovery</div>
+                <div className="text-[11px] text-slate-300">Find real physical stock inside shops within 5 km of your location.</div>
+              </div>
+            </div>
+          )}
+
+          {overlayScene === 1 && (
+            <div className="flex items-start gap-3">
+              <div className="text-xl">🔍</div>
+              <div>
+                <div className="text-xs font-bold text-white">1. Customer Sends Request</div>
+                <div className="text-[11px] text-indigo-300 font-medium">"Need Nike Air Max 270 (Size 9) near RS Puram"</div>
+              </div>
+            </div>
+          )}
+
+          {overlayScene === 2 && (
+            <div className="flex items-start gap-3">
+              <div className="text-xl">📡</div>
+              <div>
+                <div className="text-xs font-bold text-white">2. Real-Time Radar Broadcast</div>
+                <div className="text-[11px] text-slate-300">Pinging 12 verified local sports & footwear shops nearby.</div>
+              </div>
+            </div>
+          )}
+
+          {overlayScene === 3 && (
+            <div className="flex items-start gap-3">
+              <div className="text-xl">💬</div>
+              <div>
+                <div className="text-xs font-bold text-emerald-400">3. Local Merchant Replies with Stock</div>
+                <div className="text-[11px] text-white font-semibold">Apex Footwear: "In Stock! 2 pairs left for ₹6,499. Hold for 30m."</div>
+              </div>
+            </div>
+          )}
+
+          {overlayScene === 4 && (
+            <div className="flex items-start gap-3">
+              <div className="text-xl">🛍️</div>
+              <div>
+                <div className="text-xs font-bold text-indigo-400">4. Walk In & Buy Today</div>
+                <div className="text-[11px] text-slate-200">5-min walk away. Try before buying — 0 shipping wait, 0 size risk!</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Scene progress dots */}
+        <div className="flex items-center justify-center gap-1.5 mt-3 pt-2 border-t border-slate-800/80">
+          {['Request', 'Radar', 'Shop Reply', 'Walk In'].map((label, i) => (
+            <div key={i} className="flex items-center gap-1">
+              <div className={`h-1.5 rounded-full transition-all duration-500 ${i + 1 === overlayScene || (overlayScene === 0 && i === 0) ? 'w-6 bg-indigo-500' : 'w-1.5 bg-slate-700'}`} />
+              <span className={`text-[9px] font-semibold ${i + 1 === overlayScene || (overlayScene === 0 && i === 0) ? 'text-indigo-300' : 'text-slate-500'}`}>
+                {label}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
