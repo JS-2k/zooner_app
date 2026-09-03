@@ -15,117 +15,95 @@ export const Hero: React.FC<HeroProps> = ({
   onOpenLocationModal,
 }) => {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden">
+    <section className="relative min-h-screen flex flex-col overflow-hidden">
 
-      {/* ── FULL-SCREEN CITY ANIMATION (background) ── */}
+      {/* ── FULL-SCREEN CITY ANIMATION ── */}
       <div className="absolute inset-0 z-0">
         <ZoonerCityAnimation />
       </div>
 
-      {/* ── Gradient vignettes to make text readable ── */}
-      {/* Left fade: dark to transparent */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-r from-[#080E1C] via-[#080E1Ccc] to-transparent pointer-events-none" />
-      {/* Bottom fade */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#080E1C] via-transparent to-[#080E1C88] pointer-events-none" />
+      {/* ── Bottom gradient fade for text readability ── */}
+      <div className="absolute bottom-0 left-0 right-0 h-[50%] z-[1] bg-gradient-to-t from-[#060B16] via-[#060B16dd] to-transparent pointer-events-none" />
 
-      {/* ── CONTENT OVERLAY (left side) ── */}
-      <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 w-full pt-24 pb-20">
-        <div className="max-w-xl">
+      {/* ── Spacer to push content to bottom ── */}
+      <div className="flex-1" />
 
-          {/* Eyebrow */}
-          <div className="inline-flex items-center gap-2 mb-7">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            </span>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-[0.14em]">
-              Local discovery · Live shelf inventory
-            </span>
+      {/* ── COMPACT TEXT OVERLAY (bottom of screen) ── */}
+      <div className="relative z-10 w-full px-5 sm:px-8 lg:px-10 pb-8 pt-4">
+        <div className="max-w-5xl mx-auto">
+
+          {/* Headline row */}
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-6">
+            <div className="max-w-lg">
+              <div className="inline-flex items-center gap-2 mb-3">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em]">
+                  Local discovery · Live inventory
+                </span>
+              </div>
+
+              <h1 className="font-['Outfit'] font-black text-white leading-[1.05] tracking-tight mb-3"
+                style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)' }}>
+                Search anything near you.{' '}
+                <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+                  Walk in today.
+                </span>
+              </h1>
+
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Foods, clothes, gadgets, medicines — we show you what's on shelves at stores nearby. No delivery wait.
+              </p>
+            </div>
+
+            {/* Location chip + retailer link */}
+            <div className="flex items-center gap-4 shrink-0">
+              <button
+                onClick={onOpenLocationModal}
+                className="inline-flex items-center gap-1.5 text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-3 py-1.5 hover:bg-indigo-500/20 transition-colors cursor-pointer font-semibold"
+              >
+                <MapPin className="h-3 w-3" />
+                {currentLocation.lat ? 'GPS active' : currentLocation.name || 'Set location'}
+              </button>
+              <button
+                onClick={onOpenRetailerModal}
+                className="text-xs text-slate-500 hover:text-indigo-400 transition-colors cursor-pointer"
+              >
+                <Store className="h-3 w-3 inline mr-1" />
+                Own a shop? List free →
+              </button>
+            </div>
           </div>
 
-          {/* Headline */}
-          <h1 className="font-['Outfit'] font-black text-white leading-[1.05] tracking-tight mb-5"
-            style={{ fontSize: 'clamp(2.4rem, 4.5vw, 3.6rem)' }}>
-            Your neighborhood<br />
-            has everything{' '}
-            <span className="relative inline-block">
-              <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
-                you need.
-              </span>
-              <svg className="absolute -bottom-1 left-0 w-full" height="6" viewBox="0 0 200 6" fill="none" preserveAspectRatio="none">
-                <path d="M0 5 C40 1, 80 6, 120 3 S180 1, 200 4" stroke="#818cf8" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-              </svg>
-            </span>
-          </h1>
-
-          {/* Subtext */}
-          <p className="text-slate-300 text-lg leading-relaxed mb-8">
-            Search foods, clothes, gadgets, medicines — anything. We'll show you what's <strong className="text-white font-semibold">actually on shelves</strong> at shops nearby. No waiting. Just walk in.
-          </p>
-
-          {/* Location indicator */}
-          <button
-            onClick={onOpenLocationModal}
-            className="inline-flex items-center gap-2 text-sm text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-4 py-2 mb-6 hover:bg-indigo-500/20 transition-colors cursor-pointer font-semibold"
-          >
-            <MapPin className="h-3.5 w-3.5" />
-            <span>
-              {currentLocation.lat
-                ? `GPS active · showing results within 5 km`
-                : currentLocation.name || 'Set your location'}
-            </span>
-            <span className="text-slate-500 text-xs font-normal">· change</span>
-          </button>
-
-          {/* Search bar */}
-          <div className="flex items-center gap-2 bg-white/5 border border-white/12 hover:border-indigo-500/50 rounded-2xl p-2 transition-all shadow-2xl backdrop-blur-md mb-4">
-            <Search className="h-5 w-5 text-slate-500 ml-2 shrink-0" />
+          {/* Search bar — compact, full width */}
+          <div className="flex items-center gap-2 bg-white/5 border border-white/10 hover:border-indigo-500/40 rounded-2xl p-1.5 transition-all backdrop-blur-md shadow-2xl">
+            <Search className="h-4 w-4 text-slate-500 ml-3 shrink-0" />
             <input
               type="text"
               placeholder="What are you looking for near you?"
               onClick={() => document.getElementById('discover')?.scrollIntoView({ behavior: 'smooth' })}
               readOnly
-              className="flex-1 bg-transparent text-white placeholder-slate-500 text-sm py-2.5 focus:outline-none cursor-pointer"
+              className="flex-1 bg-transparent text-white placeholder-slate-500 text-sm py-2 focus:outline-none cursor-pointer"
             />
-            <a
-              href="#discover"
-              className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-5 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/30 shrink-0"
-            >
-              Search <ArrowRight className="h-4 w-4" />
-            </a>
-          </div>
-
-          {/* Quick searches */}
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-10">
-            <span>Try:</span>
-            {['Biryani nearby 🍛', 'Nike shoes 👟', 'Jeans ₹999', 'iPhone charger', 'Paracetamol'].map((q) => (
+            <div className="flex items-center gap-1.5 mr-1">
+              {['🍛 Food', '👟 Shoes', '📱 Gadgets'].map(q => (
+                <a
+                  key={q}
+                  href="#discover"
+                  className="hidden sm:inline-flex px-2.5 py-1 rounded-lg bg-white/5 border border-white/8 text-[10px] text-slate-400 hover:text-white hover:border-indigo-500/40 transition-colors whitespace-nowrap"
+                >
+                  {q}
+                </a>
+              ))}
               <a
-                key={q}
                 href="#discover"
-                className="px-3 py-1 rounded-full bg-white/5 border border-white/8 text-slate-400 hover:text-white hover:border-indigo-500/40 transition-colors"
+                className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/25 shrink-0"
               >
-                {q}
+                Search <ArrowRight className="h-3.5 w-3.5" />
               </a>
-            ))}
-          </div>
-
-          {/* Social proof */}
-          <div className="flex items-center gap-5 text-xs text-slate-500 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <Store className="h-3.5 w-3.5 text-indigo-400" />
-              <span>Local shops on Zooner</span>
             </div>
-            <div className="w-px h-4 bg-slate-800" />
-            <div>
-              <span className="font-bold text-white">0%</span> commission ever
-            </div>
-            <div className="w-px h-4 bg-slate-800" />
-            <button
-              onClick={onOpenRetailerModal}
-              className="text-indigo-400 font-semibold hover:text-indigo-300 transition-colors cursor-pointer"
-            >
-              Own a shop? List it free →
-            </button>
           </div>
 
         </div>

@@ -367,14 +367,33 @@ export const ZoonerCityAnimation: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative w-full h-full">
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+    <div className="relative w-full h-full" style={{ perspective: '1200px' }}>
+      {/* 3D isometric tilt on canvas */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full"
+        style={{
+          transform: 'rotateX(35deg) rotateZ(-8deg) scale(1.35)',
+          transformOrigin: '50% 50%',
+        }}
+      />
 
-      {/* Scene indicator pill */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 z-10">
+      {/* Depth fog overlay — adds atmospheric depth */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `
+            radial-gradient(ellipse 80% 60% at 50% 40%, transparent 30%, rgba(6,11,22,0.6) 100%),
+            linear-gradient(to top, rgba(6,11,22,0.9) 0%, transparent 30%)
+          `,
+        }}
+      />
+
+      {/* Scene indicator pill — repositioned above text */}
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 z-10">
         {['Idle', 'Searching', 'Broadcasting', 'Shops Reply', 'Walk In!'].map((label, i) => (
           <div key={i} className="flex items-center gap-1.5">
-            <div className={`h-1.5 rounded-full transition-all duration-500 ${i === overlayScene ? 'w-12 bg-indigo-400' : 'w-2 bg-slate-700'}`} />
+            <div className={`h-1.5 rounded-full transition-all duration-500 ${i === overlayScene ? 'w-10 bg-indigo-400' : 'w-2 bg-slate-700'}`} />
             {i === overlayScene && (
               <span className="text-[10px] font-bold text-indigo-300 whitespace-nowrap">{label}</span>
             )}
@@ -512,8 +531,58 @@ function drawBlocks(ctx: CanvasRenderingContext2D, W: number, H: number) {
 
 function drawShop(ctx: CanvasRenderingContext2D, sh: Shop, frame: number) {
   const { x, y, w, h, color, lit, windows } = sh;
+  const depth = 16; // 3D extrusion depth
 
-  // Building body
+  // Cast shadow on ground
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.moveTo(x + 6, y + h + 4);
+  ctx.lineTo(x + w + 6, y + h + 4);
+  ctx.lineTo(x + w + 6 + depth, y + h + 4 - depth * 0.5);
+  ctx.lineTo(x + 6 + depth, y + h + 4 - depth * 0.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Right side face (3D extrusion)
+  const sideColor = lit ? darkenHex(color, 0.6) : '#0a1020';
+  ctx.fillStyle = sideColor;
+  ctx.beginPath();
+  ctx.moveTo(x + w, y);
+  ctx.lineTo(x + w + depth, y - depth * 0.6);
+  ctx.lineTo(x + w + depth, y + h - depth * 0.6);
+  ctx.lineTo(x + w, y + h);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = lit ? color + '44' : '#1a2d47';
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+
+  // Top face (3D extrusion — rooftop)
+  const topColor = lit ? darkenHex(color, 0.8) : '#111a2e';
+  ctx.fillStyle = topColor;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + depth, y - depth * 0.6);
+  ctx.lineTo(x + w + depth, y - depth * 0.6);
+  ctx.lineTo(x + w, y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = lit ? color + '33' : '#1a2d47';
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+
+  // Rooftop detail (small rectangle / AC unit)
+  if (w > 60) {
+    ctx.fillStyle = lit ? color + '22' : '#0d1628';
+    ctx.beginPath();
+    ctx.rect(x + depth + 8, y - depth * 0.6 + 4, 16, 8);
+    ctx.fill();
+    ctx.strokeStyle = lit ? color + '44' : '#1a2d47';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+
+  // Front face (main building body)
   ctx.fillStyle = lit ? color + '18' : '#0e1726';
   ctx.strokeStyle = lit ? color : '#1a2d47';
   ctx.lineWidth = lit ? 2 : 1;
@@ -749,4 +818,11 @@ function hexToRgb(hex: string): string {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `${r},${g},${b}`;
+}
+
+function darkenHex(hex: string, factor: number): string {
+  const r = Math.floor(parseInt(hex.slice(1, 3), 16) * factor);
+  const g = Math.floor(parseInt(hex.slice(3, 5), 16) * factor);
+  const b = Math.floor(parseInt(hex.slice(5, 7), 16) * factor);
+  return `rgb(${r},${g},${b})`;
 }
