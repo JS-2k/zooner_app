@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Zooner.Api.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialLocalLiveDb : Migration
+    public partial class InitialPostgreSqlDb : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,11 +15,11 @@ namespace Zooner.Api.Data.Migrations
                 name: "BusinessSettings",
                 columns: table => new
                 {
-                    Key = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Value = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    UpdatedAtUtc = table.Column<string>(type: "TEXT", nullable: false),
-                    UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false)
+                    Key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Value = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -30,16 +30,16 @@ namespace Zooner.Api.Data.Migrations
                 name: "Categories",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Slug = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    Icon = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    ImageUrl = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
-                    IsActive = table.Column<bool>(type: "INTEGER", nullable: false),
-                    DisplayOrder = table.Column<int>(type: "INTEGER", nullable: false),
-                    CreatedAtUtc = table.Column<string>(type: "TEXT", nullable: false),
-                    UpdatedAtUtc = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Slug = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    Icon = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    ImageUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    DisplayOrder = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -50,15 +50,15 @@ namespace Zooner.Api.Data.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    FullName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
-                    PhoneNumber = table.Column<string>(type: "TEXT", maxLength: 20, nullable: true),
-                    PasswordHash = table.Column<string>(type: "TEXT", nullable: false),
-                    Role = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false, defaultValue: "Customer"),
-                    IsActive = table.Column<bool>(type: "INTEGER", nullable: false),
-                    CreatedAtUtc = table.Column<string>(type: "TEXT", nullable: false),
-                    UpdatedAtUtc = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FullName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    PhoneNumber = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    PasswordHash = table.Column<string>(type: "text", nullable: false),
+                    Role = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "Customer"),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -69,16 +69,16 @@ namespace Zooner.Api.Data.Migrations
                 name: "SubCategories",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    CategoryId = table.Column<string>(type: "TEXT", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Slug = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    Icon = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    IsActive = table.Column<bool>(type: "INTEGER", nullable: false),
-                    DisplayOrder = table.Column<int>(type: "INTEGER", nullable: false),
-                    CreatedAtUtc = table.Column<string>(type: "TEXT", nullable: false),
-                    UpdatedAtUtc = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    CategoryId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Slug = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    Icon = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    DisplayOrder = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -92,22 +92,22 @@ namespace Zooner.Api.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "AuditLogs",
+                name: "AdminActions",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    AdminUserId = table.Column<string>(type: "TEXT", nullable: true),
-                    Action = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    TargetEntity = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    TargetId = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
-                    Details = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: true),
-                    TimestampUtc = table.Column<string>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    AdminUserId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Action = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    TargetEntity = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    TargetId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    Details = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    TimestampUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AuditLogs", x => x.Id);
+                    table.PrimaryKey("PK_AdminActions", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_AuditLogs_Users_AdminUserId",
+                        name: "FK_AdminActions_Users_AdminUserId",
                         column: x => x.AdminUserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -118,14 +118,14 @@ namespace Zooner.Api.Data.Migrations
                 name: "Notifications",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    UserId = table.Column<string>(type: "TEXT", nullable: false),
-                    Title = table.Column<string>(type: "TEXT", maxLength: 150, nullable: false),
-                    Message = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    Type = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    RelatedEntityId = table.Column<string>(type: "TEXT", nullable: true),
-                    IsRead = table.Column<bool>(type: "INTEGER", nullable: false),
-                    CreatedAtUtc = table.Column<string>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Title = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Message = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    Type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    RelatedEntityId = table.Column<Guid>(type: "uuid", nullable: true),
+                    IsRead = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -142,15 +142,15 @@ namespace Zooner.Api.Data.Migrations
                 name: "RefreshTokens",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    Token = table.Column<string>(type: "TEXT", nullable: false),
-                    ExpiresAtUtc = table.Column<string>(type: "TEXT", nullable: false),
-                    CreatedAtUtc = table.Column<string>(type: "TEXT", nullable: false),
-                    CreatedByIp = table.Column<string>(type: "TEXT", nullable: true),
-                    RevokedAtUtc = table.Column<string>(type: "TEXT", nullable: true),
-                    RevokedByIp = table.Column<string>(type: "TEXT", nullable: true),
-                    ReplacedByToken = table.Column<string>(type: "TEXT", nullable: true),
-                    UserId = table.Column<string>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Token = table.Column<string>(type: "text", nullable: false),
+                    ExpiresAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CreatedByIp = table.Column<string>(type: "text", nullable: true),
+                    RevokedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    RevokedByIp = table.Column<string>(type: "text", nullable: true),
+                    ReplacedByToken = table.Column<string>(type: "text", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -167,16 +167,16 @@ namespace Zooner.Api.Data.Migrations
                 name: "Reports",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    ReporterId = table.Column<string>(type: "TEXT", nullable: false),
-                    TargetType = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    TargetId = table.Column<string>(type: "TEXT", nullable: false),
-                    Reason = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: false),
-                    Status = table.Column<int>(type: "INTEGER", nullable: false),
-                    AdminNotes = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: true),
-                    CreatedAtUtc = table.Column<string>(type: "TEXT", nullable: false),
-                    ResolvedAtUtc = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ReporterId = table.Column<Guid>(type: "uuid", nullable: false),
+                    TargetType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    TargetId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Reason = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    AdminNotes = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ResolvedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -193,20 +193,20 @@ namespace Zooner.Api.Data.Migrations
                 name: "Shops",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    OwnerId = table.Column<string>(type: "TEXT", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 150, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: false),
-                    Phone = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Address = table.Column<string>(type: "TEXT", maxLength: 300, nullable: false),
-                    Latitude = table.Column<double>(type: "REAL", nullable: false),
-                    Longitude = table.Column<double>(type: "REAL", nullable: false),
-                    ImageUrl = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
-                    VerificationStatus = table.Column<int>(type: "INTEGER", nullable: false),
-                    IsActive = table.Column<bool>(type: "INTEGER", nullable: false),
-                    IsLiveEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
-                    CreatedAtUtc = table.Column<string>(type: "TEXT", nullable: false),
-                    UpdatedAtUtc = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    OwnerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    Phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    Address = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
+                    Latitude = table.Column<double>(type: "double precision", nullable: false),
+                    Longitude = table.Column<double>(type: "double precision", nullable: false),
+                    ImageUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    VerificationStatus = table.Column<int>(type: "integer", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    IsLiveEnabled = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -223,20 +223,20 @@ namespace Zooner.Api.Data.Migrations
                 name: "LiveRequests",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    CustomerId = table.Column<string>(type: "TEXT", nullable: false),
-                    RequestText = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    CategoryId = table.Column<string>(type: "TEXT", nullable: false),
-                    SubCategoryId = table.Column<string>(type: "TEXT", nullable: true),
-                    Latitude = table.Column<double>(type: "REAL", nullable: false),
-                    Longitude = table.Column<double>(type: "REAL", nullable: false),
-                    SearchRadiusKm = table.Column<double>(type: "REAL", nullable: false),
-                    Status = table.Column<int>(type: "INTEGER", nullable: false),
-                    CreatedAtUtc = table.Column<string>(type: "TEXT", nullable: false),
-                    ExpiresAtUtc = table.Column<string>(type: "TEXT", nullable: false),
-                    FulfilledAtUtc = table.Column<string>(type: "TEXT", nullable: true),
-                    CancelledAtUtc = table.Column<string>(type: "TEXT", nullable: true),
-                    SelectedShopId = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    RequestText = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    CategoryId = table.Column<Guid>(type: "uuid", nullable: false),
+                    SubCategoryId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Latitude = table.Column<double>(type: "double precision", nullable: false),
+                    Longitude = table.Column<double>(type: "double precision", nullable: false),
+                    SearchRadiusKm = table.Column<double>(type: "double precision", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ExpiresAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    FulfilledAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CancelledAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    SelectedShopId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -271,8 +271,8 @@ namespace Zooner.Api.Data.Migrations
                 name: "ShopCategories",
                 columns: table => new
                 {
-                    ShopId = table.Column<string>(type: "TEXT", nullable: false),
-                    CategoryId = table.Column<string>(type: "TEXT", nullable: false)
+                    ShopId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CategoryId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -295,12 +295,12 @@ namespace Zooner.Api.Data.Migrations
                 name: "ShopOperatingHours",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    ShopId = table.Column<string>(type: "TEXT", nullable: false),
-                    DayOfWeek = table.Column<int>(type: "INTEGER", nullable: false),
-                    OpenTime = table.Column<TimeSpan>(type: "TEXT", nullable: false),
-                    CloseTime = table.Column<TimeSpan>(type: "TEXT", nullable: false),
-                    IsClosed = table.Column<bool>(type: "INTEGER", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ShopId = table.Column<Guid>(type: "uuid", nullable: false),
+                    DayOfWeek = table.Column<int>(type: "integer", nullable: false),
+                    OpenTime = table.Column<TimeSpan>(type: "interval", nullable: false),
+                    CloseTime = table.Column<TimeSpan>(type: "interval", nullable: false),
+                    IsClosed = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -317,12 +317,12 @@ namespace Zooner.Api.Data.Migrations
                 name: "Conversations",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    LiveRequestId = table.Column<string>(type: "TEXT", nullable: false),
-                    CustomerId = table.Column<string>(type: "TEXT", nullable: false),
-                    ShopId = table.Column<string>(type: "TEXT", nullable: false),
-                    CreatedAtUtc = table.Column<string>(type: "TEXT", nullable: false),
-                    UpdatedAtUtc = table.Column<string>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    LiveRequestId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ShopId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -351,12 +351,12 @@ namespace Zooner.Api.Data.Migrations
                 name: "ShopResponses",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    LiveRequestId = table.Column<string>(type: "TEXT", nullable: false),
-                    ShopId = table.Column<string>(type: "TEXT", nullable: false),
-                    Status = table.Column<int>(type: "INTEGER", nullable: false),
-                    CreatedAtUtc = table.Column<string>(type: "TEXT", nullable: false),
-                    UpdatedAtUtc = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    LiveRequestId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ShopId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -379,12 +379,12 @@ namespace Zooner.Api.Data.Migrations
                 name: "ChatMessages",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    ConversationId = table.Column<string>(type: "TEXT", nullable: false),
-                    SenderId = table.Column<string>(type: "TEXT", nullable: false),
-                    MessageText = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: false),
-                    IsRead = table.Column<bool>(type: "INTEGER", nullable: false),
-                    CreatedAtUtc = table.Column<string>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ConversationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    SenderId = table.Column<Guid>(type: "uuid", nullable: false),
+                    MessageText = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    IsRead = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -404,18 +404,18 @@ namespace Zooner.Api.Data.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_AuditLogs_AdminUserId",
-                table: "AuditLogs",
+                name: "IX_AdminActions_AdminUserId",
+                table: "AdminActions",
                 column: "AdminUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_AuditLogs_TargetEntity_TargetId",
-                table: "AuditLogs",
+                name: "IX_AdminActions_TargetEntity_TargetId",
+                table: "AdminActions",
                 columns: new[] { "TargetEntity", "TargetId" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_AuditLogs_TimestampUtc",
-                table: "AuditLogs",
+                name: "IX_AdminActions_TimestampUtc",
+                table: "AdminActions",
                 column: "TimestampUtc");
 
             migrationBuilder.CreateIndex(
@@ -579,7 +579,7 @@ namespace Zooner.Api.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "AuditLogs");
+                name: "AdminActions");
 
             migrationBuilder.DropTable(
                 name: "BusinessSettings");

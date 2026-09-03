@@ -14,5 +14,6 @@ public interface IAdminService
     Task<ApiResponse> UpdateUserStatusAsync(Guid adminId, Guid targetUserId, UpdateUserStatusRequest request);
     Task<ApiResponse<List<BusinessSettingDto>>> GetSettingsAsync();
     Task<ApiResponse<BusinessSettingDto>> UpdateSettingAsync(Guid adminId, string key, UpdateSettingRequest request);
+    Task<ApiResponse<List<AdminActionDto>>> GetAdminActionsAsync(int page = 1, int pageSize = 50);
     Task<ApiResponse<List<AuditLogDto>>> GetAuditLogsAsync(int page = 1, int pageSize = 50);
 }

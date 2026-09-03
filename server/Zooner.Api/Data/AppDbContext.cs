@@ -23,7 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<BusinessSetting> BusinessSettings => Set<BusinessSetting>();
-    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<AdminAction> AdminActions => Set<AdminAction>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -268,8 +268,8 @@ public class AppDbContext : DbContext
             entity.Property(bs => bs.Value).IsRequired().HasMaxLength(500);
         });
 
-        // AuditLog
-        modelBuilder.Entity<AuditLog>(entity =>
+        // AdminAction
+        modelBuilder.Entity<AdminAction>(entity =>
         {
             entity.HasKey(al => al.Id);
             entity.HasIndex(al => new { al.TargetEntity, al.TargetId });

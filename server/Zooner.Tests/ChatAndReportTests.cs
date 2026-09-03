@@ -86,9 +86,9 @@ public class ChatAndReportTests
         Assert.True(resolveRes.Success);
         Assert.Equal("Resolved", resolveRes.Data!.Status);
 
-        // 3. Verify audit log was recorded
-        var auditLog = context.AuditLogs.FirstOrDefault(a => a.TargetId == reportRes.Data.Id.ToString());
-        Assert.NotNull(auditLog);
-        Assert.Equal("ResolveReport", auditLog.Action);
+        // 3. Verify admin action was recorded
+        var adminAction = context.AdminActions.FirstOrDefault(a => a.TargetId == reportRes.Data.Id.ToString());
+        Assert.NotNull(adminAction);
+        Assert.Equal("ResolveReport", adminAction.Action);
     }
 }

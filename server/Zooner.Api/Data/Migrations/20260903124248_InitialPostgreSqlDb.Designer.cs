@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Zooner.Api.Data;
 
 #nullable disable
@@ -11,45 +12,48 @@ using Zooner.Api.Data;
 namespace Zooner.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260903122824_InitialLocalLiveDb")]
-    partial class InitialLocalLiveDb
+    [Migration("20260903124248_InitialPostgreSqlDb")]
+    partial class InitialPostgreSqlDb
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.7");
+            modelBuilder
+                .HasAnnotation("ProductVersion", "9.0.7")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            modelBuilder.Entity("Zooner.Api.Models.AuditLog", b =>
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Zooner.Api.Models.AdminAction", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Action")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
-                    b.Property<string>("AdminUserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("AdminUserId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Details")
                         .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<string>("TargetEntity")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("TargetId")
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
-                    b.Property<string>("TimestampUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("TimestampUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -59,33 +63,32 @@ namespace Zooner.Api.Data.Migrations
 
                     b.HasIndex("TargetEntity", "TargetId");
 
-                    b.ToTable("AuditLogs");
+                    b.ToTable("AdminActions");
                 });
 
             modelBuilder.Entity("Zooner.Api.Models.BusinessSetting", b =>
                 {
                     b.Property<string>("Key")
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)");
 
-                    b.Property<string>("UpdatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("UpdatedBy")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Value")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)");
 
                     b.HasKey("Key");
 
@@ -94,46 +97,45 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.Category", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<int>("DisplayOrder")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Icon")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(120)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(120)");
 
-                    b.Property<string>("UpdatedAtUtc")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -150,29 +152,26 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.ChatMessage", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("ConversationId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsRead")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("MessageText")
                         .IsRequired()
                         .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(2000)");
 
-                    b.Property<string>("SenderId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -185,29 +184,24 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.Conversation", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("CustomerId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("LiveRequestId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("LiveRequestId")
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("ShopId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("ShopId")
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("UpdatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -222,54 +216,50 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.LiveRequest", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("CancelledAtUtc")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("CategoryId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("CustomerId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("ExpiresAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("FulfilledAtUtc")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime?>("FulfilledAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<double>("Latitude")
-                        .HasColumnType("REAL");
+                        .HasColumnType("double precision");
 
                     b.Property<double>("Longitude")
-                        .HasColumnType("REAL");
+                        .HasColumnType("double precision");
 
                     b.Property<string>("RequestText")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<double>("SearchRadiusKm")
-                        .HasColumnType("REAL");
+                        .HasColumnType("double precision");
 
-                    b.Property<string>("SelectedShopId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("SelectedShopId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
-                    b.Property<string>("SubCategoryId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("SubCategoryId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -290,38 +280,36 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.Notification", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsRead")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)");
 
-                    b.Property<string>("RelatedEntityId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("RelatedEntityId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(150)");
 
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(50)");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -332,37 +320,34 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.RefreshToken", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CreatedByIp")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
-                    b.Property<string>("ExpiresAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ReplacedByToken")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
-                    b.Property<string>("RevokedAtUtc")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("RevokedByIp")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<string>("Token")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -376,46 +361,43 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.Report", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("AdminNotes")
                         .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(1000)");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
-                    b.Property<string>("ReporterId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("ReporterId")
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("ResolvedAtUtc")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime?>("ResolvedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
-                    b.Property<string>("TargetId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("TargetType")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(50)");
 
                     b.HasKey("Id");
 
@@ -430,59 +412,57 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.Shop", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Address")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(300)");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsLiveEnabled")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean");
 
                     b.Property<double>("Latitude")
-                        .HasColumnType("REAL");
+                        .HasColumnType("double precision");
 
                     b.Property<double>("Longitude")
-                        .HasColumnType("REAL");
+                        .HasColumnType("double precision");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(150)");
 
-                    b.Property<string>("OwnerId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Phone")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(20)");
 
-                    b.Property<string>("UpdatedAtUtc")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("VerificationStatus")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -497,11 +477,11 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.ShopCategory", b =>
                 {
-                    b.Property<string>("ShopId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("ShopId")
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("CategoryId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("ShopId", "CategoryId");
 
@@ -512,25 +492,24 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.ShopOperatingHour", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
                     b.Property<TimeSpan>("CloseTime")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("interval");
 
                     b.Property<int>("DayOfWeek")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
                     b.Property<bool>("IsClosed")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean");
 
                     b.Property<TimeSpan>("OpenTime")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("interval");
 
-                    b.Property<string>("ShopId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("ShopId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -541,27 +520,24 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.ShopResponse", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("LiveRequestId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("LiveRequestId")
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("ShopId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("ShopId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
-                    b.Property<string>("UpdatedAtUtc")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -575,46 +551,44 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.SubCategory", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("CategoryId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<int>("DisplayOrder")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Icon")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(120)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(120)");
 
-                    b.Property<string>("UpdatedAtUtc")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -628,44 +602,43 @@ namespace Zooner.Api.Data.Migrations
 
             modelBuilder.Entity("Zooner.Api.Models.User", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(20)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Role")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(50)")
                         .HasDefaultValue("Customer");
 
-                    b.Property<string>("UpdatedAtUtc")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -675,7 +648,7 @@ namespace Zooner.Api.Data.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("Zooner.Api.Models.AuditLog", b =>
+            modelBuilder.Entity("Zooner.Api.Models.AdminAction", b =>
                 {
                     b.HasOne("Zooner.Api.Models.User", "AdminUser")
                         .WithMany()

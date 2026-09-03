@@ -24,6 +24,10 @@ public class User
     [MaxLength(50)]
     public string Role { get; set; } = "Customer"; // Customer, ShopOwner, Admin
 
+    public bool IsCustomer => Role.Equals("Customer", StringComparison.OrdinalIgnoreCase);
+    public bool IsShopOwner => Role.Equals("ShopOwner", StringComparison.OrdinalIgnoreCase);
+    public bool IsAdmin => Role.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+
     public bool IsActive { get; set; } = true;
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

@@ -133,7 +133,14 @@ public class AdminController : ControllerBase
     }
     #endregion
 
-    #region Audit Logs
+    #region Admin Actions & Audit Logs
+    [HttpGet("actions")]
+    public async Task<IActionResult> GetAdminActions([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+    {
+        var response = await _adminService.GetAdminActionsAsync(page, pageSize);
+        return Ok(response);
+    }
+
     [HttpGet("audit-logs")]
     public async Task<IActionResult> GetAuditLogs([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {

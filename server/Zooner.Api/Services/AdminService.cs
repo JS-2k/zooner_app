@@ -90,7 +90,7 @@ public class AdminService : IAdminService
         report.AdminNotes = request.AdminNotes?.Trim();
         report.ResolvedAtUtc = DateTime.UtcNow;
 
-        _context.AuditLogs.Add(new AuditLog
+        _context.AdminActions.Add(new AdminAction
         {
             Id = Guid.NewGuid(),
             AdminUserId = adminId,
@@ -159,7 +159,7 @@ public class AdminService : IAdminService
         shop.VerificationStatus = request.Status;
         shop.UpdatedAtUtc = DateTime.UtcNow;
 
-        _context.AuditLogs.Add(new AuditLog
+        _context.AdminActions.Add(new AdminAction
         {
             Id = Guid.NewGuid(),
             AdminUserId = adminId,
@@ -214,7 +214,7 @@ public class AdminService : IAdminService
         user.IsActive = request.IsActive;
         user.UpdatedAtUtc = DateTime.UtcNow;
 
-        _context.AuditLogs.Add(new AuditLog
+        _context.AdminActions.Add(new AdminAction
         {
             Id = Guid.NewGuid(),
             AdminUserId = adminId,
@@ -269,7 +269,7 @@ public class AdminService : IAdminService
             setting.UpdatedBy = adminId.ToString();
         }
 
-        _context.AuditLogs.Add(new AuditLog
+        _context.AdminActions.Add(new AdminAction
         {
             Id = Guid.NewGuid(),
             AdminUserId = adminId,
@@ -292,15 +292,15 @@ public class AdminService : IAdminService
         }, "Setting updated.");
     }
 
-    public async Task<ApiResponse<List<AuditLogDto>>> GetAuditLogsAsync(int page = 1, int pageSize = 50)
+    public async Task<ApiResponse<List<AdminActionDto>>> GetAdminActionsAsync(int page = 1, int pageSize = 50)
     {
-        var logs = await _context.AuditLogs
+        var logs = await _context.AdminActions
             .OrderByDescending(al => al.TimestampUtc)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Include(al => al.AdminUser)
             .AsNoTracking()
-            .Select(al => new AuditLogDto
+            .Select(al => new AdminActionDto
             {
                 Id = al.Id,
                 AdminUserId = al.AdminUserId,
@@ -313,6 +313,24 @@ public class AdminService : IAdminService
             })
             .ToListAsync();
 
-        return ApiResponse<List<AuditLogDto>>.Ok(logs);
+        return ApiResponse<List<AdminActionDto>>.Ok(logs);
+    }
+
+    public async Task<ApiResponse<List<AuditLogDto>>> GetAuditLogsAsync(int page = 1, int pageSize = 50)
+    {
+        var res = await GetAdminActionsAsync(page, pageSize);
+        var auditLogs = res.Data?.Select(a => new AuditLogDto
+        {
+            Id = a.Id,
+            AdminUserId = a.AdminUserId,
+            AdminUserName = a.AdminUserName,
+            Action = a.Action,
+            TargetEntity = a.TargetEntity,
+            TargetId = a.TargetId,
+            Details = a.Details,
+            TimestampUtc = a.TimestampUtc
+        }).ToList() ?? new List<AuditLogDto>();
+
+        return ApiResponse<List<AuditLogDto>>.Ok(auditLogs);
     }
 }

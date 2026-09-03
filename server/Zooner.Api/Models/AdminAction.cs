@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Zooner.Api.Models;
 
-public class AuditLog
+public class AdminAction
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 

@@ -74,7 +74,7 @@ public class UpdateSettingRequest
     public string? Description { get; set; }
 }
 
-public class AuditLogDto
+public class AdminActionDto
 {
     public Guid Id { get; set; }
     public Guid? AdminUserId { get; set; }
@@ -85,3 +85,6 @@ public class AuditLogDto
     public string? Details { get; set; }
     public DateTime TimestampUtc { get; set; }
 }
+
+// Alias for backwards compatibility
+public class AuditLogDto : AdminActionDto { }
