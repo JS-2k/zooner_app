@@ -28,5 +28,15 @@ pnpm-debug.log*
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
 *.sw?
+
+# .NET artifacts
+bin/
+**/bin/
+obj/
+**/obj/
+*.user
+*.userprefs
+*.db
+*.db-shm
+*.db-wal
