@@ -6,7 +6,7 @@ import {
   ShieldCheck,
   Radio
 } from 'lucide-react';
-import { SAMPLE_RETAILER_RESPONSES } from '../data/mockData';
+import { sendLiveRequest } from '../services/api';
 import type { RetailerResponse } from '../types';
 
 interface ProductRequestProps {
@@ -19,17 +19,27 @@ export const ProductRequest: React.FC<ProductRequestProps> = ({ prefillProduct }
   const [budget, setBudget] = useState('₹5,000 – ₹8,000');
   const [radius, setRadius] = useState('Within 10 km');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
-  const [responses, setResponses] = useState<RetailerResponse[]>(SAMPLE_RETAILER_RESPONSES);
+  const [requestSent, setRequestSent] = useState(false);
+  const [responses, setResponses] = useState<RetailerResponse[]>([]);
   const [heldStore, setHeldStore] = useState<string | null>(null);
 
-  const handleSendRequest = (e: React.FormEvent) => {
+  const handleSendRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsBroadcasting(true);
 
-    setTimeout(() => {
-      setIsBroadcasting(false);
-      setResponses(SAMPLE_RETAILER_RESPONSES);
-    }, 1200);
+    const result = await sendLiveRequest({
+      productName: `${productName} (${size})`,
+      specifications: `Budget: ${budget}`,
+      radiusKm: parseInt(radius) || 10,
+      latitude: 11.0168,
+      longitude: 76.9558
+    });
+
+    setIsBroadcasting(false);
+    setRequestSent(true);
+    if (result && Array.isArray(result.responses)) {
+      setResponses(result.responses);
+    }
   };
 
   return (
@@ -58,6 +68,13 @@ export const ProductRequest: React.FC<ProductRequestProps> = ({ prefillProduct }
           
           {/* Left: Beautiful Request Form Card */}
           <div className="lg:col-span-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-7 shadow-xl dark:shadow-2xl relative">
+            {requestSent && (
+              <div className="mb-4 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>Live request broadcast to physical stores nearby!</span>
+              </div>
+            )}
+
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-5">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">

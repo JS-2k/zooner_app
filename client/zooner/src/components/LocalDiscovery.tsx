@@ -24,7 +24,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
   currentLocation,
   onOpenLocationModal,
 }) => {
-  const [activePin, setActivePin] = useState<StoreType>(PHYSICAL_STORES[0]);
+  const [activePin, setActivePin] = useState<StoreType | null>(PHYSICAL_STORES[0] || null);
   const [selectedMapCategory, setSelectedMapCategory] = useState<string>('all');
 
   const categories = [
@@ -37,10 +37,14 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
     { id: 'grocery', label: 'Grocery', icon: ShoppingBag },
   ];
 
-  // Google Map search query for active store
-  const mapSearchQuery = `${activePin.name}, ${activePin.address}, ${activePin.area}, Coimbatore, Tamil Nadu`;
+  // Google Map search query for active store or current location
+  const mapSearchQuery = activePin
+    ? `${activePin.name}, ${activePin.address}, ${activePin.area}, Coimbatore, Tamil Nadu`
+    : `${currentLocation.name}, ${currentLocation.city}, Tamil Nadu`;
   const googleMapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapSearchQuery)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
-  const googleMapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${activePin.name}, ${activePin.address}, Coimbatore`)}`;
+  const googleMapsDirectionsUrl = activePin
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${activePin.name}, ${activePin.address}, Coimbatore`)}`
+    : `https://www.google.com/maps/search/${encodeURIComponent(`retail stores in ${currentLocation.name} Coimbatore`)}`;
 
   return (
     <section className="relative py-20 md:py-32 bg-white dark:bg-[#070A12] border-t border-slate-200 dark:border-slate-800/80 overflow-hidden transition-colors duration-200">
@@ -100,8 +104,15 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
 
               {/* Scrollable list of stores */}
               <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
-                {PHYSICAL_STORES.map((store) => {
-                  const isSelected = activePin.id === store.id;
+                {PHYSICAL_STORES.length === 0 ? (
+                  <div className="p-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 text-center">
+                    <Store className="h-8 w-8 text-indigo-500 mx-auto mb-2 opacity-60" />
+                    <div className="text-xs font-bold text-slate-900 dark:text-white font-['Outfit']">No physical stores listed yet</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Register your shop to appear on the local map!</div>
+                  </div>
+                ) : (
+                  PHYSICAL_STORES.map((store) => {
+                    const isSelected = activePin?.id === store.id;
                   return (
                     <div
                       key={store.id}
@@ -142,7 +153,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                       </div>
                     </div>
                   );
-                })}
+                }))}
               </div>
 
               {/* Action Button: Open Directions in Google Maps */}
@@ -153,7 +164,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white py-3 text-xs font-bold shadow-md shadow-indigo-600/20 transition-all hover:-translate-y-0.5"
               >
                 <Navigation className="h-4 w-4" />
-                <span>Open {activePin.name} in Google Maps</span>
+                <span>Open {activePin?.name || 'Local Stores'} in Google Maps</span>
               </a>
             </div>
 
@@ -162,7 +173,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
               
               {/* Google Maps Iframe */}
               <iframe
-                title={`Google Map - ${activePin.name}`}
+                title={`Google Map - ${activePin?.name || 'Local Stores'}`}
                 src={googleMapUrl}
                 width="100%"
                 height="100%"
@@ -175,7 +186,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
               <div className="absolute top-3 left-3 z-10 flex items-center gap-2 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 shadow-md">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="font-medium">
-                  Google Map: <strong>{activePin.name}</strong> ({activePin.area})
+                  Google Map: <strong>{activePin?.name || currentLocation.name}</strong> ({activePin?.area || currentLocation.city})
                 </span>
               </div>
 
