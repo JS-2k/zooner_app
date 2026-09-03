@@ -18,24 +18,24 @@ export const HowItWorks: React.FC = () => {
   const customerSteps = [
     {
       step: '01',
-      title: 'Set your location',
-      description: 'Tell Zooner where you want to discover products. Choose your current GPS spot or pick any neighborhood within your city.',
+      title: 'Search Stock or Broadcast Request',
+      description: 'Type the exact product, shoe size, or brand you need near RS Puram, Gandhipuram, or your current neighborhood.',
       icon: MapPin,
-      preview: 'GPS Radar radius · 1km to 15km'
+      preview: 'GPS Radar · 500m to 10km radius'
     },
     {
       step: '02',
-      title: 'Discover',
-      description: 'Explore nearby products, stores, offers, and new arrivals. See live in-stock availability before stepping out.',
+      title: 'Get Instant Shop Replies',
+      description: 'Nearby physical shop owners get notified instantly and reply with verified stock status, price quotes, and 2-hour hold options.',
       icon: Compass,
-      preview: 'Real shelf inventory · Verified prices'
+      preview: 'Live merchant responses in < 5 mins'
     },
     {
       step: '03',
-      title: 'Connect',
-      description: 'Save, follow, visit the store, or request exactly what you need. Try products on right away with zero delivery wait.',
+      title: 'Walk In & Collect Today',
+      description: 'Follow turn-by-turn store map directions. Try the product in person with zero shipping wait or return hassle.',
       icon: MessageSquare,
-      preview: 'Hold items · Direct walk-in'
+      preview: '0 Days delivery wait · Try before buy'
     },
   ];
 
