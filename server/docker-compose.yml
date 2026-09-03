@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: locallive-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: locallive
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d locallive"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - locallive-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: locallive-api
+    restart: always
+    ports:
+      - "5000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - DatabaseProvider=PostgreSql
+      - ConnectionStrings__PostgreSql=Host=postgres;Port=5432;Database=locallive;Username=postgres;Password=postgrespassword
+      - Jwt__Key=LocalLiveProductionSecretKey_2026_HyperlocalSecureJWTKey!
+      - Jwt__Issuer=LocalLiveApi
+      - Jwt__Audience=LocalLiveClient
+      - Cors__AllowedOrigins__0=http://localhost:5173
+      - Cors__AllowedOrigins__1=http://localhost:3000
+    networks:
+      - locallive-network
+
+volumes:
+  pgdata:
+
+networks:
+  locallive-network:
+    driver: bridge

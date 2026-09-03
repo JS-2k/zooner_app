@@ -1,73 +1,154 @@
-# Zooner Web API (.NET Backend)
+# LocalLive Web API & Database Backend
 
-ASP.NET Core Web API backend for the Zooner local product discovery and retailer platform, featuring JWT-based authentication, token rotation, and EF Core SQLite persistence.
+Production-ready ASP.NET Core Web API backend for **LocalLive**, a hyperlocal real-time request platform connecting customers with nearby physical retailers who immediately respond with product availability.
 
-## Features
-- **Registration**: Email and password account creation with BCrypt password hashing.
-- **Sign In / Login**: Issue cryptographically signed JWT access tokens and secure refresh tokens.
-- **Sign Out / Logout**: Invalidate active refresh tokens and clear HTTP-only cookies.
-- **Token Refresh**: Seamless session renewal via rotating refresh tokens.
-- **Protected Endpoints**: Role and JWT claim-based authorization (`/api/auth/me`).
-- **Interactive OpenAPI/Swagger**: Built-in Swagger UI with Bearer Authentication support.
-- **CORS Support**: Pre-configured for Vite/React frontend (`http://localhost:5173`).
+---
 
-## Project Structure
+## 1. Architecture Overview
+
+- **Framework**: ASP.NET Core Web API 10 / 9 (`C# 13`)
+- **Database**: PostgreSQL 16 (via `Npgsql.EntityFrameworkCore.PostgreSQL`) with SQLite fallback for local development.
+- **Realtime**: SignalR Hub (`/hubs/live`) with decoupled `IRealtimeNotifier`.
+- **Authentication**: JWT Bearer Tokens + Rotating Refresh Tokens with token reuse detection.
+- **Geographic Search**: Bounding box index scanning + Haversine spherical distance calculation.
+- **Containerization**: Multi-stage `Dockerfile` and `docker-compose.yml` with PostgreSQL health checks.
+
+---
+
+## 2. Core Hyperlocal Live Flow
+
 ```
-server/
-├── Zooner.sln
-└── Zooner.Api/
-    ├── Controllers/
-    │   └── AuthController.cs
-    ├── Data/
-    │   └── AppDbContext.cs
-    ├── Models/
-    │   ├── User.cs
-    │   ├── RefreshToken.cs
-    │   └── DTOs/
-    │       ├── ApiResponse.cs
-    │       └── AuthDtos.cs
-    ├── Services/
-    │   ├── IAuthService.cs
-    │   ├── AuthService.cs
-    │   ├── ITokenService.cs
-    │   └── TokenService.cs
-    ├── Program.cs
-    ├── appsettings.json
-    └── Zooner.Api.csproj
+CUSTOMER                                      SHOPS
+   │                                             │
+   ├─► POST /api/requests                        │
+   │   (Finds nearby shops in radius & category) │
+   │                                             │
+   │                    SignalR: NewLiveRequest ─►
+   │                                             │
+   │                                             ├─► POST /api/requests/{id}/respond (AVAILABLE)
+   │                                             │
+   │◄─ SignalR: ShopAvailable ───────────────────┤
+   │                                             │
+   ├─► POST /api/requests/{id}/select-shop/{id}  │
+   │   (Auto-starts Chat Conversation)           │
+   │                                             │
+   ├─► Chat: POST /api/chat/conversations/{id} ──┼──►
+   │                                             │
+   ├─► POST /api/requests/{id}/fulfill           │
 ```
 
-## Running the Backend
+---
 
-### Prerequisites
-- .NET SDK (installed on machine: .NET 9 SDK; ready for .NET 10 SDK)
+## 3. Database Schema
 
-### Start API
+- **Users**: Authentication, roles (`Customer`, `ShopOwner`, `Admin`), status.
+- **Categories & Subcategories**: Database-driven, ordering, slugs, active toggling.
+- **Shops & ShopCategories**: Many-to-many relationship, GPS coordinates, verification status, live availability online/offline toggle.
+- **ShopOperatingHours**: Days of week, open/close intervals, closed flags.
+- **LiveRequests**: Customer request text, category, coordinates, search radius, lifecycle statuses (`Active`, `Fulfilled`, `Expired`, `Cancelled`).
+- **ShopResponses**: `Available` status with **unique constraint on `(LiveRequestId, ShopId)`** to prevent duplicate responses.
+- **Notifications**: Persistent notification inbox for offline delivery.
+- **Chat**: `Conversation` and `ChatMessage` linking Customer, Shop, and Request.
+- **Reports & AuditLogs**: Moderation and administrative audit trail.
+- **BusinessSettings**: Database-backed dynamic configuration (e.g. `RequestExpirationMinutes`, `MaxSearchRadiusKm`).
+
+---
+
+## 4. Running the Backend
+
+### Option A: Running with Docker Compose (PostgreSQL + API)
+```bash
+cd server
+docker-compose up --build
+```
+- PostgreSQL will be provisioned on `localhost:5432`
+- Web API will be running on `http://localhost:5000`
+- Swagger UI available at `http://localhost:5000/swagger`
+
+### Option B: Running Locally with .NET CLI
 ```bash
 cd server/Zooner.Api
 dotnet run
 ```
-The API will start at:
-- **HTTP**: `http://localhost:5000`
-- **Swagger UI**: `http://localhost:5000/swagger`
 
-### Upgrading to .NET 10
-Once the .NET 10 SDK is installed on your machine, you can update `server/Zooner.Api/Zooner.Api.csproj`:
-Change:
-```xml
-<TargetFramework>net9.0</TargetFramework>
+---
+
+## 5. Automated Tests
+
+Execute the xUnit test suite covering categories, shop ownership, nearby geographic matching, request lifecycles, duplicate protection, chat authorization, and reports:
+```bash
+dotnet test server/Zooner.sln
 ```
-To:
-```xml
-<TargetFramework>net10.0</TargetFramework>
-```
-and run `dotnet build`.
 
-## API Endpoints
+---
 
-| Method | Endpoint | Description | Auth Required |
-|---|---|---|---|
-| `POST` | `/api/auth/register` | Register new user account | No |
-| `POST` | `/api/auth/login` | Sign in & receive JWT + Refresh Token | No |
-| `POST` | `/api/auth/logout` | Sign out & revoke token | No |
-| `POST` | `/api/auth/refresh-token` | Renew access token | No |
-| `GET` | `/api/auth/me` | Fetch authenticated user profile | **Yes (Bearer JWT)** |
+## 6. Seed Data for Development
+
+On startup, the system seeds:
+- **Default Administrator**: `admin@locallive.com` / `Admin@123456` (Role: `Admin`)
+- **Default Settings**: `RequestExpirationMinutes` (30), `MaxSearchRadiusKm` (50), `DefaultSearchRadiusKm` (5).
+- **Initial Categories**: `Clothing & Fashion`, `Electronics & Gadgets`, `Grocery & Essentials`, `Pharmacy & Healthcare` with subcategories.
+
+---
+
+## 7. API Reference Summary
+
+### Authentication (`/api/auth`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/auth/register` | Register new user (`Customer` or `ShopOwner`) |
+| `POST` | `/api/auth/login` | Sign in & receive JWT + Refresh Token |
+| `POST` | `/api/auth/logout` | Revoke active refresh token |
+| `POST` | `/api/auth/refresh-token` | Rotate & refresh access token |
+| `GET` | `/api/auth/me` | Current authenticated user claims |
+
+### Categories (`/api/categories`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/categories` | List active categories & subcategories in display order |
+| `GET` | `/api/categories/{id}` | Get category by ID |
+| `GET` | `/api/categories/{id}/subcategories` | Get subcategories for category |
+
+### Shops (`/api/shops`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/shops` | Register new shop (`ShopOwner` / `Admin`) |
+| `GET` | `/api/shops/my-shops` | List owned shops |
+| `GET` | `/api/shops/{id}` | Shop profile & operating hours |
+| `PUT` | `/api/shops/{id}` | Update shop profile |
+| `PATCH` | `/api/shops/{id}/live-status` | Toggle LIVE availability (Online/Offline) |
+| `POST` | `/api/shops/{id}/categories` | Assign categories to shop |
+| `GET` | `/api/shops/{id}/incoming-requests` | View nearby live requests matching shop |
+
+### Live Requests (`/api/requests`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/requests` | Customer creates live request (dispatches to nearby shops) |
+| `GET` | `/api/requests/{id}` | Request details and all responding shops |
+| `GET` | `/api/requests/my-requests` | Customer's active and past requests |
+| `POST` | `/api/requests/{id}/respond` | Shop owner responds AVAILABLE (realtime update) |
+| `POST` | `/api/requests/{id}/cancel` | Customer cancels request |
+| `POST` | `/api/requests/{id}/select-shop/{shopId}` | Customer selects shop (creates chat) |
+| `POST` | `/api/requests/{id}/fulfill` | Mark request fulfilled |
+
+### Chat & Notifications
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/chat/conversations` | List user's conversations |
+| `GET` | `/api/chat/conversations/{id}/messages` | Get conversation message history |
+| `POST` | `/api/chat/conversations/{id}/messages` | Send message (SignalR broadcast) |
+| `GET` | `/api/notifications` | User notifications inbox |
+| `PATCH` | `/api/notifications/{id}/read` | Mark notification read |
+
+### Administration (`/api/admin` - Role: `Admin`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST/PUT` | `/api/admin/categories` | Create or update category |
+| `PATCH` | `/api/admin/categories/{id}/status` | Enable or disable category |
+| `POST` | `/api/admin/categories/reorder` | Reorder category display orders |
+| `GET` | `/api/admin/shops/pending` | List pending shop verifications |
+| `PATCH` | `/api/admin/shops/{id}/verify` | Approve or reject shop |
+| `GET` | `/api/admin/reports` | List abuse reports |
+| `PATCH` | `/api/admin/reports/{id}/resolve` | Resolve report with audit log |
+| `GET/PUT` | `/api/admin/settings` | View or update dynamic business settings |
+| `GET` | `/api/admin/audit-logs` | Query administrative audit log trail |
