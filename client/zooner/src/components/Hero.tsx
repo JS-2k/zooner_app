@@ -160,14 +160,27 @@ export const Hero: React.FC<HeroProps> = ({
               </div>
             </div>
 
-            {/* Floating Badge Bottom-Right */}
-            <div className="hidden sm:flex absolute -right-6 bottom-20 z-20 items-center gap-3 rounded-2xl bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700/80 p-3 shadow-xl backdrop-blur-md animate-float [animation-delay:2s]">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 font-bold">
-                <Tag className="h-5 w-5" />
+            {/* Floating Premium Sponsored Ad Badge (Timed + Location + Preference) */}
+            <div className="hidden sm:flex absolute -right-8 bottom-16 z-20 items-start gap-3 rounded-2xl bg-slate-900/95 border border-indigo-500/40 p-3.5 shadow-2xl backdrop-blur-md animate-float [animation-delay:2s] max-w-[240px]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 font-bold shrink-0">
+                <Tag className="h-4 w-4" />
               </div>
-              <div className="text-left pr-2">
-                <div className="text-xs font-bold text-slate-900 dark:text-white">Local Flash Offer</div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-300">25% off today at RS Puram</div>
+              <div className="text-left pr-1">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded">
+                    👑 Premium Ad
+                  </span>
+                  <span className="text-[9px] font-bold text-emerald-400 flex items-center gap-1">
+                    ⏱️ 02h 45m
+                  </span>
+                </div>
+                <div className="text-xs font-bold text-white leading-tight">
+                  25% Off Nike Running Shoes
+                </div>
+                <div className="text-[10px] text-slate-300 mt-1 flex flex-col gap-0.5 font-medium">
+                  <span>📍 Matched: 400m from your GPS</span>
+                  <span>🎯 Matched: Running Shoes preference</span>
+                </div>
               </div>
             </div>
 

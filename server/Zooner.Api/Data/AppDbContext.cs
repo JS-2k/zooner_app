@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<BusinessSetting> BusinessSettings => Set<BusinessSetting>();
     public DbSet<AdminAction> AdminActions => Set<AdminAction>();
+    public DbSet<PremiumAdvertisement> PremiumAdvertisements => Set<PremiumAdvertisement>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

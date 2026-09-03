@@ -63,3 +63,20 @@ export async function sendLiveRequest(requestData: {
     return null;
   }
 }
+
+export async function fetchTargetedAds(lat = 11.0168, lon = 76.9558, category = 'all'): Promise<any[]> {
+  try {
+    const params = new URLSearchParams({
+      userLat: lat.toString(),
+      userLon: lon.toString(),
+      category: category
+    });
+    const res = await fetch(`${API_BASE_URL}/Advertisements/targeted?${params.toString()}`);
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    console.error('Failed to fetch targeted ads:', error);
+    return [];
+  }
+}
