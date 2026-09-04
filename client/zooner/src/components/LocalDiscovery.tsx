@@ -17,12 +17,11 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const categories = [
-    { id: 'all', label: 'All Stores' },
-    { id: 'Footwear & Sports', label: 'Sports & Shoes' },
+    { id: 'all', label: 'All Verified Stores' },
+    { id: 'Footwear & Sports', label: 'Sports & Footwear' },
     { id: 'Fashion', label: 'Fashion & Apparel' },
-    { id: 'Electronics', label: 'Electronics' },
-    { id: 'Beauty', label: 'Beauty & Wellness' },
-    { id: 'Grocery', label: 'Artisan Grocery' },
+    { id: 'Electronics', label: 'Electronics & Audio' },
+    { id: 'Beauty', label: 'Beauty & Skincare' },
   ];
 
   const filteredStores = PHYSICAL_STORES.filter(st => {
@@ -36,17 +35,17 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
   const googleMapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapSearchQuery)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
   return (
-    <section id="stores" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#0B101D] text-white border-t border-slate-800/80 overflow-hidden">
+    <section id="stores" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#090D18] text-white border-t border-slate-800/80 overflow-hidden">
       
       {/* Subtle ambient lighting */}
-      <div className="absolute top-1/4 right-10 w-[600px] h-[600px] bg-blue-950/20 blur-[150px] pointer-events-none rounded-full" />
+      <div className="absolute top-1/4 right-10 w-[600px] h-[600px] bg-blue-950/15 blur-[160px] pointer-events-none rounded-full" />
 
-      <div className="max-w-6xl mx-auto space-y-16 relative z-10">
+      <div className="max-w-6xl mx-auto space-y-12 relative z-10">
         
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 text-left">
           <motion.div 
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 25 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -56,13 +55,13 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
               04 / Physical Store Network
             </span>
             <h2 
-              className="font-['Outfit'] font-black tracking-tighter text-white leading-[1.0]"
-              style={{ fontSize: 'clamp(2.2rem, 5vw, 4rem)' }}
+              className="font-['Outfit'] font-black tracking-tight text-white leading-[0.98]"
+              style={{ fontSize: 'clamp(2.4rem, 6vw, 4.4rem)' }}
             >
-              Your city is your marketplace.
+              Your city has the product.
             </h2>
             <p className="text-slate-300 text-base sm:text-lg leading-relaxed">
-              Every verified brand store, boutique, and local dealer near you — connected directly to your pocket.
+              Every authorized brand store, boutique, and local dealer near you — connected in real time to your mobile screen.
             </p>
           </motion.div>
 
@@ -74,7 +73,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
             onClick={onOpenLocationModal}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-100 transition-colors cursor-pointer shrink-0 shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-xs font-medium text-slate-200 transition-colors cursor-pointer shrink-0 shadow-sm"
           >
             <MapPin className="h-3.5 w-3.5 text-emerald-400" />
             <span>{currentLocation.name || 'RS Puram, Coimbatore'}</span>
@@ -82,12 +81,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
         </div>
 
         {/* Category Filters with Framer Motion layout pill */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 relative"
-        >
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
           {categories.map(cat => {
             const isSelected = selectedCategory === cat.id;
             return (
@@ -106,81 +100,19 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                   />
                 )}
                 {!isSelected && (
-                  <div className="absolute inset-0 bg-slate-800/80 border border-slate-700 rounded-full -z-10" />
+                  <div className="absolute inset-0 bg-slate-900/90 border border-slate-800 rounded-full -z-10" />
                 )}
                 {cat.label}
               </button>
             );
           })}
-        </motion.div>
+        </div>
 
-        {/* Main Grid: Store Directory & Google Map Embed */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Centerpiece Dominant Map Layout */}
+        <div className="space-y-6">
           
-          {/* Store List (5 cols) */}
-          <div className="lg:col-span-5 space-y-3 text-left max-h-[500px] overflow-y-auto no-scrollbar pr-1">
-            <AnimatePresence mode="popLayout">
-              {filteredStores.map(store => {
-                const isSelected = activePin?.id === store.id;
-                return (
-                  <motion.div
-                    key={store.id}
-                    layout
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    onClick={() => setActivePin(store)}
-                    whileHover={{ x: 4 }}
-                    className={`p-4 rounded-2xl transition-all cursor-pointer border shadow-md ${
-                      isSelected 
-                        ? 'bg-slate-800 border-indigo-500/80 shadow-xl shadow-indigo-950/30' 
-                        : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 hover:bg-slate-800/60'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <h4 className="font-bold text-white text-sm">{store.name}</h4>
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                        </div>
-                        <p className="text-xs text-slate-300 mt-0.5">{store.category} · {store.area}</p>
-                      </div>
-
-                      <span className="text-xs font-bold text-slate-200 bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full shrink-0 font-mono">
-                        {store.distance}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-800 text-xs text-slate-400">
-                      <span className="flex items-center gap-1.5 font-medium text-slate-300">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                        {store.openStatus}
-                      </span>
-                      <span className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
-                        View on map <ArrowUpRight className="h-3 w-3" />
-                      </span>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-
-            {filteredStores.length === 0 && (
-              <div className="p-8 text-center bg-slate-900/80 border border-slate-800 rounded-2xl space-y-2">
-                <Store className="h-6 w-6 text-slate-400 mx-auto" />
-                <p className="text-xs text-slate-300">No stores found in this category.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Interactive Google Map Frame (7 cols) */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.98 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="lg:col-span-7 rounded-3xl overflow-hidden border border-slate-700/80 bg-[#0E1526] h-[400px] lg:h-[500px] relative shadow-2xl"
-          >
+          {/* Dominant Map Container */}
+          <div className="rounded-3xl overflow-hidden border border-slate-700/80 bg-[#0A0F1E] h-[380px] sm:h-[460px] relative shadow-2xl">
             <iframe
               title="Store Map"
               src={googleMapUrl}
@@ -188,7 +120,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
               loading="lazy"
             />
 
-            {/* Selected Store Floating Info Card */}
+            {/* Selected Store Floating Overlay Card */}
             <AnimatePresence>
               {activePin && (
                 <motion.div 
@@ -197,16 +129,19 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
                   transition={{ duration: 0.3 }}
-                  className="absolute bottom-4 left-4 right-4 bg-[#0E1526]/95 backdrop-blur-xl border border-slate-700 rounded-2xl p-4 text-left flex items-center justify-between gap-4 shadow-2xl"
+                  className="absolute bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-md bg-[#0A0F1E]/95 backdrop-blur-xl border border-slate-700 rounded-2xl p-4 text-left flex items-center justify-between gap-4 shadow-2xl z-20"
                 >
                   <div>
                     <div className="flex items-center gap-1.5">
                       <h4 className="text-sm font-bold text-white">{activePin.name}</h4>
-                      <span className="text-[10px] text-emerald-300 font-bold bg-emerald-950/90 border border-emerald-500/30 px-2 py-0.5 rounded">
-                        Open Now
-                      </span>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                     </div>
-                    <p className="text-xs text-slate-300 mt-0.5 truncate max-w-sm">{activePin.address}</p>
+                    <p className="text-xs text-slate-300 mt-0.5 truncate max-w-xs">{activePin.address}</p>
+                    <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400 font-mono">
+                      <span className="text-emerald-400 font-bold">{activePin.distance}</span>
+                      <span>·</span>
+                      <span>{activePin.openStatus}</span>
+                    </div>
                   </div>
 
                   <motion.a
@@ -215,7 +150,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                     rel="noopener noreferrer"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="px-4 py-2 rounded-xl bg-white text-slate-950 text-xs font-bold shrink-0 hover:bg-slate-100 transition-all flex items-center gap-1.5 shadow-md"
+                    className="px-4 py-2.5 rounded-xl bg-white text-slate-950 text-xs font-bold shrink-0 hover:bg-slate-100 transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
                   >
                     <Navigation className="h-3.5 w-3.5" />
                     <span>Directions</span>
@@ -223,7 +158,45 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
+          </div>
+
+          {/* Horizontal Quick-Select Store Pills */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-left">
+            {filteredStores.slice(0, 6).map(store => {
+              const isSelected = activePin?.id === store.id;
+              return (
+                <div
+                  key={store.id}
+                  onClick={() => setActivePin(store)}
+                  className={`p-3.5 rounded-2xl transition-all cursor-pointer border ${
+                    isSelected 
+                      ? 'bg-slate-800/95 border-indigo-500/80 shadow-lg' 
+                      : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-white text-xs truncate max-w-[180px]">{store.name}</div>
+                    <span className="text-[10px] font-mono font-bold text-slate-300 bg-slate-800 px-2 py-0.5 rounded">
+                      {store.distance}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                    <span className="truncate">{store.category}</span>
+                    <span className="text-indigo-400 font-medium flex items-center gap-0.5">
+                      Focus <ArrowUpRight className="h-2.5 w-2.5" />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {filteredStores.length === 0 && (
+            <div className="p-8 text-center bg-slate-900/80 border border-slate-800 rounded-2xl space-y-2">
+              <Store className="h-6 w-6 text-slate-400 mx-auto" />
+              <p className="text-xs text-slate-300">No stores found in this category.</p>
+            </div>
+          )}
 
         </div>
 
@@ -231,4 +204,5 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
     </section>
   );
 };
+
 
