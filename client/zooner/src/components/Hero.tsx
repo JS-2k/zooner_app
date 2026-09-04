@@ -54,12 +54,12 @@ export const Hero: React.FC<HeroProps> = ({
             <input
               type="text"
               placeholder="What are you looking for near you? (e.g. Nike shoes, Titan watch)"
-              onClick={() => document.getElementById('discover')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => document.getElementById('request-feature')?.scrollIntoView({ behavior: 'smooth' })}
               readOnly
               className="flex-1 bg-transparent text-white placeholder-slate-500 text-xs sm:text-sm py-2 px-1 focus:outline-none cursor-pointer"
             />
             <a
-              href="#discover"
+              href="#request-feature"
               className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md shadow-indigo-600/30 shrink-0 cursor-pointer"
             >
               Search <ArrowRight className="h-3.5 w-3.5" />
@@ -77,7 +77,7 @@ export const Hero: React.FC<HeroProps> = ({
             ].map(item => (
               <a
                 key={item.label}
-                href="#discover"
+                href="#request-feature"
                 className="px-2 py-0.5 rounded-md bg-slate-800/80 hover:bg-indigo-600/20 border border-slate-700/60 hover:border-indigo-500/40 text-[10px] text-slate-300 hover:text-white transition-all cursor-pointer font-medium"
               >
                 {item.label}

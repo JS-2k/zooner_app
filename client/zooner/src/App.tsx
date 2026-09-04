@@ -2,9 +2,6 @@ import { useState, useEffect } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
-import { CustomerFeatures } from './components/CustomerFeatures';
-import { DiscoveryPreview } from './components/DiscoveryPreview';
-import { HowItWorks } from './components/HowItWorks';
 import { ProductRequest } from './components/ProductRequest';
 import { LocalDiscovery } from './components/LocalDiscovery';
 import { FinalCTA } from './components/FinalCTA';
@@ -24,7 +21,7 @@ export function AppContent() {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isRetailerModalOpen, setIsRetailerModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  const [requestPrefill, setRequestPrefill] = useState<string>('Nike Running Shoes');
+  const [requestPrefill] = useState<string>('Nike Running Shoes');
 
   // Auto-detect real-time browser GPS location on startup
   useEffect(() => {
@@ -68,16 +65,6 @@ export function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleOpenRequestWithProduct = (productName?: string) => {
-    if (productName) {
-      setRequestPrefill(productName);
-    }
-    const element = document.getElementById('request-feature');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   if (currentPage === 'vendor') {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-indigo-600 selection:text-white transition-colors duration-200">
@@ -100,7 +87,7 @@ export function AppContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-indigo-600 selection:text-white relative transition-colors duration-200">
-      {/* 1. Customer Header / Navbar */}
+      {/* 1. Navbar */}
       <Navbar
         currentLocation={currentLocation}
         onOpenLocationModal={() => setIsLocationModalOpen(true)}
@@ -108,34 +95,21 @@ export function AppContent() {
         onOpenSignInModal={() => setIsSignInModalOpen(true)}
       />
 
-      {/* Main Content Area - 100% Focused on Customer Discovery */}
+      {/* Main Content Area - 100% Focused on Hyperlocal Live Requests & Walk-in */}
       <main className="flex-1">
-        {/* 2. Hero Section */}
+        {/* 2. Hero Section (Slogan + Search + 3-Step Walk-in Explanation) */}
         <Hero
           currentLocation={currentLocation}
           onOpenRetailerModal={() => navigateTo('vendor')}
           onOpenLocationModal={() => setIsLocationModalOpen(true)}
         />
 
-        {/* 3. Customer Section */}
-        <CustomerFeatures />
-
-        {/* 4. Product Discovery Visual Section */}
-        <DiscoveryPreview
-          currentLocation={currentLocation}
-          onOpenLocationModal={() => setIsLocationModalOpen(true)}
-          onOpenRequestModal={handleOpenRequestWithProduct}
-        />
-
-        {/* 5. How Zooner Works (Customer 3-Step) */}
-        <HowItWorks />
-
-        {/* 6. Product Request Feature (USP Spotlight) */}
+        {/* 3. Live Product Request Feature (Core USP Spotlight) */}
         <ProductRequest
           prefillProduct={requestPrefill}
         />
 
-        {/* 7. Local Discovery Section with Real Interactive Google Maps */}
+        {/* 4. Local Physical Store Directory & Google Map Network */}
         <div id="map-discovery">
           <LocalDiscovery
             currentLocation={currentLocation}
@@ -143,13 +117,13 @@ export function AppContent() {
           />
         </div>
 
-        {/* 8. Final CTA */}
+        {/* 5. Final Call-to-Action */}
         <FinalCTA
           onOpenRetailerModal={() => navigateTo('vendor')}
         />
       </main>
 
-      {/* 9. Footer */}
+      {/* 6. Footer */}
       <Footer
         onOpenRetailerModal={() => navigateTo('vendor')}
         onOpenLocationModal={() => setIsLocationModalOpen(true)}
@@ -186,4 +160,3 @@ export function App() {
 }
 
 export default App;
-

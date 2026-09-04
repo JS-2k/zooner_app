@@ -29,10 +29,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   const navLinks = [
-    { name: 'Discover', href: '#discover' },
-    { name: 'How It Works', href: '#how-it-works' },
-    { name: 'Product Request', href: '#request-feature' },
-    { name: 'Stores Map', href: '#map-discovery' },
+    { name: 'Live Request', href: '#request-feature' },
+    { name: 'Nearby Stores', href: '#map-discovery' },
   ];
 
   return (
