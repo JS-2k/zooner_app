@@ -1,17 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  MapPin, 
-  Store, 
-  Sparkles, 
-  Navigation, 
-  ShieldCheck,
-  Footprints,
-  Shirt,
-  Smartphone,
-  Home,
-  Sparkle,
-  ShoppingBag
-} from 'lucide-react';
+import { MapPin, Navigation, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { PHYSICAL_STORES } from '../data/mockData';
 import type { Store as StoreType, LocationArea } from '../types';
 
@@ -25,220 +13,150 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
   onOpenLocationModal,
 }) => {
   const [activePin, setActivePin] = useState<StoreType | null>(PHYSICAL_STORES[0] || null);
-  const [selectedMapCategory, setSelectedMapCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const categories = [
-    { id: 'all', label: 'All Stores', icon: Sparkles },
-    { id: 'fashion', label: 'Fashion', icon: Shirt },
-    { id: 'electronics', label: 'Electronics', icon: Smartphone },
-    { id: 'beauty', label: 'Beauty', icon: Sparkle },
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'sports', label: 'Sports', icon: Footprints },
-    { id: 'grocery', label: 'Grocery', icon: ShoppingBag },
+    { id: 'all', label: 'All Stores' },
+    { id: 'Footwear & Sports', label: 'Sports & Shoes' },
+    { id: 'Fashion', label: 'Fashion & Apparel' },
+    { id: 'Electronics', label: 'Electronics' },
+    { id: 'Beauty', label: 'Beauty & Wellness' },
+    { id: 'Grocery', label: 'Artisan Grocery' },
   ];
 
-  // Google Map search query for active store or current location
+  const filteredStores = PHYSICAL_STORES.filter(st => {
+    if (selectedCategory === 'all') return true;
+    return st.category.toLowerCase().includes(selectedCategory.toLowerCase());
+  });
+
   const mapSearchQuery = activePin
     ? `${activePin.name}, ${activePin.address}, ${activePin.area}, Coimbatore, Tamil Nadu`
     : `${currentLocation.name}, ${currentLocation.city}, Tamil Nadu`;
   const googleMapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapSearchQuery)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
-  const googleMapsDirectionsUrl = activePin
-    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${activePin.name}, ${activePin.address}, Coimbatore`)}`
-    : `https://www.google.com/maps/search/${encodeURIComponent(`retail stores in ${currentLocation.name} Coimbatore`)}`;
 
   return (
-    <section className="relative py-20 md:py-32 bg-white dark:bg-[#070A12] border-t border-slate-200 dark:border-slate-800/80 overflow-hidden transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+    <section id="stores" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-black text-white border-t border-white/[0.06] overflow-hidden">
+      <div className="max-w-6xl mx-auto space-y-16">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-14">
-          <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800/80 px-3.5 py-1 text-xs font-bold text-indigo-700 dark:text-indigo-300 mb-3 shadow-sm">
-            <MapPin className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-            LIVE GOOGLE MAP DISCOVERY NETWORK
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 text-left">
+          <div className="space-y-4 max-w-2xl">
+            <span className="text-xs font-mono uppercase tracking-widest text-white/40 block">
+              04 / Physical Store Network
+            </span>
+            <h2 
+              className="font-['Outfit'] font-black tracking-tighter text-white leading-[1.0]"
+              style={{ fontSize: 'clamp(2.2rem, 5vw, 4rem)' }}
+            >
+              Your city is your marketplace.
+            </h2>
+            <p className="text-white/60 text-base sm:text-lg leading-relaxed">
+              Every verified brand store, boutique, and local dealer near you — connected directly to your pocket.
+            </p>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-black text-slate-950 dark:text-white tracking-tight mb-4 font-['Outfit']">
-            Your city has more to discover.
-          </h2>
-          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto">
-            Experience the joy of touching fabrics, testing gadget screens, and getting verified sizes right now. Zooner connects you with <strong className="text-slate-950 dark:text-white font-bold">real physical stores</strong> just down the road.
-          </p>
 
-          {/* Map category filter pills */}
-          <div className="flex items-center justify-center gap-2 overflow-x-auto no-scrollbar pt-6">
-            {categories.map((cat) => {
-              const Icon = cat.icon;
-              const isSelected = selectedMapCategory === cat.id;
+          {/* Location Trigger */}
+          <button
+            onClick={onOpenLocationModal}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] text-xs font-medium text-white/80 transition-all cursor-pointer shrink-0"
+          >
+            <MapPin className="h-3.5 w-3.5 text-white/50" />
+            <span>{currentLocation.name || 'RS Puram, Coimbatore'}</span>
+          </button>
+        </div>
+
+        {/* Category Filters */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
+          {categories.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-4 py-2 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                selectedCategory === cat.id
+                  ? 'bg-white text-black font-semibold'
+                  : 'bg-white/[0.03] text-white/60 hover:text-white border border-white/[0.06]'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Main Grid: Store Directory & Google Map Embed */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* Store List (5 cols) */}
+          <div className="lg:col-span-5 space-y-3 text-left max-h-[500px] overflow-y-auto no-scrollbar pr-1">
+            {filteredStores.map(store => {
+              const isSelected = activePin?.id === store.id;
               return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedMapCategory(cat.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold whitespace-nowrap transition-all ${
-                    isSelected
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25'
-                      : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-700/60 shadow-sm'
+                <div
+                  key={store.id}
+                  onClick={() => setActivePin(store)}
+                  className={`p-4 rounded-2xl transition-all cursor-pointer border ${
+                    isSelected 
+                      ? 'bg-white/[0.08] border-white/30 shadow-xl' 
+                      : 'bg-white/[0.02] border-white/[0.05] hover:border-white/[0.15] hover:bg-white/[0.04]'
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{cat.label}</span>
-                </button>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-bold text-white text-sm">{store.name}</h4>
+                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                      </div>
+                      <p className="text-xs text-white/50 mt-0.5">{store.category} · {store.area}</p>
+                    </div>
+
+                    <span className="text-xs font-semibold text-white/80 bg-white/[0.06] px-2.5 py-1 rounded-full shrink-0">
+                      {store.distance}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 mt-2 border-t border-white/[0.04] text-[11px] text-white/40">
+                    <span>{store.openStatus}</span>
+                    <span className="text-white/60 hover:text-white flex items-center gap-1">
+                      View on map <ArrowUpRight className="h-3 w-3" />
+                    </span>
+                  </div>
+                </div>
               );
             })}
           </div>
-        </div>
 
-        {/* Real Interactive Google Map Board */}
-        <div className="relative rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-xl dark:shadow-2xl overflow-hidden">
-          
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            
-            {/* Left Col: Physical Stores Picker & Details */}
-            <div className="lg:col-span-4 flex flex-col space-y-3 order-2 lg:order-1">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                  Nearby Stores ({PHYSICAL_STORES.length})
-                </span>
-                <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold">
-                  {currentLocation.name}
-                </span>
-              </div>
+          {/* Interactive Google Map Frame (7 cols) */}
+          <div className="lg:col-span-7 rounded-3xl overflow-hidden border border-white/[0.08] bg-[#0c0c0e] h-[400px] lg:h-[500px] relative">
+            <iframe
+              title="Store Map"
+              src={googleMapUrl}
+              className="w-full h-full border-0 filter invert-[0.9] hue-rotate-180 contrast-[1.1] opacity-80"
+              loading="lazy"
+            />
 
-              {/* Scrollable list of stores */}
-              <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
-                {PHYSICAL_STORES.length === 0 ? (
-                  <div className="p-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 text-center">
-                    <Store className="h-8 w-8 text-indigo-500 mx-auto mb-2 opacity-60" />
-                    <div className="text-xs font-bold text-slate-900 dark:text-white font-['Outfit']">No physical stores listed yet</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Register your shop to appear on the local map!</div>
+            {/* Selected Store Floating Info Card */}
+            {activePin && (
+              <div className="absolute bottom-4 left-4 right-4 bg-black/90 backdrop-blur-xl border border-white/[0.12] rounded-2xl p-4 text-left flex items-center justify-between gap-4 shadow-2xl">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-sm font-bold text-white">{activePin.name}</h4>
+                    <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded">
+                      Open Now
+                    </span>
                   </div>
-                ) : (
-                  PHYSICAL_STORES.map((store) => {
-                    const isSelected = activePin?.id === store.id;
-                  return (
-                    <div
-                      key={store.id}
-                      onClick={() => setActivePin(store)}
-                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                        isSelected
-                          ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-500/80 shadow-md shadow-indigo-500/10'
-                          : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <img
-                          src={store.avatarUrl}
-                          alt={store.name}
-                          className="h-11 w-11 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-1">
-                            <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate font-['Outfit']">
-                              {store.name}
-                            </h4>
-                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                              {store.distance}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                            {store.address}
-                          </p>
-                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/40 text-[11px]">
-                            <span className="text-slate-600 dark:text-slate-300 font-medium">
-                              <strong>{store.featuredProductsCount}</strong> items on shelf
-                            </span>
-                            <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-                              {store.category}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }))}
+                  <p className="text-xs text-white/60 mt-0.5 truncate max-w-sm">{activePin.address}</p>
+                </div>
+
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${activePin.name}, ${activePin.address}, Coimbatore`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 rounded-xl bg-white text-black text-xs font-bold shrink-0 hover:bg-white/90 transition-all flex items-center gap-1.5"
+                >
+                  <Navigation className="h-3.5 w-3.5" />
+                  <span>Directions</span>
+                </a>
               </div>
-
-              {/* Action Button: Open Directions in Google Maps */}
-              <a
-                href={googleMapsDirectionsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white py-3 text-xs font-bold shadow-md shadow-indigo-600/20 transition-all hover:-translate-y-0.5"
-              >
-                <Navigation className="h-4 w-4" />
-                <span>Open {activePin?.name || 'Local Stores'} in Google Maps</span>
-              </a>
-            </div>
-
-            {/* Right Col: Real Embedded Google Map */}
-            <div className="lg:col-span-8 relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 min-h-[380px] lg:min-h-[500px] shadow-inner order-1 lg:order-2">
-              
-              {/* Google Maps Iframe */}
-              <iframe
-                title={`Google Map - ${activePin?.name || 'Local Stores'}`}
-                src={googleMapUrl}
-                width="100%"
-                height="100%"
-                className="w-full h-full min-h-[380px] lg:min-h-[500px] border-0"
-                loading="lazy"
-                allowFullScreen
-              />
-
-              {/* Map Floating Header Badge */}
-              <div className="absolute top-3 left-3 z-10 flex items-center gap-2 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 shadow-md">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-medium">
-                  Google Map: <strong>{activePin?.name || currentLocation.name}</strong> ({activePin?.area || currentLocation.city})
-                </span>
-              </div>
-
-              {/* Switch Neighborhood Button Top Right */}
-              <button
-                onClick={onOpenLocationModal}
-                className="absolute top-3 right-3 z-10 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-md transition-colors"
-              >
-                Switch Area
-              </button>
-
-              {/* Map Bottom Hint */}
-              <div className="absolute bottom-3 right-3 z-10 hidden sm:flex items-center gap-1.5 rounded-lg bg-slate-950/80 backdrop-blur-sm px-2.5 py-1 text-[10px] text-slate-300">
-                <ShieldCheck className="h-3 w-3 text-emerald-400" />
-                <span>Verified physical GPS address</span>
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* Offline Retail Advantages (Physical Stores Superpowers) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-            <div className="rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 p-4 flex items-center gap-3 shadow-sm">
-              <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                <Footprints className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-sm font-bold text-slate-900 dark:text-white font-['Outfit']">Instant Gratification</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">Take it home immediately. No return shipping hassles.</div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 p-4 flex items-center gap-3 shadow-sm">
-              <div className="h-10 w-10 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 flex items-center justify-center shrink-0">
-                <Shirt className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-sm font-bold text-slate-900 dark:text-white font-['Outfit']">True Fit Guarantee</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">Try on multiple sizes and feel the authentic material.</div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 p-4 flex items-center gap-3 shadow-sm">
-              <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center justify-center shrink-0">
-                <Store className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-sm font-bold text-slate-900 dark:text-white font-['Outfit']">Support Local Economy</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">Keep neighborhood merchants thriving with every purchase.</div>
-              </div>
-            </div>
+            )}
           </div>
 
         </div>

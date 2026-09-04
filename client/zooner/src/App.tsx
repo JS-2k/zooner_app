@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
+import { TheProblem } from './components/TheProblem';
+import { TheIdea } from './components/TheIdea';
 import { ProductRequest } from './components/ProductRequest';
 import { LocalDiscovery } from './components/LocalDiscovery';
+import { RetailerCallout } from './components/RetailerCallout';
 import { FinalCTA } from './components/FinalCTA';
 import { Footer } from './components/Footer';
 import { LocationModal } from './components/LocationModal';
@@ -21,7 +24,7 @@ export function AppContent() {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isRetailerModalOpen, setIsRetailerModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  const [requestPrefill] = useState<string>('Nike Running Shoes');
+  const [requestPrefill, setRequestPrefill] = useState<string>('Nike Air Max 270');
 
   // Auto-detect real-time browser GPS location on startup
   useEffect(() => {
@@ -65,9 +68,21 @@ export function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleHeroSearch = (query: string) => {
+    setRequestPrefill(query);
+    const element = document.getElementById('request');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleScrollToSearch = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   if (currentPage === 'vendor') {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-indigo-600 selection:text-white transition-colors duration-200">
+      <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black">
         <VendorLandingPage
           onSwitchToCustomer={() => navigateTo('customer')}
           onOpenSignIn={() => setIsSignInModalOpen(true)}
@@ -86,7 +101,7 @@ export function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-indigo-600 selection:text-white relative transition-colors duration-200">
+    <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black relative">
       {/* 1. Navbar */}
       <Navbar
         currentLocation={currentLocation}
@@ -95,35 +110,47 @@ export function AppContent() {
         onOpenSignInModal={() => setIsSignInModalOpen(true)}
       />
 
-      {/* Main Content Area - 100% Focused on Hyperlocal Live Requests & Walk-in */}
+      {/* Main Content Area - Apple / PlayStation Consumer Brand Experience */}
       <main className="flex-1">
-        {/* 2. Hero Section (Slogan + Search + 3-Step Walk-in Explanation) */}
+        {/* 2. Hero Section */}
         <Hero
           currentLocation={currentLocation}
           onOpenRetailerModal={() => navigateTo('vendor')}
           onOpenLocationModal={() => setIsLocationModalOpen(true)}
+          onSearchSubmit={handleHeroSearch}
         />
 
-        {/* 3. Live Product Request Feature (Core USP Spotlight) */}
+        {/* 3. Section 1 — The Problem */}
+        <TheProblem />
+
+        {/* 4. Section 2 — The Zooner Idea (Ask. Find. Walk in.) */}
+        <TheIdea />
+
+        {/* 5. Section 3 — Interactive Product Request */}
         <ProductRequest
           prefillProduct={requestPrefill}
         />
 
-        {/* 4. Local Physical Store Directory & Google Map Network */}
-        <div id="map-discovery">
-          <LocalDiscovery
-            currentLocation={currentLocation}
-            onOpenLocationModal={() => setIsLocationModalOpen(true)}
-          />
-        </div>
+        {/* 6. Section 4 — Your City is the Marketplace */}
+        <LocalDiscovery
+          currentLocation={currentLocation}
+          onOpenLocationModal={() => setIsLocationModalOpen(true)}
+        />
 
-        {/* 5. Final Call-to-Action */}
+        {/* 7. Section 5 — For Stores */}
+        <RetailerCallout
+          onOpenRetailerModal={() => setIsRetailerModalOpen(true)}
+          onNavigateToVendor={() => navigateTo('vendor')}
+        />
+
+        {/* 8. Final Call-to-Action */}
         <FinalCTA
           onOpenRetailerModal={() => navigateTo('vendor')}
+          onSearchClick={handleScrollToSearch}
         />
       </main>
 
-      {/* 6. Footer */}
+      {/* 9. Footer */}
       <Footer
         onOpenRetailerModal={() => navigateTo('vendor')}
         onOpenLocationModal={() => setIsLocationModalOpen(true)}
