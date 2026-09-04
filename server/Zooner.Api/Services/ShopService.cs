@@ -279,9 +279,9 @@ public class ShopService : IShopService
             var distance = GeoLocationHelper.CalculateDistanceKm(latitude, longitude, shop.Latitude, shop.Longitude);
             if (distance <= radiusKm)
             {
-                // Verify operating hours (if configured)
+                // If today is marked as a closed day, skip; otherwise merchant is accepting live requests via IsLiveEnabled
                 var todayHours = shop.OperatingHours.FirstOrDefault(h => h.DayOfWeek == currentDay);
-                if (todayHours == null || (!todayHours.IsClosed && currentTime >= todayHours.OpenTime && currentTime <= todayHours.CloseTime))
+                if (todayHours == null || !todayHours.IsClosed)
                 {
                     eligibleShops.Add(shop);
                 }
