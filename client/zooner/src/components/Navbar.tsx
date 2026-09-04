@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, MapPin, ArrowRight } from 'lucide-react';
 import type { LocationArea } from '../types';
 
@@ -46,13 +47,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             </a>
 
             {/* Location Selector (Subtle Apple-style pill) */}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={onOpenLocationModal}
-              className="hidden sm:flex items-center gap-1.5 text-xs text-white/60 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-full px-3 py-1.5 transition-all cursor-pointer"
+              className="hidden sm:flex items-center gap-1.5 text-xs text-white/60 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-full px-3 py-1.5 transition-colors cursor-pointer"
             >
               <MapPin className="h-3 w-3 text-white/50" />
               <span>{currentLocation.name || 'RS Puram, Coimbatore'}</span>
-            </button>
+            </motion.button>
           </div>
 
           {/* Right: Desktop Navigation Links & Actions */}
@@ -79,20 +82,24 @@ export const Navbar: React.FC<NavbarProps> = ({
             </nav>
 
             <div className="flex items-center gap-3">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={onOpenSignInModal}
                 className="text-xs font-semibold text-white/80 hover:text-white px-3.5 py-1.5 rounded-full border border-white/[0.12] hover:border-white/30 hover:bg-white/[0.04] transition-all cursor-pointer"
               >
                 Sign In
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={onNavigateToVendor}
                 className="text-xs font-semibold text-black bg-white hover:bg-white/90 px-4 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1 shadow-sm"
               >
                 <span>List Store</span>
                 <ArrowRight className="h-3 w-3" />
-              </button>
+              </motion.button>
             </div>
           </div>
 
@@ -118,57 +125,66 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-black/95 backdrop-blur-2xl border-b border-white/[0.08] px-6 py-6 space-y-4 animate-fadeIn">
-          <nav className="flex flex-col space-y-3 text-sm text-white/80">
-            <a 
-              href="#request" 
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-2 border-b border-white/[0.05]"
-            >
-              Ask Nearby
-            </a>
-            <a 
-              href="#stores" 
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-2 border-b border-white/[0.05]"
-            >
-              Local Stores
-            </a>
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onNavigateToVendor();
-              }}
-              className="text-left py-2 border-b border-white/[0.05]"
-            >
-              Own a Store?
-            </button>
-          </nav>
+      {/* Mobile Menu Overlay with AnimatePresence */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="md:hidden bg-black/95 backdrop-blur-2xl border-b border-white/[0.08] px-6 py-6 space-y-4 overflow-hidden"
+          >
+            <nav className="flex flex-col space-y-3 text-sm text-white/80">
+              <a 
+                href="#request" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-2 border-b border-white/[0.05]"
+              >
+                Ask Nearby
+              </a>
+              <a 
+                href="#stores" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-2 border-b border-white/[0.05]"
+              >
+                Local Stores
+              </a>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onNavigateToVendor();
+                }}
+                className="text-left py-2 border-b border-white/[0.05]"
+              >
+                Own a Store?
+              </button>
+            </nav>
 
-          <div className="flex flex-col gap-2.5 pt-2">
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenSignInModal();
-              }}
-              className="w-full text-center py-2.5 text-xs font-semibold text-white bg-white/[0.06] border border-white/[0.12] rounded-xl"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onNavigateToVendor();
-              }}
-              className="w-full text-center py-2.5 text-xs font-semibold text-black bg-white rounded-xl"
-            >
-              List Your Store
-            </button>
-          </div>
-        </div>
-      )}
+            <div className="flex flex-col gap-2.5 pt-2">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenSignInModal();
+                }}
+                className="w-full text-center py-2.5 text-xs font-semibold text-white bg-white/[0.06] border border-white/[0.12] rounded-xl"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onNavigateToVendor();
+                }}
+                className="w-full text-center py-2.5 text-xs font-semibold text-black bg-white rounded-xl"
+              >
+                List Your Store
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };
+
