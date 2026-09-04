@@ -8,6 +8,7 @@ interface NavbarProps {
   onOpenLocationModal: () => void;
   onNavigateToVendor: () => void;
   onOpenSignInModal: () => void;
+  onLaunchCustomerApp?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -15,6 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLocationModal,
   onNavigateToVendor,
   onOpenSignInModal,
+  onLaunchCustomerApp,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -61,12 +63,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right: Desktop Navigation Links & Actions */}
           <div className="hidden md:flex items-center gap-8">
             <nav className="flex items-center gap-6 text-xs tracking-wide text-white/60 font-medium">
-              <a 
-                href="#request" 
-                className="hover:text-white transition-colors"
+              <button 
+                onClick={onLaunchCustomerApp}
+                className="hover:text-white transition-colors cursor-pointer"
               >
-                Ask Nearby
-              </a>
+                Customer App
+              </button>
               <a 
                 href="#stores" 
                 className="hover:text-white transition-colors"
@@ -94,10 +96,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               <motion.button
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
-                onClick={onNavigateToVendor}
+                onClick={onLaunchCustomerApp}
                 className="text-xs font-semibold text-black bg-white hover:bg-white/90 px-4 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1 shadow-sm"
               >
-                <span>List Store</span>
+                <span>Launch App</span>
                 <ArrowRight className="h-3 w-3" />
               </motion.button>
             </div>

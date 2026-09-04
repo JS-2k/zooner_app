@@ -1,48 +1,47 @@
 import { useState, useEffect } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { Navbar } from './components/Navbar';
-import { Hero } from './components/Hero';
-import { TheProblem } from './components/TheProblem';
-import { TheIdea } from './components/TheIdea';
-import { ProductRequest } from './components/ProductRequest';
-import { LocalDiscovery } from './components/LocalDiscovery';
-import { RetailerCallout } from './components/RetailerCallout';
-import { FinalCTA } from './components/FinalCTA';
-import { Footer } from './components/Footer';
+import { PublicLandingPage } from './pages/PublicLandingPage';
+import { CustomerAppPage } from './pages/CustomerAppPage';
+import { VendorLandingPage } from './pages/VendorLandingPage';
+import { VendorDashboardPage } from './pages/VendorDashboardPage';
 import { LocationModal } from './components/LocationModal';
 import { RetailerModal } from './components/RetailerModal';
 import { SignInModal } from './components/SignInModal';
-import { VendorLandingPage } from './pages/VendorLandingPage';
 import { DEFAULT_LOCATION } from './data/mockData';
 import type { LocationArea } from './types';
 
+type AppRoute = 'marketing' | 'customer' | 'vendor' | 'vendor-dashboard';
+
 export function AppContent() {
-  const [currentPage, setCurrentPage] = useState<'customer' | 'vendor'>(() => {
-    return window.location.hash.includes('vendor') ? 'vendor' : 'customer';
+  const [currentRoute, setCurrentRoute] = useState<AppRoute>(() => {
+    const hash = window.location.hash.toLowerCase();
+    if (hash.includes('vendor/dashboard') || hash.includes('vendordashboard')) return 'vendor-dashboard';
+    if (hash.includes('vendor')) return 'vendor';
+    if (hash.includes('app') || hash.includes('customer')) return 'customer';
+    return 'marketing';
   });
+
   const [currentLocation, setCurrentLocation] = useState<LocationArea>(DEFAULT_LOCATION);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isRetailerModalOpen, setIsRetailerModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  const [requestPrefill, setRequestPrefill] = useState<string>('Nike Air Max 270');
 
   // Auto-detect real-time browser GPS location on startup
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setCurrentLocation({
+          setCurrentLocation(prev => ({
+            ...prev,
             id: 'live-gps',
             name: 'Current Location (GPS)',
-            city: 'Coimbatore',
-            storesCount: 0,
-            activeRequests: 0,
             lat: position.coords.latitude,
             lng: position.coords.longitude
-          });
+          }));
         },
         () => {
-          // Silent fallback to default Coimbatore location if permission not granted yet
+          // Silent fallback to default Coimbatore location
         },
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
       );
@@ -52,40 +51,53 @@ export function AppContent() {
   // Sync with browser hash changes for back/forward navigation
   useEffect(() => {
     const handleHashChange = () => {
-      if (window.location.hash.includes('vendor')) {
-        setCurrentPage('vendor');
+      const hash = window.location.hash.toLowerCase();
+      if (hash.includes('vendor/dashboard') || hash.includes('vendordashboard')) {
+        setCurrentRoute('vendor-dashboard');
+      } else if (hash.includes('vendor')) {
+        setCurrentRoute('vendor');
+      } else if (hash.includes('app') || hash.includes('customer')) {
+        setCurrentRoute('customer');
       } else {
-        setCurrentPage('customer');
+        setCurrentRoute('marketing');
       }
     };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  const navigateTo = (page: 'customer' | 'vendor') => {
-    setCurrentPage(page);
-    window.location.hash = page === 'vendor' ? '#vendor' : '#';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleHeroSearch = (query: string) => {
-    setRequestPrefill(query);
-    const element = document.getElementById('request');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+  const navigateTo = (route: AppRoute) => {
+    setCurrentRoute(route);
+    if (route === 'vendor-dashboard') {
+      window.location.hash = '#vendor/dashboard';
+    } else if (route === 'vendor') {
+      window.location.hash = '#vendor';
+    } else if (route === 'customer') {
+      window.location.hash = '#app';
+    } else {
+      window.location.hash = '#';
     }
-  };
-
-  const handleScrollToSearch = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (currentPage === 'vendor') {
+  // ── EXPERIENCE 3B: VENDOR OPERATIONAL DASHBOARD (Merchant OS) ──
+  if (currentRoute === 'vendor-dashboard') {
+    return (
+      <VendorDashboardPage
+        onSwitchToCustomer={() => navigateTo('customer')}
+        onNavigateToVendorLanding={() => navigateTo('vendor')}
+      />
+    );
+  }
+
+  // ── EXPERIENCE 3A: VENDOR MARKETING / REGISTRATION ──
+  if (currentRoute === 'vendor') {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black">
         <VendorLandingPage
           onSwitchToCustomer={() => navigateTo('customer')}
           onOpenSignIn={() => setIsSignInModalOpen(true)}
+          onNavigateToDashboard={() => navigateTo('vendor-dashboard')}
         />
         <SignInModal
           isOpen={isSignInModalOpen}
@@ -100,63 +112,52 @@ export function AppContent() {
     );
   }
 
+  // ── EXPERIENCE 2: CUSTOMER MOBILE-FIRST APPLICATION (Discovery & Shopping) ──
+  if (currentRoute === 'customer') {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black">
+        <CustomerAppPage
+          currentLocation={currentLocation}
+          onOpenLocationModal={() => setIsLocationModalOpen(true)}
+          onNavigateToHome={() => navigateTo('marketing')}
+          onNavigateToVendor={() => navigateTo('vendor')}
+          onOpenSignIn={() => setIsSignInModalOpen(true)}
+        />
+        <LocationModal
+          isOpen={isLocationModalOpen}
+          onClose={() => setIsLocationModalOpen(false)}
+          selectedLocation={currentLocation}
+          onSelectLocation={(loc) => setCurrentLocation(loc)}
+        />
+        <SignInModal
+          isOpen={isSignInModalOpen}
+          onClose={() => setIsSignInModalOpen(false)}
+          onSwitchToRetailer={() => navigateTo('vendor')}
+        />
+      </div>
+    );
+  }
+
+  // ── EXPERIENCE 1: PUBLIC MARKETING WEBSITE (App Promotion & Trust) ──
   return (
     <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black relative">
-      {/* 1. Navbar */}
       <Navbar
         currentLocation={currentLocation}
         onOpenLocationModal={() => setIsLocationModalOpen(true)}
         onNavigateToVendor={() => navigateTo('vendor')}
         onOpenSignInModal={() => setIsSignInModalOpen(true)}
+        onLaunchCustomerApp={() => navigateTo('customer')}
       />
 
-      {/* Main Content Area - Apple / PlayStation Consumer Brand Experience */}
       <main className="flex-1">
-        {/* 2. Hero Section */}
-        <Hero
-          currentLocation={currentLocation}
-          onOpenRetailerModal={() => navigateTo('vendor')}
-          onOpenLocationModal={() => setIsLocationModalOpen(true)}
-          onSearchSubmit={handleHeroSearch}
-        />
-
-        {/* 3. Section 1 — The Problem */}
-        <TheProblem />
-
-        {/* 4. Section 2 — The Zooner Idea (Ask. Find. Walk in.) */}
-        <TheIdea />
-
-        {/* 5. Section 3 — Interactive Product Request */}
-        <ProductRequest
-          prefillProduct={requestPrefill}
-        />
-
-        {/* 6. Section 4 — Your City is the Marketplace */}
-        <LocalDiscovery
+        <PublicLandingPage
           currentLocation={currentLocation}
           onOpenLocationModal={() => setIsLocationModalOpen(true)}
-        />
-
-        {/* 7. Section 5 — For Stores */}
-        <RetailerCallout
-          onOpenRetailerModal={() => setIsRetailerModalOpen(true)}
+          onLaunchCustomerApp={() => navigateTo('customer')}
           onNavigateToVendor={() => navigateTo('vendor')}
-        />
-
-        {/* 8. Final Call-to-Action */}
-        <FinalCTA
-          onOpenRetailerModal={() => navigateTo('vendor')}
-          onSearchClick={handleScrollToSearch}
         />
       </main>
 
-      {/* 9. Footer */}
-      <Footer
-        onOpenRetailerModal={() => navigateTo('vendor')}
-        onOpenLocationModal={() => setIsLocationModalOpen(true)}
-      />
-
-      {/* Interactive Global Modals */}
       <LocationModal
         isOpen={isLocationModalOpen}
         onClose={() => setIsLocationModalOpen(false)}
@@ -187,3 +188,4 @@ export function App() {
 }
 
 export default App;
+
