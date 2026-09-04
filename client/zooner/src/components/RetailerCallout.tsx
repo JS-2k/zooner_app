@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Store, Zap, ShieldCheck } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Store, Bell, Check } from 'lucide-react';
 
 interface RetailerCalloutProps {
   onOpenRetailerModal: () => void;
@@ -16,109 +16,142 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
       {/* Ambient background glow */}
       <div className="absolute top-1/2 left-10 w-[550px] h-[550px] bg-purple-950/20 blur-[150px] pointer-events-none rounded-full" />
 
-      <div className="max-w-4xl mx-auto text-left space-y-10 relative z-10">
+      <div className="max-w-6xl mx-auto text-left relative z-10">
         
-        <motion.span 
-          initial={{ opacity: 0, x: -10 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.6 }}
-          className="text-xs font-mono uppercase tracking-widest text-indigo-400 font-bold block"
-        >
-          05 / For Merchants
-        </motion.span>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="space-y-4"
-        >
-          <h2 
-            className="font-['Outfit'] font-black tracking-tighter text-white leading-[1.0]"
-            style={{ fontSize: 'clamp(2.4rem, 6vw, 4.5rem)' }}
-          >
-            Own a store?
-          </h2>
-
-          <p className="text-slate-200 text-base sm:text-xl font-normal max-w-xl leading-relaxed">
-            Let people nearby discover what you already have on your shelves.
-          </p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-            whileHover={{ y: -4, borderColor: 'rgba(99,102,241,0.4)' }}
-            className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3 transition-colors shadow-lg"
-          >
-            <div className="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-indigo-400">
-              <Zap className="h-4 w-4" />
-            </div>
-            <h4 className="font-bold text-white text-sm">High-Intent Foot Traffic</h4>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Connect directly with shoppers who are ready to walk into your store right now.
-            </p>
-          </motion.div>
+          {/* Left: Editorial Proposition */}
+          <div className="lg:col-span-6 space-y-8">
+            <motion.span 
+              initial={{ opacity: 0, x: -10 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.6 }}
+              className="text-xs font-mono uppercase tracking-widest text-indigo-400 font-bold block"
+            >
+              05 / For Physical Retailers
+            </motion.span>
 
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            whileHover={{ y: -4, borderColor: 'rgba(99,102,241,0.4)' }}
-            className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3 transition-colors shadow-lg"
-          >
-            <div className="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400">
-              <ShieldCheck className="h-4 w-4" />
-            </div>
-            <h4 className="font-bold text-white text-sm">Zero Setup Fees</h4>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Create your digital storefront in minutes. No complex hardware or POS integrations.
-            </p>
-          </motion.div>
+            <motion.div 
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="space-y-4"
+            >
+              <h2 
+                className="font-['Outfit'] font-black tracking-tighter text-white leading-[1.0]"
+                style={{ fontSize: 'clamp(2.4rem, 5vw, 4.2rem)' }}
+              >
+                Turn online searchers <br />
+                into walk-in customers.
+              </h2>
 
+              <p className="text-slate-300 text-base sm:text-lg leading-relaxed pt-2">
+                Thousands of people within 2 km of your store are searching online for items already sitting on your shelves. Zooner brings them straight to your billing counter.
+              </p>
+            </motion.div>
+
+            <ul className="space-y-3.5 text-sm text-slate-200">
+              <li className="flex items-center gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                <span><strong>Zero hardware setup</strong> — manage hold requests from your smartphone or tablet</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                <span><strong>Direct walk-in payments</strong> — customer pays directly at your store POS</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                <span><strong>No delivery middleman</strong> — 100% genuine local foot traffic</span>
+              </li>
+            </ul>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, delay: 0.3 }}
+              className="pt-2"
+            >
+              <motion.button
+                onClick={onNavigateToVendor}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full bg-white text-slate-950 font-bold text-sm hover:bg-slate-100 transition-colors cursor-pointer shadow-xl shadow-white/10"
+              >
+                <Store className="h-4 w-4" />
+                <span>Register Your Store</span>
+                <ArrowRight className="h-4 w-4" />
+              </motion.button>
+            </motion.div>
+          </div>
+
+          {/* Right: Realistic Merchant Terminal Preview (Replaces the 3 generic AI cards) */}
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.7, delay: 0.3 }}
-            whileHover={{ y: -4, borderColor: 'rgba(99,102,241,0.4)' }}
-            className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3 transition-colors shadow-lg"
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="lg:col-span-6"
           >
-            <div className="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-blue-400">
-              <Store className="h-4 w-4" />
+            <div className="rounded-3xl bg-[#0E1526] border border-slate-700/90 p-6 sm:p-7 space-y-5 shadow-2xl relative overflow-hidden">
+              
+              {/* Terminal Header */}
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <Store className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Merchant Companion</h4>
+                    <p className="text-[11px] text-slate-400">Sneaker Hub · RS Puram Branch</p>
+                  </div>
+                </div>
+                <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold bg-emerald-950/80 border border-emerald-500/40 px-3 py-1 rounded-full font-mono">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                  Live (12 nearby shoppers)
+                </span>
+              </div>
+
+              {/* Live Request Notification Slip */}
+              <div className="p-4 rounded-2xl bg-slate-800/90 border border-slate-700 space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-indigo-300 font-bold">
+                    <Bell className="h-3.5 w-3.5 text-indigo-400" />
+                    <span>Incoming Request (400m away)</span>
+                  </div>
+                  <span className="text-slate-400 font-mono text-[11px]">Just now</span>
+                </div>
+
+                <div className="text-sm font-bold text-white">
+                  "Nike Air Max 270 (UK 9) - Black"
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-slate-300 pt-1">
+                  <span>Direct Price: <strong>₹6,499</strong></span>
+                  <span className="text-emerald-400 font-medium">In Stock on Shelf ✓</span>
+                </div>
+
+                {/* Instant Merchant Action Button */}
+                <div className="pt-2 flex items-center gap-2">
+                  <div className="flex-1 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs text-center flex items-center justify-center gap-1 shadow-sm">
+                    <Check className="h-3.5 w-3.5 stroke-[3]" />
+                    <span>Hold Reserved (30m Counter Hold)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Merchant Status Footer */}
+              <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+                <span>Shopper arriving in: <strong>~6 mins</strong></span>
+                <span className="text-slate-300 font-mono">Payment: Store POS</span>
+              </div>
+
             </div>
-            <h4 className="font-bold text-white text-sm">Direct Local Sales</h4>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Answer live product requests and turn nearby searchers into loyal in-person customers.
-            </p>
           </motion.div>
 
         </div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7, delay: 0.4 }}
-          className="pt-4"
-        >
-          <motion.button
-            onClick={onNavigateToVendor}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-slate-950 font-bold text-sm hover:bg-slate-100 transition-colors cursor-pointer shadow-xl shadow-white/10"
-          >
-            <span>List your store</span>
-            <ArrowRight className="h-4 w-4" />
-          </motion.button>
-        </motion.div>
 
       </div>
     </section>

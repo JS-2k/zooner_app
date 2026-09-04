@@ -5,10 +5,8 @@ import {
   Smartphone, 
   Download, 
   ShieldCheck, 
-  Zap, 
   MapPin, 
   Sparkles, 
-  Clock, 
   Store as StoreIcon,
   Navigation
 } from 'lucide-react';
@@ -127,57 +125,90 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({
             </div>
           </motion.div>
 
-          {/* ── Mobile App Showcase Mockup (Hardware Framing) ── */}
+          {/* ── Mobile App Showcase Mockup (Real Hardware & Native App UI) ── */}
           <motion.div 
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
             className="pt-12 sm:pt-16 max-w-4xl mx-auto"
           >
-            <div className="relative mx-auto rounded-[38px] p-2 bg-gradient-to-b from-indigo-500/30 via-slate-700/40 to-transparent shadow-[0_30px_100px_rgba(0,0,0,0.8)] max-w-sm sm:max-w-md">
-              <div className="rounded-[32px] bg-[#0E1526] border border-slate-700/80 p-5 space-y-4 text-left overflow-hidden shadow-2xl">
+            <div className="relative mx-auto rounded-[44px] p-2.5 bg-gradient-to-b from-indigo-500/30 via-slate-700/40 to-slate-900/60 shadow-[0_30px_100px_rgba(0,0,0,0.85)] max-w-sm sm:max-w-md">
+              <div className="rounded-[36px] bg-[#0E1526] border border-slate-700/80 p-5 space-y-4 text-left overflow-hidden shadow-2xl">
                 
-                {/* Simulated App Header */}
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <div>
-                    <div className="text-[10px] text-slate-400 uppercase tracking-widest font-mono font-bold">ZOONER APP</div>
-                    <div className="text-sm font-bold text-white flex items-center gap-1.5">
-                      <MapPin className="h-3 w-3 text-emerald-400" />
+                {/* Simulated Phone Notch / Dynamic Island */}
+                <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-slate-800/80 text-[11px] text-slate-400 font-mono">
+                  <span>9:41 AM</span>
+                  <div className="h-4 w-20 bg-slate-950 rounded-full border border-slate-800 mx-auto flex items-center justify-center">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px]">
+                    <span>5G</span>
+                    <span className="font-bold text-slate-200">100%</span>
+                  </div>
+                </div>
+
+                {/* App Location & Search Bar */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1 text-slate-200 font-bold">
+                      <MapPin className="h-3.5 w-3.5 text-emerald-400" />
                       <span>{currentLocation.name}</span>
                     </div>
+                    <span className="text-[11px] text-indigo-400 font-medium">18 Stores Nearby</span>
                   </div>
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping" />
-                </div>
 
-                {/* Simulated Search */}
-                <div className="bg-slate-800/90 border border-slate-700 rounded-2xl p-3 flex items-center justify-between text-xs">
-                  <span className="text-slate-100 font-medium">"Nike Air Max 90 UK 9"</span>
-                  <span className="text-emerald-300 font-bold bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px]">In Stock</span>
-                </div>
-
-                {/* Simulated Store Match Result */}
-                <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-3.5 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-white">Nike Store · DB Road</span>
-                    <span className="text-slate-300 font-mono">350m (4 min)</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <div>
-                      <span className="text-base font-black text-white">₹6,499</span>
-                      <span className="text-[10px] text-slate-400 line-through ml-1.5">₹7,995</span>
+                  <div className="bg-slate-800/90 border border-slate-700 rounded-2xl p-3 flex items-center justify-between text-xs shadow-inner">
+                    <div className="flex items-center gap-2 text-white">
+                      <span className="h-2 w-2 rounded-full bg-indigo-400" />
+                      <span className="font-medium">Nike Air Max 270 (UK 9)</span>
                     </div>
-                    <span className="text-[11px] text-emerald-300 bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-lg font-semibold">
-                      Hold for 30m Active ✓
+                    <span className="text-emerald-300 font-bold bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px]">
+                      In Stock
                     </span>
+                  </div>
+                </div>
+
+                {/* Simulated Real Store Cards Inside App */}
+                <div className="space-y-2.5">
+                  {/* Result 1: Active Hold */}
+                  <div className="bg-slate-800/70 border border-slate-700 rounded-2xl p-3.5 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <h5 className="font-bold text-white">Nike Official Store</h5>
+                        <p className="text-[11px] text-slate-400">DB Road · 350m (4 min walk)</p>
+                      </div>
+                      <span className="text-[10px] text-emerald-300 font-bold bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
+                        Hold: 29:45
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-700/60">
+                      <div>
+                        <span className="text-sm font-black text-white">₹6,499</span>
+                        <span className="text-[10px] text-slate-400 line-through ml-1.5">₹7,995</span>
+                      </div>
+                      <span className="text-[11px] text-indigo-300 font-medium">Counter Desk 01</span>
+                    </div>
+                  </div>
+
+                  {/* Result 2: Secondary Store */}
+                  <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-3 flex items-center justify-between text-xs">
+                    <div>
+                      <h5 className="font-bold text-slate-200">Sneaker Hub</h5>
+                      <p className="text-[11px] text-slate-400">Crosscut Rd · 800m away</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-bold text-white">₹6,499</span>
+                      <span className="block text-[10px] text-emerald-400 font-medium">1 pair left</span>
+                    </div>
                   </div>
                 </div>
 
                 {/* App CTA Inside Mockup */}
                 <button
                   onClick={onLaunchCustomerApp}
-                  className="w-full py-2.5 rounded-xl bg-white text-slate-950 text-xs font-bold text-center hover:bg-slate-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  className="w-full py-3 rounded-xl bg-white text-slate-950 text-xs font-bold text-center hover:bg-slate-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                 >
-                  <Navigation className="h-3 w-3" />
+                  <Navigation className="h-3.5 w-3.5" />
                   <span>Start Exploring on Zooner App</span>
                 </button>
 
@@ -191,10 +222,10 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({
       {/* ── 2. THE PROBLEM (Why wait 3-5 days for delivery) ── */}
       <TheProblem />
 
-      {/* ── 3. HOW IT WORKS (01. Ask -> 02. Find -> 03. Walk In) ── */}
+      {/* ── 3. HOW IT WORKS (01. Ask -> 02. Hold -> 03. Walk In) ── */}
       <TheIdea />
 
-      {/* ── 4. APP FEATURE MATRIX ── */}
+      {/* ── 4. APP CAPABILITY SHOWCASE (Asymmetric High-Craft Spread) ── */}
       <section className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#0A0F1D] text-white border-t border-slate-800/80 overflow-hidden">
         <div className="max-w-5xl mx-auto space-y-16">
           
@@ -210,50 +241,70 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({
               Made for your city.
             </h2>
             <p className="text-slate-300 text-base sm:text-lg">
-              Everything in Zooner is designed to get you the product in your hands within minutes, not days.
+              Everything in Zooner is designed to get the product in your hands within minutes, not days.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* Asymmetric Product Spread */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             
-            <div className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 space-y-3 shadow-lg shadow-black/20">
-              <div className="h-10 w-10 rounded-2xl bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 flex items-center justify-center">
-                <Zap className="h-5 w-5" />
+            {/* Main Feature: Live Local Shelf Matching (7 Cols) */}
+            <div className="lg:col-span-7 p-8 sm:p-10 rounded-3xl bg-[#0E1526] border border-slate-700/80 space-y-6 shadow-2xl flex flex-col justify-between">
+              <div className="space-y-3">
+                <span className="text-xs font-mono uppercase tracking-wider text-indigo-400 font-bold">
+                  Instant Shelf Verification
+                </span>
+                <h3 className="text-2xl sm:text-3xl font-bold text-white leading-snug">
+                  Know it's in stock before leaving home.
+                </h3>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  No more driving to multiple shops only to hear "we are out of your size". Zooner queries authorized neighborhood shelves in real time.
+                </p>
               </div>
-              <h4 className="font-bold text-white text-base">Instant Availability</h4>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Know immediately if the shoe size or gadget is on the shelf before leaving your house.
-              </p>
+
+              <div className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700 space-y-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-200">Titan Smart Watch 46mm</span>
+                  <span className="text-emerald-400 font-mono font-bold">2 in stock</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-700/60">
+                  <span>World of Titan · Avinashi Rd</span>
+                  <span>500m (6 min walk)</span>
+                </div>
+              </div>
             </div>
 
-            <div className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 space-y-3 shadow-lg shadow-black/20">
-              <div className="h-10 w-10 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
-                <Clock className="h-5 w-5" />
+            {/* Side Column: 2 Stacked Capabilities (5 Cols) */}
+            <div className="lg:col-span-5 flex flex-col gap-6">
+              
+              {/* Feature 2: 30-Min Counter Hold */}
+              <div className="flex-1 p-6 sm:p-7 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-emerald-400 uppercase">
+                    30-Min Hold
+                  </span>
+                  <span className="text-xs text-slate-400 font-mono">No pre-pay</span>
+                </div>
+                <h4 className="text-lg font-bold text-white">Reserved at the billing counter</h4>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  The shop manager sets the item aside with your name tag so nobody else buys it while you are walking over.
+                </p>
               </div>
-              <h4 className="font-bold text-white text-base">30-Min Counter Hold</h4>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Reserve the item at the counter under your name so nobody else buys it while you're walking.
-              </p>
-            </div>
 
-            <div className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 space-y-3 shadow-lg shadow-black/20">
-              <div className="h-10 w-10 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center">
-                <Navigation className="h-5 w-5" />
+              {/* Feature 3: Walking Navigation */}
+              <div className="flex-1 p-6 sm:p-7 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-blue-400 uppercase">
+                    Direct Navigation
+                  </span>
+                  <span className="text-xs text-emerald-400 font-mono font-bold">Turn-by-turn</span>
+                </div>
+                <h4 className="text-lg font-bold text-white">Guided straight to the shop door</h4>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Get exact walking directions, direct telephone contact with the shop counter, and live operating hours.
+                </p>
               </div>
-              <h4 className="font-bold text-white text-base">Walking Directions</h4>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Turn-by-turn routing directly to the shop entrance with direct store phone contact.
-              </p>
-            </div>
 
-            <div className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 space-y-3 shadow-lg shadow-black/20">
-              <div className="h-10 w-10 rounded-2xl bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center justify-center">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <h4 className="font-bold text-white text-base">Verified Physical Retail</h4>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Only genuine physical authorized brand dealers and top neighborhood boutiques.
-              </p>
             </div>
 
           </div>
