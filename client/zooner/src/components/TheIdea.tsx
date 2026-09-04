@@ -140,7 +140,7 @@ export const TheIdea: React.FC = () => {
   ];
 
   return (
-    <section className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#070A11] text-white border-t border-slate-800/80 overflow-hidden">
+    <section id="how-it-works" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#070A11] text-white border-t border-slate-800/80 overflow-hidden">
       
       {/* Background radial accent */}
       <div className="absolute top-1/3 left-0 w-[550px] h-[550px] bg-indigo-950/20 blur-[140px] pointer-events-none rounded-full" />

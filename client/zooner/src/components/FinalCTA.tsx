@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Search } from 'lucide-react';
+import { ArrowRight, Download, ShieldCheck } from 'lucide-react';
 
 interface FinalCTAProps {
   onOpenRetailerModal: () => void;
@@ -27,26 +27,38 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onSearchClick }) => {
           className="font-['Outfit'] font-black tracking-tighter text-white leading-[0.95]"
           style={{ fontSize: 'clamp(2.8rem, 8vw, 6.5rem)' }}
         >
-          Stop waiting. <br />
-          Find it nearby.
+          Find it nearby. <br />
+          Know it's there. <br />
+          <span className="text-slate-400">Walk in.</span>
         </h2>
 
         <p className="text-slate-200 text-base sm:text-xl font-normal max-w-lg mx-auto leading-relaxed">
-          What you're searching for is already sitting on a shelf in your neighborhood.
+          Download Zooner and start discovering real shelf inventory in your neighborhood today.
         </p>
 
-        {/* One Strong CTA Button with Spring */}
-        <div className="pt-4 flex justify-center">
+        {/* Primary Download Button */}
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
           <motion.button
             onClick={onSearchClick}
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.94 }}
-            className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full bg-white text-slate-950 font-bold text-sm sm:text-base hover:bg-slate-100 transition-colors shadow-xl shadow-white/10 cursor-pointer"
+            className="inline-flex items-center gap-2.5 px-9 py-4 rounded-full bg-white text-slate-950 font-bold text-sm sm:text-base hover:bg-slate-100 transition-colors shadow-2xl shadow-white/10 cursor-pointer"
           >
-            <Search className="h-4 w-4 stroke-[2.5]" />
-            <span>Search Nearby Stores</span>
+            <Download className="h-4 w-4 stroke-[2.5]" />
+            <span>Download Zooner</span>
             <ArrowRight className="h-4 w-4" />
           </motion.button>
+        </div>
+
+        {/* Badges */}
+        <div className="flex items-center justify-center gap-6 pt-4 text-xs text-slate-400 font-medium">
+          <span>iOS & Android</span>
+          <span>·</span>
+          <span>Zero pre-payment</span>
+          <span>·</span>
+          <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+            <ShieldCheck className="h-3.5 w-3.5" /> Verified Retail
+          </span>
         </div>
 
       </motion.div>

@@ -11,7 +11,7 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
   onNavigateToVendor,
 }) => {
   return (
-    <section className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#070A11] text-white border-t border-slate-800/80 overflow-hidden">
+    <section id="merchants" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#070A11] text-white border-t border-slate-800/80 overflow-hidden">
       
       {/* Ambient background glow */}
       <div className="absolute top-1/2 left-10 w-[550px] h-[550px] bg-purple-950/20 blur-[150px] pointer-events-none rounded-full" />

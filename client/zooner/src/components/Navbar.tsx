@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, MapPin, ArrowRight } from 'lucide-react';
+import { Menu, X, MapPin, Download } from 'lucide-react';
 import type { LocationArea } from '../types';
 
 interface NavbarProps {
@@ -61,24 +61,30 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right: Desktop Navigation Links & Actions */}
           <div className="hidden md:flex items-center gap-8">
             <nav className="flex items-center gap-6 text-sm tracking-wide text-slate-300 font-medium">
-              <button 
-                onClick={onLaunchCustomerApp}
-                className="hover:text-white transition-colors cursor-pointer"
+              <a 
+                href="#how-it-works"
+                className="hover:text-white transition-colors"
               >
-                Customer App
-              </button>
+                How It Works
+              </a>
+              <a 
+                href="#hold-feature"
+                className="hover:text-white transition-colors"
+              >
+                30-Min Hold
+              </a>
               <a 
                 href="#stores" 
                 className="hover:text-white transition-colors"
               >
                 Local Stores
               </a>
-              <button
-                onClick={onNavigateToVendor}
+              <a
+                href="#merchants"
                 className="hover:text-white transition-colors cursor-pointer text-left"
               >
-                Own a Store?
-              </button>
+                For Stores
+              </a>
             </nav>
 
             <div className="flex items-center gap-3">
@@ -88,8 +94,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={onLaunchCustomerApp}
                 className="text-xs font-bold text-slate-950 bg-white hover:bg-slate-100 px-5 py-2 rounded-full transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-white/10"
               >
-                <span>Launch App</span>
-                <ArrowRight className="h-3.5 w-3.5" />
+                <Download className="h-3.5 w-3.5" />
+                <span>Download App</span>
               </motion.button>
             </div>
           </div>
@@ -127,16 +133,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="md:hidden bg-[#0D1322]/98 backdrop-blur-2xl border-b border-slate-800 px-6 py-6 space-y-4 overflow-hidden"
           >
             <nav className="flex flex-col space-y-3 text-sm font-medium text-slate-200">
-              <button 
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onLaunchCustomerApp?.();
-                }}
-                className="text-left py-2 border-b border-slate-800 flex items-center justify-between"
+              <a 
+                href="#how-it-works"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-2 border-b border-slate-800"
               >
-                <span>Customer App</span>
-                <ArrowRight className="h-4 w-4 text-slate-400" />
-              </button>
+                How It Works
+              </a>
+              <a 
+                href="#hold-feature"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-2 border-b border-slate-800"
+              >
+                30-Min Hold
+              </a>
               <a 
                 href="#stores" 
                 onClick={() => setMobileMenuOpen(false)}
@@ -144,15 +154,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 Local Stores
               </a>
-              <button
+              <a
+                href="#merchants"
                 onClick={() => {
                   setMobileMenuOpen(false);
                   onNavigateToVendor();
                 }}
                 className="text-left py-2 border-b border-slate-800"
               >
-                Own a Store?
-              </button>
+                For Stores
+              </a>
             </nav>
 
             <div className="pt-2">
@@ -163,8 +174,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }}
                 className="w-full text-center py-3 text-xs font-bold text-slate-950 bg-white rounded-xl shadow-md flex items-center justify-center gap-1.5"
               >
-                <span>Launch App</span>
-                <ArrowRight className="h-3.5 w-3.5" />
+                <Download className="h-3.5 w-3.5" />
+                <span>Download Zooner</span>
               </button>
             </div>
           </motion.div>
