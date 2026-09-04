@@ -12,7 +12,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenRetailerModal, onOpenLocat
   };
 
   return (
-    <footer className="bg-[#050507] border-t border-white/[0.06] pt-20 pb-14 px-6 sm:px-8 text-white/50 text-xs selection:bg-white selection:text-black">
+    <footer className="bg-[#070A11] border-t border-slate-800/80 pt-20 pb-14 px-6 sm:px-8 text-slate-300 text-xs selection:bg-white selection:text-black">
       <div className="max-w-6xl mx-auto space-y-16">
         
         {/* Top Grid */}
@@ -21,26 +21,26 @@ export const Footer: React.FC<FooterProps> = ({ onOpenRetailerModal, onOpenLocat
           {/* Brand Col */}
           <div className="md:col-span-6 space-y-4 text-left">
             <span className="text-xl font-black text-white font-['Outfit'] block">
-              zooner<span className="text-white/40">.</span>
+              zooner<span className="text-indigo-400">.</span>
             </span>
             
-            <p className="text-white/60 text-sm max-w-sm leading-relaxed">
+            <p className="text-slate-300 text-sm max-w-sm leading-relaxed font-normal">
               The local product discovery platform connecting shoppers with real in-store stock across physical retailers.
             </p>
 
             <button
               onClick={onOpenLocationModal}
-              className="inline-flex items-center gap-2 text-xs text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] px-3.5 py-1.5 rounded-full transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 text-xs text-slate-200 hover:text-white bg-slate-800/90 border border-slate-700 px-3.5 py-1.5 rounded-full transition-all cursor-pointer shadow-sm"
             >
-              <MapPin className="h-3 w-3 text-white/40" />
-              <span>Active in <strong>Coimbatore</strong> & expanding</span>
+              <MapPin className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Active in <strong className="text-white">Coimbatore</strong> & expanding</span>
             </button>
           </div>
 
           {/* Nav Links */}
           <div className="md:col-span-3 text-left space-y-3">
-            <span className="font-semibold text-white/90 block">Navigation</span>
-            <ul className="space-y-2 text-white/50">
+            <span className="font-bold text-white text-sm block">Navigation</span>
+            <ul className="space-y-2.5 text-slate-300 font-medium">
               <li>
                 <a href="#" className="hover:text-white transition-colors">Home</a>
               </li>
@@ -55,8 +55,8 @@ export const Footer: React.FC<FooterProps> = ({ onOpenRetailerModal, onOpenLocat
 
           {/* Merchants */}
           <div className="md:col-span-3 text-left space-y-3">
-            <span className="font-semibold text-white/90 block">For Stores</span>
-            <ul className="space-y-2 text-white/50">
+            <span className="font-bold text-white text-sm block">For Stores</span>
+            <ul className="space-y-2.5 text-slate-300 font-medium">
               <li>
                 <button 
                   onClick={onOpenRetailerModal}
@@ -79,7 +79,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenRetailerModal, onOpenLocat
         </div>
 
         {/* Bottom Copyright & Back to Top */}
-        <div className="pt-8 border-t border-white/[0.05] flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-white/40">
+        <div className="pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <div>
             © {new Date().getFullYear()} Zooner Technologies Inc. All rights reserved.
           </div>
@@ -87,10 +87,10 @@ export const Footer: React.FC<FooterProps> = ({ onOpenRetailerModal, onOpenLocat
           <div className="flex items-center gap-6">
             <button 
               onClick={scrollToTop}
-              className="flex items-center gap-1.5 text-white/60 hover:text-white transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors cursor-pointer font-medium"
             >
               <span>Back to top</span>
-              <ArrowUp className="h-3 w-3" />
+              <ArrowUp className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>

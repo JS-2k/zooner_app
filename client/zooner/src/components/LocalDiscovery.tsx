@@ -36,10 +36,10 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
   const googleMapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapSearchQuery)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
   return (
-    <section id="stores" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-black text-white border-t border-white/[0.06] overflow-hidden">
+    <section id="stores" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#0B101D] text-white border-t border-slate-800/80 overflow-hidden">
       
       {/* Subtle ambient lighting */}
-      <div className="absolute top-1/4 right-10 w-[600px] h-[600px] bg-blue-950/10 blur-[150px] pointer-events-none rounded-full" />
+      <div className="absolute top-1/4 right-10 w-[600px] h-[600px] bg-blue-950/20 blur-[150px] pointer-events-none rounded-full" />
 
       <div className="max-w-6xl mx-auto space-y-16 relative z-10">
         
@@ -52,7 +52,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="space-y-4 max-w-2xl"
           >
-            <span className="text-xs font-mono uppercase tracking-widest text-white/40 block">
+            <span className="text-xs font-mono uppercase tracking-widest text-indigo-400 font-bold block">
               04 / Physical Store Network
             </span>
             <h2 
@@ -61,7 +61,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
             >
               Your city is your marketplace.
             </h2>
-            <p className="text-white/60 text-base sm:text-lg leading-relaxed">
+            <p className="text-slate-300 text-base sm:text-lg leading-relaxed">
               Every verified brand store, boutique, and local dealer near you — connected directly to your pocket.
             </p>
           </motion.div>
@@ -74,9 +74,9 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
             onClick={onOpenLocationModal}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] text-xs font-medium text-white/80 transition-colors cursor-pointer shrink-0"
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-100 transition-colors cursor-pointer shrink-0 shadow-sm"
           >
-            <MapPin className="h-3.5 w-3.5 text-white/50" />
+            <MapPin className="h-3.5 w-3.5 text-emerald-400" />
             <span>{currentLocation.name || 'RS Puram, Coimbatore'}</span>
           </motion.button>
         </div>
@@ -95,7 +95,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`relative px-4 py-2 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap z-10 ${
-                  isSelected ? 'text-black font-semibold' : 'text-white/60 hover:text-white'
+                  isSelected ? 'text-slate-950 font-bold' : 'text-slate-300 hover:text-white'
                 }`}
               >
                 {isSelected && (
@@ -106,7 +106,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                   />
                 )}
                 {!isSelected && (
-                  <div className="absolute inset-0 bg-white/[0.03] border border-white/[0.06] rounded-full -z-10" />
+                  <div className="absolute inset-0 bg-slate-800/80 border border-slate-700 rounded-full -z-10" />
                 )}
                 {cat.label}
               </button>
@@ -131,32 +131,32 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                     exit={{ opacity: 0, scale: 0.95 }}
                     onClick={() => setActivePin(store)}
                     whileHover={{ x: 4 }}
-                    className={`p-4 rounded-2xl transition-all cursor-pointer border ${
+                    className={`p-4 rounded-2xl transition-all cursor-pointer border shadow-md ${
                       isSelected 
-                        ? 'bg-white/[0.08] border-white/40 shadow-xl' 
-                        : 'bg-white/[0.02] border-white/[0.06] hover:border-white/[0.18] hover:bg-white/[0.04]'
+                        ? 'bg-slate-800 border-indigo-500/80 shadow-xl shadow-indigo-950/30' 
+                        : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 hover:bg-slate-800/60'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-1.5">
                           <h4 className="font-bold text-white text-sm">{store.name}</h4>
-                          <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                         </div>
-                        <p className="text-xs text-white/50 mt-0.5">{store.category} · {store.area}</p>
+                        <p className="text-xs text-slate-300 mt-0.5">{store.category} · {store.area}</p>
                       </div>
 
-                      <span className="text-xs font-semibold text-white/80 bg-white/[0.06] px-2.5 py-1 rounded-full shrink-0 font-mono">
+                      <span className="text-xs font-bold text-slate-200 bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full shrink-0 font-mono">
                         {store.distance}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between pt-3 mt-2 border-t border-white/[0.04] text-[11px] text-white/40">
-                      <span className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-800 text-xs text-slate-400">
+                      <span className="flex items-center gap-1.5 font-medium text-slate-300">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                         {store.openStatus}
                       </span>
-                      <span className="text-white/60 hover:text-white flex items-center gap-1">
+                      <span className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
                         View on map <ArrowUpRight className="h-3 w-3" />
                       </span>
                     </div>
@@ -166,9 +166,9 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
             </AnimatePresence>
 
             {filteredStores.length === 0 && (
-              <div className="p-8 text-center bg-white/[0.02] border border-white/[0.06] rounded-2xl space-y-2">
-                <Store className="h-6 w-6 text-white/30 mx-auto" />
-                <p className="text-xs text-white/50">No stores found in this category.</p>
+              <div className="p-8 text-center bg-slate-900/80 border border-slate-800 rounded-2xl space-y-2">
+                <Store className="h-6 w-6 text-slate-400 mx-auto" />
+                <p className="text-xs text-slate-300">No stores found in this category.</p>
               </div>
             )}
           </div>
@@ -179,12 +179,12 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="lg:col-span-7 rounded-3xl overflow-hidden border border-white/[0.1] bg-[#0c0c0e] h-[400px] lg:h-[500px] relative shadow-2xl"
+            className="lg:col-span-7 rounded-3xl overflow-hidden border border-slate-700/80 bg-[#0E1526] h-[400px] lg:h-[500px] relative shadow-2xl"
           >
             <iframe
               title="Store Map"
               src={googleMapUrl}
-              className="w-full h-full border-0 filter invert-[0.9] hue-rotate-180 contrast-[1.1] opacity-80"
+              className="w-full h-full border-0 filter invert-[0.9] hue-rotate-180 contrast-[1.1] opacity-85"
               loading="lazy"
             />
 
@@ -197,16 +197,16 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
                   transition={{ duration: 0.3 }}
-                  className="absolute bottom-4 left-4 right-4 bg-black/90 backdrop-blur-xl border border-white/[0.14] rounded-2xl p-4 text-left flex items-center justify-between gap-4 shadow-2xl"
+                  className="absolute bottom-4 left-4 right-4 bg-[#0E1526]/95 backdrop-blur-xl border border-slate-700 rounded-2xl p-4 text-left flex items-center justify-between gap-4 shadow-2xl"
                 >
                   <div>
                     <div className="flex items-center gap-1.5">
                       <h4 className="text-sm font-bold text-white">{activePin.name}</h4>
-                      <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded">
+                      <span className="text-[10px] text-emerald-300 font-bold bg-emerald-950/90 border border-emerald-500/30 px-2 py-0.5 rounded">
                         Open Now
                       </span>
                     </div>
-                    <p className="text-xs text-white/60 mt-0.5 truncate max-w-sm">{activePin.address}</p>
+                    <p className="text-xs text-slate-300 mt-0.5 truncate max-w-sm">{activePin.address}</p>
                   </div>
 
                   <motion.a
@@ -215,7 +215,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                     rel="noopener noreferrer"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="px-4 py-2 rounded-xl bg-white text-black text-xs font-bold shrink-0 hover:bg-white/90 transition-all flex items-center gap-1.5 shadow"
+                    className="px-4 py-2 rounded-xl bg-white text-slate-950 text-xs font-bold shrink-0 hover:bg-slate-100 transition-all flex items-center gap-1.5 shadow-md"
                   >
                     <Navigation className="h-3.5 w-3.5" />
                     <span>Directions</span>

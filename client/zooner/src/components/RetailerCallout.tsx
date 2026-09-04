@@ -11,10 +11,10 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
   onNavigateToVendor,
 }) => {
   return (
-    <section className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#08080a] text-white border-t border-white/[0.06] overflow-hidden">
+    <section className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#070A11] text-white border-t border-slate-800/80 overflow-hidden">
       
       {/* Ambient background glow */}
-      <div className="absolute top-1/2 left-10 w-[500px] h-[500px] bg-purple-950/10 blur-[150px] pointer-events-none rounded-full" />
+      <div className="absolute top-1/2 left-10 w-[550px] h-[550px] bg-purple-950/20 blur-[150px] pointer-events-none rounded-full" />
 
       <div className="max-w-4xl mx-auto text-left space-y-10 relative z-10">
         
@@ -23,7 +23,7 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.6 }}
-          className="text-xs font-mono uppercase tracking-widest text-white/40 block"
+          className="text-xs font-mono uppercase tracking-widest text-indigo-400 font-bold block"
         >
           05 / For Merchants
         </motion.span>
@@ -42,7 +42,7 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
             Own a store?
           </h2>
 
-          <p className="text-white/60 text-base sm:text-xl font-normal max-w-xl leading-relaxed">
+          <p className="text-slate-200 text-base sm:text-xl font-normal max-w-xl leading-relaxed">
             Let people nearby discover what you already have on your shelves.
           </p>
         </motion.div>
@@ -54,14 +54,14 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.7, delay: 0.1 }}
-            whileHover={{ y: -4, borderColor: 'rgba(255,255,255,0.18)' }}
-            className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3 transition-colors"
+            whileHover={{ y: -4, borderColor: 'rgba(99,102,241,0.4)' }}
+            className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3 transition-colors shadow-lg"
           >
-            <div className="h-8 w-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/80">
+            <div className="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-indigo-400">
               <Zap className="h-4 w-4" />
             </div>
             <h4 className="font-bold text-white text-sm">High-Intent Foot Traffic</h4>
-            <p className="text-xs text-white/50 leading-relaxed">
+            <p className="text-xs text-slate-300 leading-relaxed">
               Connect directly with shoppers who are ready to walk into your store right now.
             </p>
           </motion.div>
@@ -71,14 +71,14 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.7, delay: 0.2 }}
-            whileHover={{ y: -4, borderColor: 'rgba(255,255,255,0.18)' }}
-            className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3 transition-colors"
+            whileHover={{ y: -4, borderColor: 'rgba(99,102,241,0.4)' }}
+            className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3 transition-colors shadow-lg"
           >
-            <div className="h-8 w-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/80">
+            <div className="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400">
               <ShieldCheck className="h-4 w-4" />
             </div>
             <h4 className="font-bold text-white text-sm">Zero Setup Fees</h4>
-            <p className="text-xs text-white/50 leading-relaxed">
+            <p className="text-xs text-slate-300 leading-relaxed">
               Create your digital storefront in minutes. No complex hardware or POS integrations.
             </p>
           </motion.div>
@@ -88,14 +88,14 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.7, delay: 0.3 }}
-            whileHover={{ y: -4, borderColor: 'rgba(255,255,255,0.18)' }}
-            className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3 transition-colors"
+            whileHover={{ y: -4, borderColor: 'rgba(99,102,241,0.4)' }}
+            className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3 transition-colors shadow-lg"
           >
-            <div className="h-8 w-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/80">
+            <div className="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-blue-400">
               <Store className="h-4 w-4" />
             </div>
             <h4 className="font-bold text-white text-sm">Direct Local Sales</h4>
-            <p className="text-xs text-white/50 leading-relaxed">
+            <p className="text-xs text-slate-300 leading-relaxed">
               Answer live product requests and turn nearby searchers into loyal in-person customers.
             </p>
           </motion.div>
@@ -113,7 +113,7 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
             onClick={onNavigateToVendor}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-black font-bold text-sm hover:bg-white/95 transition-colors cursor-pointer shadow-2xl"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-slate-950 font-bold text-sm hover:bg-slate-100 transition-colors cursor-pointer shadow-xl shadow-white/10"
           >
             <span>List your store</span>
             <ArrowRight className="h-4 w-4" />

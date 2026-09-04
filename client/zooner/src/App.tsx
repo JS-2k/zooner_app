@@ -140,12 +140,11 @@ export function AppContent() {
 
   // ── EXPERIENCE 1: PUBLIC MARKETING WEBSITE (App Promotion & Trust) ──
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black relative">
+    <div className="min-h-screen bg-[#070A11] text-white flex flex-col selection:bg-white selection:text-black relative">
       <Navbar
         currentLocation={currentLocation}
         onOpenLocationModal={() => setIsLocationModalOpen(true)}
         onNavigateToVendor={() => navigateTo('vendor')}
-        onOpenSignInModal={() => setIsSignInModalOpen(true)}
         onLaunchCustomerApp={() => navigateTo('customer')}
       />
 
@@ -168,12 +167,6 @@ export function AppContent() {
       <RetailerModal
         isOpen={isRetailerModalOpen}
         onClose={() => setIsRetailerModalOpen(false)}
-      />
-
-      <SignInModal
-        isOpen={isSignInModalOpen}
-        onClose={() => setIsSignInModalOpen(false)}
-        onSwitchToRetailer={() => navigateTo('vendor')}
       />
     </div>
   );

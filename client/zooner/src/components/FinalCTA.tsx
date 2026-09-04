@@ -9,10 +9,10 @@ interface FinalCTAProps {
 
 export const FinalCTA: React.FC<FinalCTAProps> = ({ onSearchClick }) => {
   return (
-    <section className="relative py-32 sm:py-48 px-6 sm:px-8 bg-black text-white border-t border-white/[0.06] overflow-hidden text-center">
+    <section className="relative py-32 sm:py-48 px-6 sm:px-8 bg-[#0B101D] text-white border-t border-slate-800/80 overflow-hidden text-center">
       
       {/* Background ambient lighting aura */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-b from-indigo-500/10 via-purple-500/5 to-transparent blur-[140px] pointer-events-none rounded-full" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-gradient-to-b from-indigo-500/20 via-purple-500/10 to-transparent blur-[140px] pointer-events-none rounded-full" />
 
       <motion.div 
         initial={{ opacity: 0, y: 35 }}
@@ -31,7 +31,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onSearchClick }) => {
           Find it nearby.
         </h2>
 
-        <p className="text-white/50 text-base sm:text-xl font-normal max-w-lg mx-auto leading-relaxed">
+        <p className="text-slate-200 text-base sm:text-xl font-normal max-w-lg mx-auto leading-relaxed">
           What you're searching for is already sitting on a shelf in your neighborhood.
         </p>
 
@@ -41,7 +41,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onSearchClick }) => {
             onClick={onSearchClick}
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.94 }}
-            className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full bg-white text-black font-bold text-sm sm:text-base hover:bg-white/95 transition-colors shadow-2xl cursor-pointer"
+            className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full bg-white text-slate-950 font-bold text-sm sm:text-base hover:bg-slate-100 transition-colors shadow-xl shadow-white/10 cursor-pointer"
           >
             <Search className="h-4 w-4 stroke-[2.5]" />
             <span>Search Nearby Stores</span>
