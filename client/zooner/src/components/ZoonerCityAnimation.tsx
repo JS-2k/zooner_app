@@ -499,8 +499,36 @@ function updateAndDrawWalker(ctx: CanvasRenderingContext2D, wk: Walker, W: numbe
   wk.step += 0.15 * wk.stepDir;
   if (Math.abs(wk.step) > 1) wk.stepDir *= -1;
 
+  const leg = Math.sin(wk.step * Math.PI) * 4;
+
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 1.8;
+
+  // Left leg
   ctx.beginPath();
-  ctx.arc(wk.x, wk.y - 8, 3.5, 0, Math.PI * 2);
+  ctx.moveTo(wk.x, wk.y);
+  ctx.lineTo(wk.x - 2 + leg, wk.y + 5);
+  ctx.strokeStyle = wk.color;
+  ctx.stroke();
+
+  // Right leg
+  ctx.beginPath();
+  ctx.moveTo(wk.x, wk.y);
+  ctx.lineTo(wk.x + 2 - leg, wk.y + 5);
+  ctx.strokeStyle = wk.color;
+  ctx.stroke();
+
+  // Body
+  ctx.beginPath();
+  ctx.moveTo(wk.x, wk.y - 4);
+  ctx.lineTo(wk.x, wk.y);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = wk.color;
+  ctx.stroke();
+
+  // Head
+  ctx.beginPath();
+  ctx.arc(wk.x, wk.y - 7, 3.5, 0, Math.PI * 2);
   ctx.fillStyle = wk.color;
   ctx.fill();
 }
@@ -573,31 +601,118 @@ function draw3DShop(ctx: CanvasRenderingContext2D, sh: Shop, _frame: number) {
   }
 }
 
-function drawPerson(ctx: CanvasRenderingContext2D, x: number, y: number, frame: number, _walking: boolean) {
-  // Ground Shadow
+function drawPerson(ctx: CanvasRenderingContext2D, x: number, y: number, frame: number, walking: boolean) {
+  // Ground shadow
   ctx.beginPath();
-  ctx.ellipse(x, y + 2, 12, 4, 0, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.ellipse(x, y + 2, 13, 4, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.fill();
 
-  // Live Location Halo Pulse
-  const r1 = 18 + 4 * Math.sin(frame * 0.08);
+  // Outer pulsing halo (live location ring)
+  const r1 = 20 + 5 * Math.sin(frame * 0.08);
   ctx.beginPath();
-  ctx.arc(x, y, r1, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(99,102,241,0.3)';
-  ctx.lineWidth = 1.8;
+  ctx.arc(x, y - 14, r1, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(99,102,241,0.25)';
+  ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Body
-  ctx.fillStyle = COLORS.personBody;
+  // Inner glow ring
   ctx.beginPath();
-  ctx.roundRect(x - 6, y - 17, 12, 17, 4);
+  ctx.arc(x, y - 14, 13, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(99,102,241,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Walking leg animation
+  const legSwing = walking ? Math.sin(frame * 0.28) * 7 : 0;
+  const armSwing = walking ? Math.sin(frame * 0.28) * 5 : 0;
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Left leg
+  ctx.beginPath();
+  ctx.moveTo(x, y - 5);
+  ctx.lineTo(x - 3 + legSwing, y + 6);
+  ctx.lineTo(x - 4 + legSwing * 0.6, y + 14);
+  ctx.strokeStyle = '#4f46e5';
+  ctx.lineWidth = 3.5;
+  ctx.stroke();
+
+  // Right leg
+  ctx.beginPath();
+  ctx.moveTo(x, y - 5);
+  ctx.lineTo(x + 3 - legSwing, y + 6);
+  ctx.lineTo(x + 4 - legSwing * 0.6, y + 14);
+  ctx.strokeStyle = '#4f46e5';
+  ctx.lineWidth = 3.5;
+  ctx.stroke();
+
+  // Torso
+  ctx.fillStyle = '#6366f1';
+  ctx.beginPath();
+  ctx.roundRect(x - 6, y - 22, 12, 18, 4);
+  ctx.fill();
+
+  // Left arm
+  ctx.beginPath();
+  ctx.moveTo(x - 5, y - 18);
+  ctx.lineTo(x - 11 - armSwing, y - 10);
+  ctx.lineTo(x - 13 - armSwing * 0.5, y - 5);
+  ctx.strokeStyle = '#6366f1';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Right arm
+  ctx.beginPath();
+  ctx.moveTo(x + 5, y - 18);
+  ctx.lineTo(x + 11 + armSwing, y - 10);
+  ctx.lineTo(x + 13 + armSwing * 0.5, y - 5);
+  ctx.strokeStyle = '#6366f1';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Phone in right hand (small glowing rect)
+  ctx.fillStyle = '#a5b4fc';
+  ctx.shadowBlur = 6;
+  ctx.shadowColor = '#6366f1';
+  ctx.beginPath();
+  ctx.roundRect(x + 11 + armSwing * 0.5, y - 7, 5, 7, 1.5);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Neck
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath();
+  ctx.roundRect(x - 3, y - 27, 6, 6, 2);
   ctx.fill();
 
   // Head
-  ctx.fillStyle = COLORS.person;
   ctx.beginPath();
-  ctx.arc(x, y - 25, 7.5, 0, Math.PI * 2);
+  ctx.arc(x, y - 34, 9, 0, Math.PI * 2);
+  ctx.fillStyle = '#fbbf24';
+  ctx.fill();
+
+  // Face: eyes
+  ctx.fillStyle = '#1e1b4b';
+  ctx.beginPath();
+  ctx.arc(x - 3, y - 35, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 3, y - 35, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Face: smile
+  ctx.beginPath();
+  ctx.arc(x, y - 32, 3, 0.2, Math.PI - 0.2);
+  ctx.strokeStyle = '#1e1b4b';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // Hair
+  ctx.fillStyle = '#1e1b4b';
+  ctx.beginPath();
+  ctx.ellipse(x, y - 42, 9, 4, 0, Math.PI, Math.PI * 2);
   ctx.fill();
 }
 
