@@ -1,0 +1,35 @@
+import React, { useEffect, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Check, ChevronRight, Clock3, MapPin, Navigation, ShieldCheck } from 'lucide-react';
+
+const journey = [
+  { number: '01', label: 'Search', title: 'Name what you want.', detail: 'Search the exact product, model, colour, or size you need.' },
+  { number: '02', label: 'Discover', title: 'See it on a real shelf.', detail: 'Compare nearby stores by distance, price, and live availability.' },
+  { number: '03', label: 'Hold', title: 'Make the shelf yours.', detail: 'Reserve the item at the counter for 30 minutes with no deposit.' },
+  { number: '04', label: 'Walk in', title: 'Meet it in person.', detail: 'Follow the route, inspect it yourself, and pay at the store.' },
+];
+
+export const ProductJourney: React.FC = () => {
+  const [seconds, setSeconds] = useState(1787);
+  const reduceMotion = useReducedMotion();
+  useEffect(() => {
+    const timer = window.setInterval(() => setSeconds(value => value > 0 ? value - 1 : 1800), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const time = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+
+  return <>
+    <section id="how-it-works" className="relative overflow-hidden border-t border-white/10 bg-[#08090C] px-6 py-24 sm:px-8 sm:py-32">
+      <div className="absolute left-1/2 top-0 h-[32rem] w-[44rem] -translate-x-1/2 rounded-full bg-[#7C5CFF]/[0.09] blur-[140px]" />
+      <div className="relative mx-auto max-w-6xl">
+        <div className="max-w-2xl"><p className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-[#8E929D]">The Zooner journey</p><h2 className="font-['Outfit'] text-[clamp(2.8rem,6vw,5.2rem)] font-black leading-[.93] tracking-tight text-[#F7F7F8]">From a thought<br />to the store door.</h2><p className="mt-6 max-w-xl text-base leading-relaxed text-[#8E929D] sm:text-lg">One continuous path from product search to a real, verified pickup—without delivery delays or shelf-side guesswork.</p></div>
+        <div className="mt-16 grid gap-0 border-y border-white/10 md:grid-cols-4">
+          {journey.map((step, index) => <motion.article key={step.number} initial={{ opacity: 0, y: reduceMotion ? 0 : 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ delay: index * 0.08, duration: 0.55 }} className="group relative min-h-64 border-b border-white/10 py-8 last:border-b-0 md:border-b-0 md:border-r md:px-7 md:last:border-r-0"><span className="font-mono text-xs text-[#8E929D]">{step.number} / {step.label}</span><h3 className="mt-12 max-w-[12rem] font-['Outfit'] text-2xl font-bold leading-tight text-white">{step.title}</h3><p className="mt-4 max-w-[15rem] text-sm leading-relaxed text-[#8E929D]">{step.detail}</p>{index < 3 && <ChevronRight className="absolute right-4 top-8 hidden h-4 w-4 text-white/30 md:block" />}</motion.article>)}
+        </div>
+      </div>
+    </section>
+    <section className="relative overflow-hidden bg-[#111318] px-6 py-24 sm:px-8 sm:py-32"><div className="mx-auto grid max-w-6xl items-center gap-16 lg:grid-cols-[1fr_.82fr]"><motion.div initial={{ opacity: 0, x: reduceMotion ? 0 : -24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, amount: 0.25 }} transition={{ duration: 0.7 }}><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#20D99A]">The 30-minute hold</p><h2 className="mt-5 font-['Outfit'] text-[clamp(3rem,6vw,5.4rem)] font-black leading-[.92] tracking-tight text-white">Certainty,<br /><span className="text-[#8E929D]">not a maybe.</span></h2><p className="mt-7 max-w-lg text-base leading-relaxed text-[#8E929D] sm:text-lg">When a store confirms stock, Zooner creates a Hold Pass. The item is set aside at the billing counter under your name while you make the short walk over.</p><div className="mt-9 flex items-center gap-3 text-sm text-slate-300"><ShieldCheck className="h-5 w-5 text-[#20D99A]" /> Zero deposit. Pay only at the store.</div></motion.div>
+      <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.25 }} transition={{ duration: 0.8, delay: 0.1 }} className="relative mx-auto w-full max-w-sm"><div className="absolute -inset-10 rounded-full bg-[#20D99A]/10 blur-3xl" /><div className="relative overflow-hidden rounded-[2.3rem] border border-white/15 bg-[#08090C] p-5 shadow-2xl shadow-black/50"><div className="flex items-center justify-between text-[11px] font-medium text-slate-500"><span>9:41</span><span>5G</span></div><div className="mt-7 flex items-start justify-between"><div><p className="text-xs text-slate-500">Your Hold Pass</p><h3 className="mt-1 text-xl font-bold text-white">Nike Air Max 270</h3><p className="mt-1 text-sm text-slate-400">UK 9 · Black</p></div><div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#20D99A] text-[11px] font-bold tabular-nums text-[#20D99A]">{time}</div></div><div className="mt-7 border-y border-white/10 py-5"><div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#20D99A]/10"><Check className="h-4 w-4 text-[#20D99A]" /></span><div><p className="text-sm font-bold text-white">Reserved at Croma</p><p className="text-xs text-slate-500">Avinashi Road · 450 m away</p></div></div></div><div className="mt-5 flex items-center justify-between text-xs"><span className="flex items-center gap-1.5 text-slate-400"><Clock3 className="h-3.5 w-3.5" /> Set aside at the counter</span><span className="font-bold text-[#20D99A]">Ready</span></div><button type="button" className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-3.5 text-sm font-bold text-[#08090C]"><Navigation className="h-4 w-4" /> Get directions</button></div></motion.div></div></section>
+    <section className="overflow-hidden bg-[#08090C] px-6 py-24 sm:px-8 sm:py-32"><div className="mx-auto max-w-6xl"><div className="flex flex-col justify-between gap-8 md:flex-row md:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#8E929D]">The last mile is yours</p><h2 className="mt-5 font-['Outfit'] text-[clamp(3.4rem,8vw,7.5rem)] font-black leading-[.84] tracking-tight text-white">Walk in.</h2></div><p className="max-w-sm text-base leading-relaxed text-[#8E929D]">Discovering a product online is only the beginning. Zooner shows you precisely where it is—and makes the physical handoff simple.</p></div><div className="mt-16 grid grid-cols-5 border-y border-white/10 py-6 text-center font-mono text-sm tabular-nums text-[#8E929D] sm:py-9 sm:text-lg">{['350 m', '220 m', '100 m', '50 m', 'ARRIVED'].map((distance, index) => <div key={distance} className={index === 4 ? 'font-bold text-[#20D99A]' : ''}>{distance}</div>)}</div><div className="mt-5 flex items-center justify-center gap-2 text-xs text-slate-500"><MapPin className="h-3.5 w-3.5 text-[#7C5CFF]" /> The product is waiting at the store, not in a warehouse.</div></div></section>
+  </>;
+};

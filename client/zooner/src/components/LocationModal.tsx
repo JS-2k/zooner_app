@@ -1,7 +1,6 @@
 import React from 'react';
-import { X, MapPin, Check, Navigation, Search } from 'lucide-react';
+import { X, MapPin, Navigation, Search } from 'lucide-react';
 import type { LocationArea } from '../types';
-import { LOCATIONS } from '../data/mockData';
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -17,14 +16,52 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   onSelectLocation,
 }) => {
   const [query, setQuery] = React.useState('');
+  const [isLocating, setIsLocating] = React.useState(false);
+  const [gpsError, setGpsError] = React.useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const filteredLocations = LOCATIONS.filter(
-    (loc) =>
-      loc.name.toLowerCase().includes(query.toLowerCase()) ||
-      loc.city.toLowerCase().includes(query.toLowerCase())
-  );
+  const handleDetectGPS = () => {
+    if (!navigator.geolocation) {
+      setGpsError('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setIsLocating(true);
+    setGpsError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setIsLocating(false);
+        const { latitude, longitude } = position.coords;
+        onSelectLocation({
+          id: 'live-gps',
+          name: 'Current Location (GPS)',
+          city: 'Coimbatore',
+          storesCount: 0,
+          activeRequests: 0,
+          lat: latitude,
+          lng: longitude
+        });
+        onClose();
+      },
+      (error) => {
+        setIsLocating(false);
+        setGpsError(error.message || 'Unable to retrieve your location.');
+        // Fallback to default location area if permission denied
+        onSelectLocation({
+          id: 'default-coimbatore',
+          name: 'Coimbatore Central',
+          city: 'Coimbatore',
+          storesCount: 0,
+          activeRequests: 0,
+          lat: 11.0168,
+          lng: 76.9558
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -49,7 +86,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-950 dark:hover:text-white transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -59,11 +96,9 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         <div className="p-6">
           {/* Quick GPS detect button */}
           <button
-            onClick={() => {
-              onSelectLocation(LOCATIONS[0]);
-              onClose();
-            }}
-            className="mb-4 flex w-full items-center justify-between rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/80 px-4 py-3 text-left transition-all hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
+            onClick={handleDetectGPS}
+            disabled={isLocating}
+            className="mb-4 flex w-full items-center justify-between rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/80 px-4 py-3 text-left transition-all hover:bg-indigo-100 dark:hover:bg-indigo-900/40 cursor-pointer disabled:opacity-50"
           >
             <div className="flex items-center gap-3">
               <div className="relative flex h-3 w-3">
@@ -72,69 +107,65 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               </div>
               <div>
                 <div className="text-sm font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5 font-['Outfit']">
-                  <Navigation className="h-3.5 w-3.5" />
-                  Use Current Location (GPS)
+                  <Navigation className={`h-3.5 w-3.5 ${isLocating ? 'animate-spin' : ''}`} />
+                  {isLocating ? 'Detecting your GPS position...' : 'Use Current Location (GPS)'}
                 </div>
-                <div className="text-xs text-indigo-700 dark:text-indigo-400/80">Auto-detecting RS Puram, Coimbatore</div>
+                <div className="text-xs text-indigo-700 dark:text-indigo-400/80">
+                  {selectedLocation.lat && selectedLocation.lng
+                    ? `Active GPS (${selectedLocation.lat.toFixed(4)}°, ${selectedLocation.lng.toFixed(4)}°)`
+                    : 'Auto-detect real-time GPS coordinates'}
+                </div>
               </div>
             </div>
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">Active</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
+              {isLocating ? 'Locating...' : 'Detect'}
+            </span>
           </button>
 
-          {/* Search box */}
-          <div className="relative mb-4">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search area, neighborhood, or city..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/80 py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm"
-            />
-          </div>
+          {gpsError && (
+            <div className="mb-4 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-500 font-semibold">
+              {gpsError}
+            </div>
+          )}
 
-          {/* List of locations */}
-          <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
-            {filteredLocations.map((loc) => {
-              const isSelected = selectedLocation.id === loc.id;
-              return (
-                <button
-                  key={loc.id}
-                  onClick={() => {
-                    onSelectLocation(loc);
-                    onClose();
-                  }}
-                  className={`flex w-full items-center justify-between rounded-2xl border p-3.5 text-left transition-all ${
-                    isSelected
-                      ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-slate-900 dark:text-white shadow-sm'
-                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${
-                      isSelected ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                    }`}>
-                      <MapPin className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 font-['Outfit']">
-                        {loc.name}
-                        <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">({loc.city})</span>
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
-                        <span className="text-indigo-600 dark:text-indigo-400 font-semibold">{loc.storesCount} verified stores</span> • {loc.activeRequests} live customer requests
-                      </div>
-                    </div>
-                  </div>
-                  {isSelected && (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white">
-                      <Check className="h-3.5 w-3.5 stroke-[3]" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          {/* Search / Custom Area Input */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (query.trim()) {
+                onSelectLocation({
+                  id: `custom-${Date.now()}`,
+                  name: query.trim(),
+                  city: 'Coimbatore',
+                  storesCount: 0,
+                  activeRequests: 0
+                });
+                onClose();
+              }
+            }}
+            className="space-y-3"
+          >
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Enter custom neighborhood or area name..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/80 py-3 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm"
+              />
+            </div>
+
+            {query.trim() && (
+              <button
+                type="submit"
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white py-3 text-sm font-bold shadow-md shadow-indigo-600/25 transition-all cursor-pointer"
+              >
+                <MapPin className="h-4 w-4" />
+                <span>Set Zone to "{query.trim()}"</span>
+              </button>
+            )}
+          </form>
         </div>
 
         {/* Footer */}

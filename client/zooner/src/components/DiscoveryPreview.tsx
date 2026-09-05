@@ -71,7 +71,7 @@ export const DiscoveryPreview: React.FC<DiscoveryPreviewProps> = ({
   }, [searchQuery, selectedCategory]);
 
   return (
-    <section id="discover" className="relative py-20 md:py-32 bg-white dark:bg-[#070A12] border-t border-slate-200 dark:border-slate-800/80 transition-colors duration-200">
+    <section id="discover" className="relative py-20 md:py-32 bg-white dark:bg-[#0B0F19] border-t border-slate-200 dark:border-slate-800/80 transition-colors duration-200">
       {/* Background visual elements */}
       <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-indigo-500/[0.06] rounded-full blur-3xl pointer-events-none" />
 
@@ -169,8 +169,26 @@ export const DiscoveryPreview: React.FC<DiscoveryPreviewProps> = ({
           </span>
         </div>
 
-        {/* Product Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Product Grid or Clean Empty State */}
+        {filteredProducts.length === 0 ? (
+          <div className="rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 p-12 text-center max-w-xl mx-auto shadow-sm">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 mx-auto mb-4 border border-indigo-500/20">
+              <Search className="h-8 w-8" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-950 dark:text-white mb-2 font-['Outfit']">No physical stock listed yet in this zone</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto">
+              Broadcast your product request to physical shops nearby! Local store owners will get notified and confirm stock for you.
+            </p>
+            <button
+              onClick={() => onOpenRequestModal()}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
+            >
+              <span>Broadcast Product Request</span>
+              <ArrowUpRight className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {filteredProducts.map((product) => {
             const isLiked = likedProducts.includes(product.id);
             return (
@@ -290,6 +308,7 @@ export const DiscoveryPreview: React.FC<DiscoveryPreviewProps> = ({
             );
           })}
         </div>
+        )}
 
         {/* Can't Find What You Need Prompt Bar */}
         <div className="mt-12 rounded-2xl bg-gradient-to-r from-slate-100 via-indigo-50/50 to-slate-100 dark:from-slate-900 dark:via-indigo-950/30 dark:to-slate-900 border border-slate-200 dark:border-slate-800 p-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-sm">

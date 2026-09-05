@@ -26,9 +26,9 @@ export interface Store {
   verified: boolean;
   openStatus: string;
   address: string;
-  featuredProductsCount: number;
+  featuredProductsCount?: number;
   tags: string[];
-  avatarUrl: string;
+  avatarUrl?: string;
   lat?: number;
   lng?: number;
 }
@@ -59,4 +59,6 @@ export interface LocationArea {
   city: string;
   storesCount: number;
   activeRequests: number;
+  lat?: number;
+  lng?: number;
 }

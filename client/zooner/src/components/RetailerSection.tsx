@@ -35,9 +35,9 @@ export const RetailerSection: React.FC<RetailerSectionProps> = ({ onOpenRetailer
     },
     {
       icon: Tag,
-      title: 'Promote Offers',
-      description: 'Publish weekend flash offers, festival discounts, and new arrivals directly to shoppers living within 5 km of your store.',
-      highlight: 'Hyperlocal broadcast reach'
+      title: 'Targeted Premium Advertisements',
+      description: 'Upgrade to Zooner Premium to broadcast timed, location-targeted & preference-matched ads to shoppers within 5 km.',
+      highlight: '⏱️ Timed • 📍 Geo-Radius • 🎯 Preference Matched'
     },
     {
       icon: MessageSquare,

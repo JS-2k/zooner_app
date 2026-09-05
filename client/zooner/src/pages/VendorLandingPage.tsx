@@ -24,11 +24,13 @@ import { useTheme } from '../context/ThemeContext';
 interface VendorLandingPageProps {
   onSwitchToCustomer: () => void;
   onOpenSignIn: () => void;
+  onNavigateToDashboard?: () => void;
 }
 
 export const VendorLandingPage: React.FC<VendorLandingPageProps> = ({
   onSwitchToCustomer,
-  onOpenSignIn
+  onOpenSignIn,
+  onNavigateToDashboard
 }) => {
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -311,13 +313,13 @@ export const VendorLandingPage: React.FC<VendorLandingPageProps> = ({
                 <ArrowRight className="h-4 w-4" />
               </a>
 
-              <a
-                href="#dashboard-demo"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-8 py-4 text-base font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
+              <button
+                onClick={() => onNavigateToDashboard ? onNavigateToDashboard() : window.location.hash = '#vendor/dashboard'}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-8 py-4 text-base font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm cursor-pointer"
               >
                 <BarChart3 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                <span>Explore Merchant OS</span>
-              </a>
+                <span>Launch Merchant OS</span>
+              </button>
             </div>
 
             {/* Key Proof Points */}
