@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, ShieldCheck, Clock, Search } from 'lucide-react';
+import { ShieldCheck, Clock, Search } from 'lucide-react';
 
 export const TheIdea: React.FC = () => {
   const steps = [

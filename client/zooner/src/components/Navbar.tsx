@@ -13,7 +13,7 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   currentLocation,
   onOpenLocationModal,
-  onNavigateToVendor,
+  onNavigateToVendor: _onNavigateToVendor,
   onLaunchCustomerApp,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

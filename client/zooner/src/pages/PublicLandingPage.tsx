@@ -3,7 +3,6 @@ import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { 
   ArrowRight, 
   Download, 
-  ShieldCheck, 
   MapPin, 
   Navigation,
   CheckCircle2,
