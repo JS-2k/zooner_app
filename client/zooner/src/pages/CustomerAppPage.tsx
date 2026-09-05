@@ -110,7 +110,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           setCategoriesList([
             { id: 'all', label: 'All Categories' },
             ...categoriesData.map((c: any) => ({
-              id: c.slug || c.id,
+              id: c.name,
               label: c.name
             }))
           ]);
@@ -274,7 +274,8 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       prod.storeName.toLowerCase().includes(debouncedQuery.toLowerCase());
     
     const matchesCategory = selectedCategory === 'all' || 
-      prod.category.toLowerCase().includes(selectedCategory.toLowerCase());
+      prod.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+      selectedCategory.toLowerCase().includes(prod.category.toLowerCase());
 
     const matchesStock = !inStockOnly || prod.inStock;
 
@@ -300,7 +301,8 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       st.tags.some(t => t.toLowerCase().includes(debouncedQuery.toLowerCase()));
 
     const matchesCategory = selectedCategory === 'all' ||
-      st.category.toLowerCase().includes(selectedCategory.toLowerCase());
+      st.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+      selectedCategory.toLowerCase().includes(st.category.toLowerCase());
 
     let storeDistanceKm = 1.0;
     if (st.distance) {

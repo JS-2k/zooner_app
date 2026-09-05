@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Navigation, ArrowUpRight, CheckCircle2, Store, ArrowRight } from 'lucide-react';
-import { PHYSICAL_STORES } from '../data/mockData';
+import { fetchCategories, fetchShops } from '../services/api';
 import type { Store as StoreType, LocationArea } from '../types';
 
 interface LocalDiscoveryProps {
@@ -15,20 +15,62 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
   onOpenLocationModal,
   onNavigateToVendor,
 }) => {
-  const [activePin, setActivePin] = useState<StoreType | null>(PHYSICAL_STORES[0] || null);
+  const [categories, setCategories] = useState<{ id: string; label: string }[]>([
+    { id: 'all', label: 'All Stores' }
+  ]);
+  const [liveStores, setLiveStores] = useState<StoreType[]>([]);
+  const [activePin, setActivePin] = useState<StoreType | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  const categories = [
-    { id: 'all', label: 'All Stores' },
-    { id: 'Footwear & Sports', label: 'Footwear & Sports' },
-    { id: 'Fashion', label: 'Fashion' },
-    { id: 'Electronics', label: 'Electronics & Audio' },
-    { id: 'Beauty', label: 'Beauty' },
-  ];
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [catsData, shopsData] = await Promise.all([
+          fetchCategories(),
+          fetchShops(currentLocation.lat, currentLocation.lng)
+        ]);
 
-  const filteredStores = PHYSICAL_STORES.filter(st => {
+        if (catsData && catsData.length > 0) {
+          setCategories([
+            { id: 'all', label: 'All Stores' },
+            ...catsData.map((c: any) => ({
+              id: c.name,
+              label: c.name
+            }))
+          ]);
+        }
+
+        if (shopsData && shopsData.length > 0) {
+          const formatted: StoreType[] = shopsData.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            category: s.categoryName || 'General Store',
+            area: s.address || s.city || 'Local Area',
+            address: s.address || s.city || '',
+            phone: s.phone || '',
+            openStatus: s.isOpen ? 'Open Now' : 'Closed',
+            verified: s.isVerified ?? true,
+            rating: s.rating || 4.9,
+            reviewCount: 24,
+            tags: s.tags ? s.tags.split(',') : ['verified', 'store'],
+            latitude: s.latitude,
+            longitude: s.longitude,
+            distance: s.distanceKm ? `${s.distanceKm.toFixed(1)} km` : '350m'
+          }));
+          setLiveStores(formatted);
+          setActivePin(formatted[0]);
+        }
+      } catch (err) {
+        console.error('Failed to load database categories and stores:', err);
+      }
+    }
+    loadData();
+  }, [currentLocation]);
+
+  const filteredStores = liveStores.filter(st => {
     if (selectedCategory === 'all') return true;
-    return st.category.toLowerCase().includes(selectedCategory.toLowerCase());
+    return st.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+           selectedCategory.toLowerCase().includes(st.category.toLowerCase());
   });
 
   const mapSearchQuery = activePin

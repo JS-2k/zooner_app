@@ -40,7 +40,37 @@ public static class DbSeeder
                 logger.LogInformation("Seeded default administrator account: {Email}", adminEmail);
             }
 
-            // 3. Seed Initial Categories only if database has no categories yet
+            // 3. Seed Initial Categories if database missing categories
+            if (!await context.Categories.AnyAsync(c => c.Slug == "footwear-sports"))
+            {
+                var footwear = new Category
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Footwear & Sports",
+                    Slug = "footwear-sports",
+                    Description = "Running shoes, sneakers, athletic apparel, and sports gear",
+                    Icon = "shoe",
+                    DisplayOrder = 5,
+                    IsActive = true,
+                    CreatedAtUtc = DateTime.UtcNow
+                };
+
+                var beauty = new Category
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Beauty & Personal Care",
+                    Slug = "beauty-personal-care",
+                    Description = "Skincare, cosmetics, perfumes, and grooming accessories",
+                    Icon = "sparkles",
+                    DisplayOrder = 6,
+                    IsActive = true,
+                    CreatedAtUtc = DateTime.UtcNow
+                };
+
+                context.Categories.AddRange(footwear, beauty);
+                await context.SaveChangesAsync();
+            }
+
             if (!await context.Categories.AnyAsync())
             {
                 var clothing = new Category
