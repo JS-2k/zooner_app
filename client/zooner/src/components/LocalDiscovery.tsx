@@ -35,31 +35,29 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
   const googleMapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapSearchQuery)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
   return (
-    <section id="stores" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#06070F] text-white border-t border-slate-800/60 overflow-hidden">
-      <div className="orb-2 absolute top-1/4 right-10 w-[600px] h-[600px] bg-blue-950/10 blur-[180px] pointer-events-none rounded-full" />
-
+    <section id="stores" className="relative py-24 sm:py-32 px-6 sm:px-8 bg-[#07080B] text-white border-t border-white/10">
       <div className="max-w-6xl mx-auto space-y-12 relative z-10">
         
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 text-left">
           <motion.div 
-            initial={{ opacity: 0, y: 25 }}
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-4 max-w-2xl"
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="space-y-3 max-w-xl"
           >
-            <span className="text-xs font-mono uppercase tracking-widest text-indigo-400 font-bold block">
-              04 / Physical Store Network
+            <span className="text-xs font-mono uppercase tracking-widest text-slate-500 font-bold block">
+              Store Directory
             </span>
             <h2 
               className="font-['Outfit'] font-black tracking-tight text-white leading-[0.98]"
-              style={{ fontSize: 'clamp(2.4rem, 5.5vw, 4.2rem)' }}
+              style={{ fontSize: 'clamp(2.4rem, 5vw, 3.8rem)' }}
             >
               Your city has the product.
             </h2>
-            <p className="text-slate-400 text-base sm:text-lg leading-relaxed">
-              Every authorized brand store, boutique, and local dealer near you � connected in real time to your mobile screen.
+            <p className="text-slate-400 text-base sm:text-lg leading-relaxed pt-1">
+              Authorized brand stores and local retailers near you — connected in real time.
             </p>
           </motion.div>
 

@@ -31,8 +31,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled 
-          ? 'bg-[#06070F]/90 backdrop-blur-xl border-b border-slate-800/70 shadow-xl shadow-black/50' 
-          : 'bg-[#06070F]/60 backdrop-blur-md border-b border-slate-800/30'
+          ? 'bg-[#07080B]/90 backdrop-blur-xl border-b border-white/10 shadow-xl shadow-black/50' 
+          : 'bg-[#07080B]/60 backdrop-blur-md border-b border-white/5'
       }`}
     >
       <div className="max-w-6xl mx-auto px-6 sm:px-8">
@@ -42,7 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-6">
             <a href="#" className="flex items-center gap-2 group">
               <span className="text-xl sm:text-2xl font-black tracking-tight text-white font-['Outfit']">
-                zooner<span className="text-indigo-400">.</span>
+                zooner<span className="text-slate-500">.</span>
               </span>
             </a>
 

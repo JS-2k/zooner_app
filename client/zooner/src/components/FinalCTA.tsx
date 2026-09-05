@@ -9,18 +9,16 @@ interface FinalCTAProps {
 
 export const FinalCTA: React.FC<FinalCTAProps> = ({ onSearchClick, onOpenRetailerModal }) => {
   return (
-    <section className="relative py-32 sm:py-44 px-6 sm:px-8 bg-[#06070F] text-white border-t border-slate-800/60 overflow-hidden text-center">
-      <div className="orb-1 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[750px] h-[480px] bg-gradient-to-b from-indigo-600/12 via-indigo-900/5 to-transparent blur-[180px] pointer-events-none rounded-full" />
-
+    <section className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#07080B] text-white border-t border-white/10 text-center">
       <motion.div 
-        initial={{ opacity: 0, y: 35 }}
+        initial={{ opacity: 0, y: 25 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-60px' }}
-        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-        className="max-w-6xl mx-auto space-y-10 relative z-10"
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="max-w-6xl mx-auto space-y-8 relative z-10"
       >
-        <span className="text-xs font-mono uppercase tracking-widest text-indigo-400 font-bold block">
-          06 / Immediate Access · iOS & Android
+        <span className="text-xs font-mono uppercase tracking-widest text-slate-500 font-bold block">
+          Get Started · iOS & Android
         </span>
 
         <h2 
@@ -32,16 +30,16 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onSearchClick, onOpenRetaile
           <span className="text-slate-500">Walk in.</span>
         </h2>
 
-        <p className="text-slate-400 text-base sm:text-xl font-normal max-w-lg mx-auto leading-relaxed">
-          Download Zooner and discover physical store inventory in your neighborhood today.
+        <p className="text-slate-400 text-base sm:text-lg font-normal max-w-lg mx-auto leading-relaxed">
+          Download Zooner and explore verified store inventory in your neighborhood today.
         </p>
 
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
           <motion.button
             onClick={onSearchClick}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-9 py-4 rounded-full bg-white text-slate-950 font-bold text-sm sm:text-base hover:bg-slate-100 transition-all shadow-2xl shadow-white/10 cursor-pointer"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-9 py-4 rounded-full bg-white text-slate-950 font-bold text-sm sm:text-base hover:bg-slate-200 transition-all shadow-xl shadow-white/5 cursor-pointer"
           >
             <Download className="h-4 w-4 stroke-[2.5]" />
             <span>Download Zooner</span>
@@ -50,11 +48,11 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onSearchClick, onOpenRetaile
 
           <motion.button
             onClick={onOpenRetailerModal}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full border border-slate-800 hover:border-slate-700 text-sm font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full border border-white/10 hover:border-white/20 text-sm font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
-            <Store className="h-4 w-4 text-slate-500" />
+            <Store className="h-4 w-4 text-slate-400" />
             <span>I'm a Store Owner</span>
           </motion.button>
         </div>
@@ -64,8 +62,8 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onSearchClick, onOpenRetaile
           <span>·</span>
           <span>Zero pre-payment</span>
           <span>·</span>
-          <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-            <ShieldCheck className="h-3.5 w-3.5" /> Verified Physical Retail
+          <span className="flex items-center gap-1.5 text-slate-400 font-semibold">
+            <ShieldCheck className="h-3.5 w-3.5 text-slate-300" /> Verified Physical Retail
           </span>
         </div>
 

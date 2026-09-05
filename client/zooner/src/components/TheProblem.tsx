@@ -16,31 +16,28 @@ export const TheProblem: React.FC = () => {
   ];
 
   return (
-    <section className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#06070F] text-white border-t border-slate-800/60 overflow-hidden">
-      <div className="orb-2 absolute top-1/2 right-0 w-[500px] h-[500px] bg-red-950/5 blur-[180px] pointer-events-none rounded-full" />
-      <div className="orb-3 absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-950/8 blur-[160px] pointer-events-none rounded-full" />
-
+    <section className="relative py-24 sm:py-32 px-6 sm:px-8 bg-[#07080B] text-white border-t border-white/10">
       <div className="max-w-6xl mx-auto relative z-10">
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="space-y-4 max-w-2xl mb-16 sm:mb-20 text-left"
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="space-y-3 max-w-xl mb-14 sm:mb-16 text-left"
         >
-          <span className="text-xs font-mono uppercase tracking-widest text-indigo-400 font-bold block">
-            01 / The Friction
+          <span className="text-xs font-mono uppercase tracking-widest text-slate-500 font-bold block">
+            The Difference
           </span>
           <h2
             className="font-['Outfit'] font-black tracking-tight text-white leading-[0.98]"
-            style={{ fontSize: 'clamp(2.4rem, 5.5vw, 4.2rem)' }}
+            style={{ fontSize: 'clamp(2.4rem, 5vw, 3.8rem)' }}
           >
             Why wait 4 days for a box <br />
             that's already down the street?
           </h2>
           <p className="text-slate-400 text-base sm:text-lg leading-relaxed pt-1">
-            Online retail taught us to treat delays, wrong sizes, and return hassles as inevitable. Yet authorized brand stores near you already have the exact stock waiting on physical shelves.
+            Online shopping taught us to accept shipping delays and size guesses. Local stores already have the exact inventory on physical shelves.
           </p>
         </motion.div>
 
