@@ -61,7 +61,7 @@ export function AppContent() {
       } else if (hash.includes('app') || hash.includes('customer')) {
         setCurrentRoute('customer');
       } else {
-        setCurrentRoute('marketing');
+        setCurrentRoute(Capacitor.isNativePlatform() ? 'customer' : 'marketing');
       }
     };
     window.addEventListener('hashchange', handleHashChange);

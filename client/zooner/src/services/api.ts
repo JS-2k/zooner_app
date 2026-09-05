@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import { Capacitor } from '@capacitor/core';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || (Capacitor.isNativePlatform() ? 'http://10.0.2.2:5000/api' : 'http://localhost:5000/api');
 
 export interface ApiResponse<T> {
   success: boolean;
