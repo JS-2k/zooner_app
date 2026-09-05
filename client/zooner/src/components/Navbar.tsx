@@ -31,8 +31,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled 
-          ? 'bg-[#07080B]/90 backdrop-blur-xl border-b border-white/10 shadow-xl shadow-black/50' 
-          : 'bg-[#07080B]/60 backdrop-blur-md border-b border-white/5'
+          ? 'bg-white/85 backdrop-blur-xl border-b border-slate-200/80 shadow-lg shadow-slate-900/5' 
+          : 'bg-white/55 backdrop-blur-md border-b border-transparent'
       }`}
     >
       <div className="max-w-6xl mx-auto px-6 sm:px-8">
@@ -41,8 +41,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Left: Brand Logo & Location */}
           <div className="flex items-center gap-6">
             <a href="#" className="flex items-center gap-2 group">
-              <span className="text-xl sm:text-2xl font-black tracking-tight text-white font-['Outfit']">
-                zooner<span className="text-slate-500">.</span>
+              <span className="text-xl sm:text-2xl font-black tracking-tight text-[#0b1020] font-['Outfit']">
+                zooner<span className="text-[#7257ff]">.</span>
               </span>
             </a>
 
@@ -51,7 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={onOpenLocationModal}
-              className="hidden sm:flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3.5 py-1.5 transition-colors cursor-pointer"
+              className="hidden sm:flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-950 border border-slate-200 hover:border-slate-300 rounded-full px-3.5 py-1.5 transition-colors cursor-pointer"
             >
               <MapPin className="h-3 w-3 text-emerald-400" />
               <span className="font-medium">{currentLocation.name || 'RS Puram, Coimbatore'}</span>
@@ -61,18 +61,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right: Desktop Navigation Links & Actions */}
           <div className="hidden md:flex items-center gap-8">
             <nav className="flex items-center gap-7 text-sm tracking-wide text-slate-300 font-medium">
-              <a 
-                href="#how-it-works"
-                className="hover:text-white transition-colors"
-              >
-                How It Works
-              </a>
-              <a 
-                href="#stores" 
-                className="hover:text-white transition-colors"
-              >
-                Stores
-              </a>
+              <a href="#how-it-works" className="hover:text-slate-950 transition-colors">How it works</a>
+              <a href="#stores" className="hover:text-slate-950 transition-colors">Nearby stores</a>
             </nav>
 
             <div className="flex items-center gap-3">
@@ -80,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
                 onClick={onLaunchCustomerApp}
-                className="text-xs font-bold text-slate-950 bg-white hover:bg-slate-100 px-5 py-2 rounded-full transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-white/10"
+                className="text-sm font-bold text-white bg-gradient-to-r from-[#4968f5] to-[#7944ed] hover:brightness-105 px-5 py-2.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-[#7257ff]/20"
               >
                 <Download className="h-3.5 w-3.5" />
                 <span>Download App</span>
@@ -92,7 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex md:hidden items-center gap-3">
             <button
               onClick={onOpenLocationModal}
-              className="flex items-center gap-1 text-xs text-slate-200 bg-slate-800/80 border border-slate-700 rounded-full px-3 py-1 font-medium"
+              className="flex items-center gap-1 text-xs text-slate-700 bg-white/80 border border-slate-200 rounded-full px-3 py-1 font-medium"
             >
               <MapPin className="h-3 w-3 text-emerald-400" />
               <span className="truncate max-w-[100px]">{currentLocation.name.split(',')[0]}</span>
@@ -100,7 +90,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-slate-200 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              className="p-2 text-slate-700 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors"
               aria-label="Toggle Menu"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -118,20 +108,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="md:hidden bg-[#0D1322]/98 backdrop-blur-2xl border-b border-slate-800 px-6 py-6 space-y-4 overflow-hidden"
+            className="md:hidden bg-white/98 backdrop-blur-2xl border-b border-slate-200 px-6 py-6 space-y-4 overflow-hidden"
           >
-            <nav className="flex flex-col space-y-3 text-sm font-medium text-slate-200">
+            <nav className="flex flex-col space-y-3 text-sm font-medium text-slate-700">
               <a 
                 href="#how-it-works"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-2 border-b border-slate-800"
+                className="py-2 border-b border-slate-200"
               >
                 How It Works
               </a>
               <a 
                 href="#stores" 
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-2 border-b border-slate-800"
+                className="py-2 border-b border-slate-200"
               >
                 Stores
               </a>
@@ -143,7 +133,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setMobileMenuOpen(false);
                   onLaunchCustomerApp?.();
                 }}
-                className="w-full text-center py-3 text-xs font-bold text-slate-950 bg-white rounded-xl shadow-md flex items-center justify-center gap-1.5"
+                className="w-full text-center py-3 text-xs font-bold text-white bg-gradient-to-r from-[#4968f5] to-[#7944ed] rounded-xl shadow-md flex items-center justify-center gap-1.5"
               >
                 <Download className="h-3.5 w-3.5" />
                 <span>Download Zooner</span>
