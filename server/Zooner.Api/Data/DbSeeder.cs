@@ -110,22 +110,26 @@ public static class DbSeeder
             // 4. Seed Timed Geo-Targeted Premium Advertisement if none exists
             if (!await context.PremiumAdvertisements.AnyAsync())
             {
-                context.PremiumAdvertisements.Add(new PremiumAdvertisement
+                var sampleShop = await context.Shops.FirstOrDefaultAsync();
+                if (sampleShop != null)
                 {
-                    Id = Guid.NewGuid(),
-                    ShopId = Guid.NewGuid(),
-                    Title = "Exclusive RS Puram Flash Sale: 25% Off In-Store",
-                    Description = "Special timed walk-in offer for Zooner shoppers near RS Puram & Race Course.",
-                    TargetCategory = "running-shoes",
-                    TargetRadiusKm = 10.0,
-                    StartTimeUtc = DateTime.UtcNow.AddMinutes(-30),
-                    EndTimeUtc = DateTime.UtcNow.AddHours(3), // 3-hour timed deal
-                    OfferTag = "PREMIUM 25% OFF",
-                    IsActive = true,
-                    IsPremiumMerchantOnly = true
-                });
-                await context.SaveChangesAsync();
-                logger.LogInformation("Seeded initial targeted timed premium advertisement.");
+                    context.PremiumAdvertisements.Add(new PremiumAdvertisement
+                    {
+                        Id = Guid.NewGuid(),
+                        ShopId = sampleShop.Id,
+                        Title = "Exclusive RS Puram Flash Sale: 25% Off In-Store",
+                        Description = "Special timed walk-in offer for Zooner shoppers near RS Puram & Race Course.",
+                        TargetCategory = "running-shoes",
+                        TargetRadiusKm = 10.0,
+                        StartTimeUtc = DateTime.UtcNow.AddMinutes(-30),
+                        EndTimeUtc = DateTime.UtcNow.AddHours(3), // 3-hour timed deal
+                        OfferTag = "PREMIUM 25% OFF",
+                        IsActive = true,
+                        IsPremiumMerchantOnly = true
+                    });
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Seeded initial targeted timed premium advertisement.");
+                }
             }
         }
         catch (Exception ex)

@@ -13,7 +13,7 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   currentLocation,
   onOpenLocationModal,
-  onNavigateToVendor: _onNavigateToVendor,
+  onNavigateToVendor,
   onLaunchCustomerApp,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -59,10 +59,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Right: Desktop Navigation Links & Actions */}
-          <div className="hidden md:flex items-center gap-8">
-            <nav className="flex items-center gap-7 text-sm tracking-wide text-slate-300 font-medium">
+          <div className="hidden md:flex items-center gap-6">
+            <nav className="flex items-center gap-6 text-sm tracking-wide text-slate-700 font-semibold">
               <a href="#how-it-works" className="hover:text-slate-950 transition-colors">How it works</a>
-              <a href="#stores" className="hover:text-slate-950 transition-colors">Nearby stores</a>
+              <button 
+                onClick={onNavigateToVendor} 
+                className="hover:text-slate-950 transition-colors cursor-pointer"
+              >
+                For Retailers
+              </button>
             </nav>
 
             <div className="flex items-center gap-3">
@@ -70,10 +75,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
                 onClick={onLaunchCustomerApp}
-                className="text-sm font-bold text-white bg-gradient-to-r from-[#4968f5] to-[#7944ed] hover:brightness-105 px-5 py-2.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-[#7257ff]/20"
+                className="text-sm font-bold text-white bg-gradient-to-r from-[#4968f5] to-[#7944ed] hover:brightness-105 px-5 py-2.5 rounded-full transition-all cursor-pointer flex items-center gap-2 shadow-md shadow-[#7257ff]/20"
               >
-                <Download className="h-3.5 w-3.5" />
-                <span>Download App</span>
+                <Download className="h-4 w-4" />
+                <span>Open Live App</span>
               </motion.button>
             </div>
           </div>
@@ -118,13 +123,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 How It Works
               </a>
-              <a 
-                href="#stores" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="py-2 border-b border-slate-200"
+              <button 
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onNavigateToVendor();
+                }}
+                className="py-2 border-b border-slate-200 text-left font-medium"
               >
-                Stores
-              </a>
+                For Retailers
+              </button>
             </nav>
 
             <div className="pt-2">
@@ -136,7 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="w-full text-center py-3 text-xs font-bold text-white bg-gradient-to-r from-[#4968f5] to-[#7944ed] rounded-xl shadow-md flex items-center justify-center gap-1.5"
               >
                 <Download className="h-3.5 w-3.5" />
-                <span>Download Zooner</span>
+                <span>Open Live Customer App</span>
               </button>
             </div>
           </motion.div>
