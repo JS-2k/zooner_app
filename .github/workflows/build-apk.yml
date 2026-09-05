@@ -78,6 +78,25 @@ jobs:
         if: failure()
         run: tail -n 150 client/zooner/android/gradle-build.log
 
+      - name: Post Failure Log to Commit
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            const log = fs.readFileSync('client/zooner/android/gradle-build.log', 'utf8').slice(-3000);
+            fetch('https://api.github.com/repos/${{ github.repository }}/commits/${{ github.sha }}/comments', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'token ' + process.env.GH_TOKEN,
+                'Content-Type': 'application/json',
+                'User-Agent': 'GitHub-Actions'
+              },
+              body: JSON.stringify({ body: '### Gradle Failure Log\n\`\`\`\n' + log + '\n\`\`\`' })
+            }).then(r => console.log('Posted log comment status:', r.status));
+          "
+
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
