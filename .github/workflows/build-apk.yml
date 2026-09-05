@@ -11,6 +11,8 @@ jobs:
   build-apk:
     name: Build Native Android APK
     runs-on: ubuntu-latest
+    env:
+      CI: true
 
     steps:
       - name: Checkout repository
@@ -42,7 +44,11 @@ jobs:
 
       - name: Copy Web Assets to Android
         working-directory: client/zooner
-        run: npx cap copy android
+        run: |
+          mkdir -p android/app/src/main/assets/public
+          cp -r dist/* android/app/src/main/assets/public/
+          echo '{"appId":"com.zooner.app","appName":"Zooner","webDir":"dist"}' > android/app/src/main/assets/capacitor.config.json
+          ./node_modules/.bin/cap copy android || true
 
       - name: Grant execute permission for gradlew
         run: chmod +x client/zooner/android/gradlew
