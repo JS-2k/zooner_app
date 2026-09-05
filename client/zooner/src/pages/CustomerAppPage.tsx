@@ -20,7 +20,7 @@ import {
   Store as StoreIcon
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
-import { fetchShops, fetchCategories, sendLiveRequest } from '../services/api';
+import { fetchShops, fetchCategories, sendLiveRequest, searchProducts, reserveInventoryHold } from '../services/api';
 import { HoldPassSheet, type HoldPass } from '../components/HoldPassSheet';
 import { DirectChatDrawer } from '../components/DirectChatDrawer';
 import { MobileWelcomeModal } from '../components/MobileWelcomeModal';
@@ -161,6 +161,61 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     }, 300);
     return () => clearTimeout(handler);
   }, [searchQuery]);
+
+  // Global Canonical Product Catalog State
+  const [canonicalProducts, setCanonicalProducts] = useState<any[]>([]);
+  const [isSearchingCanonical, setIsSearchingCanonical] = useState<boolean>(false);
+  const [selectedCanonicalProduct, setSelectedCanonicalProduct] = useState<any | null>(null);
+
+  // Fetch Global Product Catalog results
+  const refreshCanonicalSearch = async () => {
+    setIsSearchingCanonical(true);
+    try {
+      const results = await searchProducts(
+        debouncedQuery,
+        selectedCategory,
+        currentLocation.lat,
+        currentLocation.lng
+      );
+      setCanonicalProducts(results);
+    } catch (err) {
+      console.error('Error fetching global catalog:', err);
+    } finally {
+      setIsSearchingCanonical(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshCanonicalSearch();
+  }, [debouncedQuery, selectedCategory, currentLocation]);
+
+  // Hold reservation for a specific store inventory item
+  const handleHoldStoreInventory = async (
+    storeInventoryId: string,
+    productName: string,
+    storeName: string,
+    price: number,
+    storeAddress?: string,
+    storePhone?: string
+  ) => {
+    // 1. Call backend API to reserve hold (decrements AvailableQuantity)
+    // Find carrying store from canonical search results to get storeId
+    const carryingStore = selectedCanonicalProduct?.carryingStores?.find((s: any) => s.storeInventoryId.toString() === storeInventoryId.toString());
+    const storeId = carryingStore ? carryingStore.storeId.toString() : '1';
+
+    await reserveInventoryHold(storeId, storeInventoryId.toString(), 1);
+    
+    // 2. Generate local pass ticket sheet
+    handleHoldItem(productName, storeName, price, storeAddress, storePhone);
+
+    // 3. Refresh search data
+    refreshCanonicalSearch();
+
+    // 4. Close canonical product detail modal if open
+    if (selectedCanonicalProduct) {
+      setSelectedCanonicalProduct(null);
+    }
+  };
 
   // Selected Store / Product Detail State
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
@@ -451,7 +506,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             TAB 1: DISCOVER (Search, Categories, Shelf Feed & Stores)
            ======================================================== */}
         {activeTab === 'discover' && (
-          <div className="space-y-8 text-left">
+          <div className="space-y-6 text-left">
             
             {/* Search Bar with 300ms Debounce */}
             <div className="space-y-3">
@@ -461,9 +516,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search verified in-store shelf items (e.g. Nike Air Max, Titan, Philips)..."
+                  placeholder="Search global product catalog (e.g. sony xm5, iphone 15, air max)..."
                   className="w-full bg-transparent text-white placeholder-slate-500 text-xs sm:text-sm font-normal focus:outline-none"
                 />
+                {isSearchingCanonical && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse mr-2 shrink-0" title="Searching Catalog..." />
+                )}
                 {searchQuery && (
                   <button 
                     onClick={() => setSearchQuery('')}
@@ -575,113 +633,202 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </div>
             )}
 
-            {/* Verified On-Shelf Items (Visual Cards Grid) */}
-            {filteredProducts.length > 0 && (
+            {/* Verified Global Products Catalog & In-Store Shelf Items */}
+            {(canonicalProducts.length > 0 || filteredProducts.length > 0) && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                     <span className="text-xs font-mono uppercase tracking-widest text-slate-300 font-bold">
-                      Verified In-Store Shelf Items ({filteredProducts.length})
+                      Global Product Discovery ({canonicalProducts.length > 0 ? canonicalProducts.length : filteredProducts.length} Products)
                     </span>
                   </div>
                   <span className="text-[11px] font-mono text-slate-500">
-                    Within {radiusFilter} · 1-Tap Counter Hold
+                    Within {radiusFilter} · Store Comparison & 30-Min Hold
                   </span>
                 </div>
 
                 {/* 2-Column / 3-Column Visual Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                  {filteredProducts.map(product => (
-                    <div
-                      key={product.id}
-                      onClick={() => setSelectedProduct(product)}
-                      className="group border border-white/10 hover:border-emerald-500/40 bg-[#0B0C11] hover:bg-[#0E1017] rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between cursor-pointer relative"
-                    >
-                      {/* Top Badges over Image */}
-                      <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
-                        <img 
-                          src={product.imageUrl} 
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-                        
-                        {/* Status Badges */}
-                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-                          <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-emerald-400 font-semibold flex items-center gap-1.5">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                            {product.stockCount} on counter
-                          </span>
+                  {canonicalProducts.length > 0 ? (
+                    canonicalProducts.map(cp => {
+                      const carryingCount = cp.carryingStores ? cp.carryingStores.length : 0;
+                      const lowestPrice = cp.carryingStores && cp.carryingStores.length > 0
+                        ? Math.min(...cp.carryingStores.map((s: any) => s.price))
+                        : 0;
+                      const nearestStore = cp.carryingStores && cp.carryingStores.length > 0 ? cp.carryingStores[0] : null;
+                      const distanceLabel = nearestStore
+                        ? (nearestStore.distanceKm < 1 ? `${(nearestStore.distanceKm * 1000).toFixed(0)}m` : `${nearestStore.distanceKm.toFixed(1)} km`)
+                        : 'Nearby';
 
-                          <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-slate-300 font-semibold flex items-center gap-1">
-                            <MapPin className="h-2.5 w-2.5 text-emerald-400" />
-                            {product.distance}
-                          </span>
-                        </div>
+                      return (
+                        <div
+                          key={cp.id}
+                          onClick={() => setSelectedCanonicalProduct(cp)}
+                          className="group border border-white/10 hover:border-emerald-500/40 bg-[#0B0C11] hover:bg-[#0E1017] rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between cursor-pointer relative"
+                        >
+                          {/* Top Badges over Image */}
+                          <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
+                            <img 
+                              src={cp.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80'} 
+                              alt={cp.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+                            
+                            {/* Status Badges */}
+                            <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+                              <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-emerald-400 font-semibold flex items-center gap-1.5">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                {carryingCount} {carryingCount === 1 ? 'Store' : 'Stores'} Carrying
+                              </span>
 
-                        {/* Store Overlay Pill */}
-                        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                          <span className="text-xs font-semibold text-white drop-shadow-md truncate">
-                            {product.storeName}
-                          </span>
-                          <span className="text-[10px] text-slate-300 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded border border-white/10">
-                            {product.storeArea}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Card Content Body */}
-                      <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                        <div className="space-y-1">
-                          <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
-                            {product.name}
-                          </h4>
-                          <p className="text-xs text-slate-400 line-clamp-1">
-                            Category: {product.category}
-                          </p>
-                        </div>
-
-                        {/* Price & Action Row */}
-                        <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
-                          <div className="font-mono">
-                            <div className="text-base font-extrabold text-white">
-                              ₹{product.price.toLocaleString('en-IN')}
+                              <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-slate-300 font-semibold flex items-center gap-1">
+                                <MapPin className="h-2.5 w-2.5 text-emerald-400" />
+                                {distanceLabel}
+                              </span>
                             </div>
-                            {product.originalPrice && (
-                              <div className="text-[10px] text-slate-500 line-through">
-                                ₹{product.originalPrice.toLocaleString('en-IN')}
+
+                            {/* Store Overlay Pill */}
+                            {nearestStore && (
+                              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                                <span className="text-xs font-semibold text-white drop-shadow-md truncate">
+                                  Nearest: {nearestStore.storeName}
+                                </span>
+                                <span className="text-[10px] text-slate-300 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded border border-white/10">
+                                  {nearestStore.availableQuantity} available
+                                </span>
                               </div>
                             )}
                           </div>
 
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleHoldItem(product.name, product.storeName, product.price);
-                              }}
-                              className="px-3.5 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs transition-all shadow-md shadow-emerald-400/20 active:scale-95 cursor-pointer"
-                            >
-                              Hold 30m
-                            </button>
+                          {/* Card Content Body */}
+                          <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                            <div className="space-y-1">
+                              <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
+                                {cp.name}
+                              </h4>
+                              <p className="text-xs text-slate-400 line-clamp-1">
+                                {cp.brandName ? `${cp.brandName} · ` : ''}{cp.categoryName || 'General'}
+                              </p>
+                            </div>
 
-                            <a
-                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${product.storeName}, ${product.storeArea}, Coimbatore`)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-2 rounded-full border border-white/15 hover:border-white/40 text-slate-300 hover:text-white transition-colors shrink-0 cursor-pointer"
-                              title="View Map Navigation"
-                            >
-                              <Navigation className="h-3.5 w-3.5" />
-                            </a>
+                            {/* Price & Action Row */}
+                            <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
+                              <div className="font-mono">
+                                <div className="text-[10px] text-slate-400 uppercase tracking-wider">In Stock From</div>
+                                <div className="text-base font-extrabold text-white">
+                                  ₹{lowestPrice.toLocaleString('en-IN')}
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedCanonicalProduct(cp);
+                                }}
+                                className="px-3.5 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs transition-all shadow-md shadow-emerald-400/20 active:scale-95 cursor-pointer"
+                              >
+                                View Stores ({carryingCount})
+                              </button>
+                            </div>
+                          </div>
+
+                        </div>
+                      );
+                    })
+                  ) : (
+                    filteredProducts.map(product => (
+                      <div
+                        key={product.id}
+                        onClick={() => setSelectedProduct(product)}
+                        className="group border border-white/10 hover:border-emerald-500/40 bg-[#0B0C11] hover:bg-[#0E1017] rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between cursor-pointer relative"
+                      >
+                        {/* Top Badges over Image */}
+                        <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
+                          <img 
+                            src={product.imageUrl} 
+                            alt={product.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+                          
+                          {/* Status Badges */}
+                          <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+                            <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-emerald-400 font-semibold flex items-center gap-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              {product.stockCount} on counter
+                            </span>
+
+                            <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-slate-300 font-semibold flex items-center gap-1">
+                              <MapPin className="h-2.5 w-2.5 text-emerald-400" />
+                              {product.distance}
+                            </span>
+                          </div>
+
+                          {/* Store Overlay Pill */}
+                          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-white drop-shadow-md truncate">
+                              {product.storeName}
+                            </span>
+                            <span className="text-[10px] text-slate-300 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded border border-white/10">
+                              {product.storeArea}
+                            </span>
                           </div>
                         </div>
-                      </div>
 
-                    </div>
-                  ))}
+                        {/* Card Content Body */}
+                        <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
+                              {product.name}
+                            </h4>
+                            <p className="text-xs text-slate-400 line-clamp-1">
+                              Category: {product.category}
+                            </p>
+                          </div>
+
+                          {/* Price & Action Row */}
+                          <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
+                            <div className="font-mono">
+                              <div className="text-base font-extrabold text-white">
+                                ₹{product.price.toLocaleString('en-IN')}
+                              </div>
+                              {product.originalPrice && (
+                                <div className="text-[10px] text-slate-500 line-through">
+                                  ₹{product.originalPrice.toLocaleString('en-IN')}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleHoldItem(product.name, product.storeName, product.price);
+                                }}
+                                className="px-3.5 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs transition-all shadow-md shadow-emerald-400/20 active:scale-95 cursor-pointer"
+                              >
+                                Hold 30m
+                              </button>
+
+                              <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${product.storeName}, ${product.storeArea}, Coimbatore`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="p-2 rounded-full border border-white/15 hover:border-white/40 text-slate-300 hover:text-white transition-colors shrink-0 cursor-pointer"
+                                title="View Map Navigation"
+                              >
+                                <Navigation className="h-3.5 w-3.5" />
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -753,17 +900,21 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             TAB 2: LIVE ASK (Direct Merchant Stock Broadcast)
            ======================================================== */}
         {activeTab === 'requests' && (
-          <div className="space-y-8 text-left max-w-2xl mx-auto">
-            
-            <div className="space-y-2 border-b border-white/10 pb-4">
-              <span className="text-xs font-mono uppercase tracking-widest text-slate-500 font-bold block">
+          <div className="space-y-6 text-left max-w-2xl mx-auto">
+
+            {/* Hero Banner */}
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-950/80 via-[#0B0C11] to-[#07080B] border border-emerald-500/20 p-6">
+              <div className="absolute top-3 right-4 opacity-10">
+                <Radio className="h-20 w-20 text-emerald-400" />
+              </div>
+              <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-500 font-bold block mb-2">
                 Direct Merchant Broadcast
               </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-white font-['Outfit']">
-                Ask all local stores in 1 click.
+              <h2 className="text-2xl font-black text-white font-['Outfit'] leading-tight">
+                Ask all local stores<br />in 1 tap.
               </h2>
-              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Can't find your exact size, variant, or model on the shelf? Broadcast directly to verified shopkeepers in your area.
+              <p className="text-xs text-slate-400 leading-relaxed mt-2">
+                Can't find your exact size or variant? Broadcast to verified shopkeepers nearby.
               </p>
             </div>
 
@@ -902,18 +1053,20 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             TAB 3: MY HOLDS (The 30-Minute Counter Pass & Timer)
            ======================================================== */}
         {activeTab === 'holds' && (
-          <div className="space-y-8 text-left max-w-2xl mx-auto">
-            
-            <div className="space-y-2 border-b border-white/10 pb-4">
-              <span className="text-xs font-mono uppercase tracking-widest text-slate-500 font-bold block">
-                Counter Holds
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-white font-['Outfit']">
-                Active 30-Minute Passes
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Your items reserved on physical shelves. Show the verification code at the store counter.
-              </p>
+          <div className="space-y-6 text-left max-w-2xl mx-auto">
+
+            {/* Header with live count */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black text-white font-['Outfit']">My Holds</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Show pass code at store counter</p>
+              </div>
+              {activeHolds.length > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30">
+                  <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-xs font-bold text-amber-400">{activeHolds.length} Active</span>
+                </div>
+              )}
             </div>
 
             {/* Active Holds List */}
@@ -941,85 +1094,82 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   const timeFormatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
                   return (
-                    <div
-                      key={hold.id}
-                      className="border border-white/10 rounded-2xl p-6 bg-[#0B0C11] space-y-5"
-                    >
-                      {/* Top status line */}
-                      <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                        <div>
-                          <span className="text-xs font-mono text-slate-500 uppercase tracking-wider block">
-                            Pass Code
-                          </span>
-                          <span className="text-xl sm:text-2xl font-mono font-black text-white">
-                            #{hold.passCode}
-                          </span>
-                        </div>
+                    <div key={hold.id} className="rounded-2xl overflow-hidden bg-[#0B0C11] border border-white/10">
+                      {/* Status strip */}
+                      <div className={`h-1 ${
+                        isHoldActive ? 'bg-gradient-to-r from-amber-400 to-emerald-400' : 'bg-white/10'
+                      }`} />
 
-                        <div className="text-right">
-                          <span className="text-xs font-mono text-slate-500 uppercase tracking-wider block">
-                            Status
-                          </span>
-                          <span className={`text-xs font-mono font-bold uppercase ${isHoldActive ? 'text-emerald-400' : 'text-slate-500'}`}>
-                            {isHoldActive ? `${timeFormatted} remaining` : hold.status}
+                      <div className="p-5 space-y-4">
+                        {/* Pass code + timer badge */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-mono font-black text-white">#{hold.passCode}</span>
+                            {isHoldActive && <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />}
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider ${
+                            isHoldActive
+                              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400'
+                              : 'bg-white/5 border border-white/10 text-slate-500'
+                          }`}>
+                            {isHoldActive ? `⏱ ${timeFormatted}` : hold.status}
                           </span>
                         </div>
-                      </div>
 
-                      {/* Item & Store details */}
-                      <div className="space-y-1">
-                        <h4 className="text-base font-bold text-white">{hold.productName}</h4>
-                        <div className="text-xs text-slate-400">{hold.storeName}</div>
-                        <div className="text-[11px] text-slate-500 font-mono">{hold.storeAddress}</div>
-                      </div>
+                        {/* Item card */}
+                        <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                          <div className="h-9 w-9 rounded-xl bg-amber-500/15 border border-amber-500/20 flex items-center justify-center shrink-0">
+                            <Clock className="h-4 w-4 text-amber-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-bold text-white truncate">{hold.productName}</h4>
+                            <div className="text-xs text-slate-400 truncate">{hold.storeName}</div>
+                            <div className="text-[11px] text-slate-500 font-mono truncate">{hold.storeAddress}</div>
+                          </div>
+                        </div>
 
-                      <div className="flex items-baseline justify-between pt-1 border-t border-white/5 text-xs font-mono">
-                        <span className="text-slate-500">Counter Price</span>
-                        <span className="text-white font-bold text-sm">₹{hold.price.toLocaleString('en-IN')}</span>
-                      </div>
+                        <div className="flex items-baseline justify-between text-xs font-mono">
+                          <span className="text-slate-500">Counter Price</span>
+                          <span className="text-white font-bold text-base">₹{hold.price.toLocaleString('en-IN')}</span>
+                        </div>
 
-                      {/* Action buttons */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2">
-                        <button
-                          onClick={() => setSelectedPassForSheet(hold)}
-                          className="py-2.5 px-3 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer text-center"
-                        >
-                          View Pass Ticket
-                        </button>
-
-                        <button
-                          onClick={() => setChatPass(hold)}
-                          className="py-2.5 px-3 rounded-full border border-white/20 hover:border-white/40 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          <span>Chat with Store</span>
-                        </button>
-
-                        <a
-                          href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${hold.storeName}, ${hold.storeAddress}`)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="col-span-2 sm:col-span-1 py-2.5 px-3 rounded-full border border-white/20 hover:border-white/40 text-slate-300 hover:text-white font-mono text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                        >
-                          <Navigation className="h-3.5 w-3.5" />
-                          <span>Directions</span>
-                        </a>
-                      </div>
-
-                      {isHoldActive && (
-                        <div className="pt-2 text-right">
+                        {/* Actions */}
+                        <div className="grid grid-cols-2 gap-2">
                           <button
-                            onClick={() => {
-                              if (confirm('Cancel reservation and release item?')) {
-                                handleCancelHold(hold.id);
-                              }
-                            }}
-                            className="text-[11px] font-mono text-slate-600 hover:text-red-400 transition-colors cursor-pointer"
+                            onClick={() => setSelectedPassForSheet(hold)}
+                            className="py-2.5 rounded-xl bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
                           >
-                            Release Hold
+                            View Pass
                           </button>
+                          <button
+                            onClick={() => setChatPass(hold)}
+                            className="py-2.5 rounded-xl border border-white/15 hover:border-white/30 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            Chat
+                          </button>
+                          <a
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${hold.storeName}, ${hold.storeAddress}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="col-span-2 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white font-mono text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <Navigation className="h-3.5 w-3.5" />
+                            Get Directions
+                          </a>
                         </div>
-                      )}
+
+                        {isHoldActive && (
+                          <div className="text-right">
+                            <button
+                              onClick={() => { if (confirm('Cancel reservation and release item?')) handleCancelHold(hold.id); }}
+                              className="text-[11px] font-mono text-slate-600 hover:text-red-400 transition-colors cursor-pointer"
+                            >
+                              Release Hold
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })
@@ -1033,29 +1183,28 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             TAB 4: ACCOUNT & SAVED (Profile, Bookmarks, Merchant Link)
            ======================================================== */}
         {activeTab === 'account' && (
-          <div className="space-y-8 text-left max-w-2xl mx-auto">
-            
-            <div className="space-y-2 border-b border-white/10 pb-4">
-              <span className="text-xs font-mono uppercase tracking-widest text-slate-500 font-bold block">
-                Preferences
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-white font-['Outfit']">
-                Account &amp; Saved Stores
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Manage your counter pickup identity, bookmarked stores, and retail access.
-              </p>
+          <div className="space-y-6 text-left max-w-2xl mx-auto">
+
+            {/* Profile Hero Card */}
+            <div className="flex items-center gap-4 p-5 rounded-2xl bg-gradient-to-r from-violet-950/60 to-[#0B0C11] border border-violet-500/20">
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-violet-500/20">
+                <User className="h-7 w-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-base font-bold text-white truncate">{customerProfile.name || 'Guest User'}</div>
+                <div className="text-xs text-slate-400 font-mono truncate">{customerProfile.phone}</div>
+                <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/25">
+                  <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
+                  <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wider">Shopper</span>
+                </div>
+              </div>
             </div>
 
             {/* Counter Reservation Identity Form */}
-            <form onSubmit={handleSaveProfile} className="border border-white/10 rounded-2xl p-6 bg-[#0B0C11] space-y-4">
-              <div>
-                <span className="text-xs font-mono uppercase tracking-wider text-white font-bold block">
-                  Store Counter Identity
-                </span>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Used by store clerks to verify your reservation when you walk in.
-                </p>
+            <form onSubmit={handleSaveProfile} className="border border-white/10 rounded-2xl p-5 bg-[#0B0C11] space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono uppercase tracking-wider text-white font-bold">Counter Identity</span>
+                <span className="text-[10px] text-slate-500 font-mono">· shown at store pickup</span>
               </div>
 
               <div className="space-y-3">
@@ -1264,6 +1413,148 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
         )}
       </AnimatePresence>
 
+      {/* ── CANONICAL GLOBAL PRODUCT DETAIL SHEET (Store Comparison & Inventory Hold) ── */}
+      <AnimatePresence>
+        {selectedCanonicalProduct && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <motion.div
+              initial={{ opacity: 0, y: '100%' }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: '100%' }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full sm:max-w-lg bg-[#07080B] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto text-left selection:bg-white selection:text-black"
+            >
+              <div className="sticky top-0 bg-[#07080B]/95 backdrop-blur-md px-6 py-4 border-b border-white/10 flex items-center justify-between z-10">
+                <span className="text-[11px] font-mono uppercase tracking-widest text-emerald-400 font-bold">
+                  Canonical Product · Carrying Stores ({selectedCanonicalProduct.carryingStores?.length || 0})
+                </span>
+                <button
+                  onClick={() => setSelectedCanonicalProduct(null)}
+                  className="p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Canonical Header */}
+                <div className="flex items-start gap-4">
+                  <img 
+                    src={selectedCanonicalProduct.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80'} 
+                    alt={selectedCanonicalProduct.name} 
+                    className="h-20 w-20 rounded-2xl object-cover bg-zinc-900 border border-white/10 shrink-0" 
+                  />
+                  <div>
+                    <h3 className="text-lg font-bold text-white font-['Outfit']">{selectedCanonicalProduct.name}</h3>
+                    <div className="text-xs text-slate-400 mt-0.5">
+                      Brand: <strong className="text-white">{selectedCanonicalProduct.brandName}</strong>
+                      {selectedCanonicalProduct.modelNumber ? ` · Model: ${selectedCanonicalProduct.modelNumber}` : ''}
+                    </div>
+                    {selectedCanonicalProduct.categoryName && (
+                      <div className="text-[11px] font-mono text-emerald-400 mt-1">
+                        Category: {selectedCanonicalProduct.categoryName}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {selectedCanonicalProduct.description && (
+                  <p className="text-xs text-slate-400 bg-white/[0.03] p-3 rounded-xl border border-white/5 leading-relaxed">
+                    {selectedCanonicalProduct.description}
+                  </p>
+                )}
+
+                {/* Nearby Stores Carrying This Canonical Product */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span className="text-xs font-mono uppercase tracking-widest text-slate-300 font-bold">
+                      Available Nearby Stores
+                    </span>
+                    <span className="text-[11px] font-mono text-slate-500">
+                      Real-Time Counter Inventory
+                    </span>
+                  </div>
+
+                  {!selectedCanonicalProduct.carryingStores || selectedCanonicalProduct.carryingStores.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-400 bg-zinc-900/60 rounded-xl border border-white/10">
+                      No nearby store currently has active stock for this product.
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-white/10">
+                      {selectedCanonicalProduct.carryingStores.map((st: any) => {
+                        const distText = st.distanceKm < 1 ? `${(st.distanceKm * 1000).toFixed(0)}m` : `${st.distanceKm.toFixed(1)} km`;
+                        const isAvailable = st.availableQuantity > 0 && st.isAvailable;
+
+                        return (
+                          <div key={st.storeInventoryId} className="py-4 space-y-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-white text-sm">{st.storeName}</span>
+                                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 border border-emerald-800 px-1.5 py-0.2 rounded">
+                                    {distText} away
+                                  </span>
+                                </div>
+                                <div className="text-xs text-slate-400 mt-0.5">{st.storeAddress}</div>
+                                {st.shelfLocation && (
+                                  <div className="text-[11px] font-mono text-indigo-300 mt-0.5">
+                                    Shelf: {st.shelfLocation}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="text-right font-mono">
+                                <div className="text-base font-extrabold text-white">
+                                  ₹{st.price.toLocaleString('en-IN')}
+                                </div>
+                                <div className="text-[11px] font-bold text-emerald-400">
+                                  {isAvailable ? `${st.availableQuantity} available` : 'Out of Stock'}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                disabled={!isAvailable}
+                                onClick={() => handleHoldStoreInventory(
+                                  st.storeInventoryId,
+                                  selectedCanonicalProduct.name,
+                                  st.storeName,
+                                  st.price,
+                                  st.storeAddress,
+                                  st.storePhone
+                                )}
+                                className={`flex-1 py-2.5 rounded-full font-bold text-xs transition-all cursor-pointer text-center ${
+                                  isAvailable
+                                    ? 'bg-emerald-400 hover:bg-emerald-300 text-slate-950 shadow-md shadow-emerald-400/20 active:scale-95'
+                                    : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                                }`}
+                              >
+                                {isAvailable ? 'Hold 30 Mins at Counter' : 'Currently Unavailable'}
+                              </button>
+
+                              <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${st.storeName}, ${st.storeAddress}, Coimbatore`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2.5 rounded-full border border-white/20 hover:border-white/40 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
+                                title="Map Navigation"
+                              >
+                                <Navigation className="h-4 w-4" />
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* ── PRODUCT DETAIL SHEET ── */}
       <AnimatePresence>
         {selectedProduct && (
@@ -1366,58 +1657,94 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       />
 
       {/* ── NATIVE MOBILE BOTTOM NAVIGATION (4 Tabs) ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#07080B]/98 backdrop-blur-2xl border-t border-white/10 px-4 sm:px-8 py-2.5 flex items-center justify-around">
-        
-        {/* Tab 1: Discover */}
-        <button
-          onClick={() => setActiveTab('discover')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-mono tracking-wider transition-colors cursor-pointer ${
-            activeTab === 'discover' ? 'text-white font-bold' : 'text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          <Compass className="h-4.5 w-4.5" />
-          <span>Discover</span>
-        </button>
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#07080B]/98 backdrop-blur-2xl border-t border-white/[0.07] safe-area-pb">
+        <div className="flex items-center justify-around px-2 pt-2 pb-3">
 
-        {/* Tab 2: Live Ask */}
-        <button
-          onClick={() => setActiveTab('requests')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-mono tracking-wider transition-colors cursor-pointer relative ${
-            activeTab === 'requests' ? 'text-white font-bold' : 'text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          <Radio className="h-4.5 w-4.5" />
-          <span>Live Ask</span>
-          {liveResponses.length > 0 && (
-            <span className="absolute top-0 right-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          )}
-        </button>
+          {/* Tab 1: Discover */}
+          <button
+            onClick={() => setActiveTab('discover')}
+            className="flex flex-col items-center gap-1.5 min-w-[64px] cursor-pointer group"
+          >
+            <div className={`flex items-center justify-center w-12 h-8 rounded-2xl transition-all duration-200 ${
+              activeTab === 'discover'
+                ? 'bg-indigo-500/20'
+                : 'group-hover:bg-white/5'
+            }`}>
+              <Compass className={`h-5 w-5 transition-colors ${
+                activeTab === 'discover' ? 'text-indigo-400' : 'text-slate-500'
+              }`} />
+            </div>
+            <span className={`text-[10px] font-semibold tracking-wide transition-colors ${
+              activeTab === 'discover' ? 'text-indigo-400' : 'text-slate-500'
+            }`}>Explore</span>
+          </button>
 
-        {/* Tab 3: My Holds */}
-        <button
-          onClick={() => setActiveTab('holds')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-mono tracking-wider transition-colors cursor-pointer relative ${
-            activeTab === 'holds' ? 'text-white font-bold' : 'text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          <Clock className="h-4.5 w-4.5" />
-          <span>My Holds</span>
-          {activeHolds.length > 0 && (
-            <span className="absolute top-0 right-1 h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-          )}
-        </button>
+          {/* Tab 2: Live Ask — center hero tab */}
+          <button
+            onClick={() => setActiveTab('requests')}
+            className="flex flex-col items-center gap-1.5 min-w-[64px] cursor-pointer group relative -mt-5"
+          >
+            <div className={`flex items-center justify-center w-14 h-14 rounded-2xl shadow-lg transition-all duration-200 ${
+              activeTab === 'requests'
+                ? 'bg-emerald-500 shadow-emerald-500/40 scale-105'
+                : 'bg-[#1A1D26] border border-white/10 group-hover:border-white/20'
+            }`}>
+              <Radio className={`h-6 w-6 ${
+                activeTab === 'requests' ? 'text-white' : 'text-slate-400'
+              }`} />
+              {liveResponses.length > 0 && activeTab !== 'requests' && (
+                <span className="absolute top-0 right-2 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-[#07080B]" />
+              )}
+            </div>
+            <span className={`text-[10px] font-semibold tracking-wide transition-colors ${
+              activeTab === 'requests' ? 'text-emerald-400' : 'text-slate-500'
+            }`}>Live Ask</span>
+          </button>
 
-        {/* Tab 4: Account & Saved */}
-        <button
-          onClick={() => setActiveTab('account')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-mono tracking-wider transition-colors cursor-pointer ${
-            activeTab === 'account' ? 'text-white font-bold' : 'text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          <User className="h-4.5 w-4.5" />
-          <span>Account</span>
-        </button>
+          {/* Tab 3: My Holds */}
+          <button
+            onClick={() => setActiveTab('holds')}
+            className="flex flex-col items-center gap-1.5 min-w-[64px] cursor-pointer group relative"
+          >
+            <div className={`flex items-center justify-center w-12 h-8 rounded-2xl transition-all duration-200 relative ${
+              activeTab === 'holds'
+                ? 'bg-amber-500/20'
+                : 'group-hover:bg-white/5'
+            }`}>
+              <Clock className={`h-5 w-5 transition-colors ${
+                activeTab === 'holds' ? 'text-amber-400' : 'text-slate-500'
+              }`} />
+              {activeHolds.length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-amber-400 text-[9px] font-black text-slate-950 flex items-center justify-center">
+                  {activeHolds.length}
+                </span>
+              )}
+            </div>
+            <span className={`text-[10px] font-semibold tracking-wide transition-colors ${
+              activeTab === 'holds' ? 'text-amber-400' : 'text-slate-500'
+            }`}>My Holds</span>
+          </button>
 
+          {/* Tab 4: Account */}
+          <button
+            onClick={() => setActiveTab('account')}
+            className="flex flex-col items-center gap-1.5 min-w-[64px] cursor-pointer group"
+          >
+            <div className={`flex items-center justify-center w-12 h-8 rounded-2xl transition-all duration-200 ${
+              activeTab === 'account'
+                ? 'bg-violet-500/20'
+                : 'group-hover:bg-white/5'
+            }`}>
+              <User className={`h-5 w-5 transition-colors ${
+                activeTab === 'account' ? 'text-violet-400' : 'text-slate-500'
+              }`} />
+            </div>
+            <span className={`text-[10px] font-semibold tracking-wide transition-colors ${
+              activeTab === 'account' ? 'text-violet-400' : 'text-slate-500'
+            }`}>Account</span>
+          </button>
+
+        </div>
       </nav>
 
     </div>

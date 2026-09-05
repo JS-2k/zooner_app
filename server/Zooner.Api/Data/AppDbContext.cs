@@ -13,6 +13,10 @@ public class AppDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<SubCategory> SubCategories => Set<SubCategory>();
+    public DbSet<Brand> Brands => Set<Brand>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+    public DbSet<StoreInventory> StoreInventories => Set<StoreInventory>();
     public DbSet<Shop> Shops => Set<Shop>();
     public DbSet<ShopCategory> ShopCategories => Set<ShopCategory>();
     public DbSet<ShopOperatingHour> ShopOperatingHours => Set<ShopOperatingHour>();
@@ -283,6 +287,68 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(al => al.AdminUserId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Brand
+        modelBuilder.Entity<Brand>(entity =>
+        {
+            entity.HasKey(b => b.Id);
+            entity.HasIndex(b => b.Name);
+            entity.HasIndex(b => b.NormalizedName).IsUnique();
+        });
+
+        // Product
+        modelBuilder.Entity<Product>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+            entity.HasIndex(p => p.Name);
+            entity.HasIndex(p => p.NormalizedName);
+            entity.HasIndex(p => p.GTIN);
+            entity.HasIndex(p => p.ModelNumber);
+            entity.HasIndex(p => new { p.CategoryId, p.IsActive });
+
+            entity.HasOne(p => p.Brand)
+                .WithMany(b => b.Products)
+                .HasForeignKey(p => p.BrandId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(p => p.Category)
+                .WithMany()
+                .HasForeignKey(p => p.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ProductVariant
+        modelBuilder.Entity<ProductVariant>(entity =>
+        {
+            entity.HasKey(pv => pv.Id);
+            entity.HasIndex(pv => pv.ProductId);
+            entity.HasIndex(pv => pv.GTIN);
+            entity.HasIndex(pv => pv.SKU);
+
+            entity.HasOne(pv => pv.Product)
+                .WithMany(p => p.Variants)
+                .HasForeignKey(pv => pv.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // StoreInventory
+        modelBuilder.Entity<StoreInventory>(entity =>
+        {
+            entity.HasKey(si => si.Id);
+            entity.HasIndex(si => new { si.StoreId, si.ProductVariantId }).IsUnique();
+            entity.HasIndex(si => new { si.IsActive, si.Price });
+            entity.HasIndex(si => si.AvailableQuantity);
+
+            entity.HasOne(si => si.Store)
+                .WithMany()
+                .HasForeignKey(si => si.StoreId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(si => si.ProductVariant)
+                .WithMany(pv => pv.Inventories)
+                .HasForeignKey(si => si.ProductVariantId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

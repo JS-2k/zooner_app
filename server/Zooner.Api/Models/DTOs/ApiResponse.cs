@@ -12,6 +12,9 @@ public class ApiResponse<T>
 
     public static ApiResponse<T> Fail(string message, List<string>? errors = null) =>
         new() { Success = false, Message = message, Errors = errors };
+
+    public static ApiResponse<T> SuccessResponse(T data, string message = "Success") => Ok(data, message);
+    public static ApiResponse<T> ErrorResponse(string message, List<string>? errors = null) => Fail(message, errors);
 }
 
 public class ApiResponse
@@ -25,4 +28,7 @@ public class ApiResponse
 
     public static ApiResponse Fail(string message, List<string>? errors = null) =>
         new() { Success = false, Message = message, Errors = errors };
+
+    public static ApiResponse SuccessResponse(string message = "Success") => Ok(message);
+    public static ApiResponse ErrorResponse(string message, List<string>? errors = null) => Fail(message, errors);
 }

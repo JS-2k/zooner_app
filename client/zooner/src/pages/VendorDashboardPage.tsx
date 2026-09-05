@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Store, 
@@ -14,8 +14,21 @@ import {
   Compass, 
   Radio, 
   Check, 
-  Power 
+  Power,
+  Search,
+  AlertTriangle
 } from 'lucide-react';
+import { 
+  searchProducts, 
+  fetchShops, 
+  getStoreInventory, 
+  addStoreInventory, 
+  updateStoreInventory, 
+  deleteStoreInventory, 
+  checkDuplicateProduct, 
+  createGlobalProduct, 
+  fetchCategories 
+} from '../services/api';
 
 interface VendorDashboardPageProps {
   onSwitchToCustomer: () => void;
@@ -23,39 +36,6 @@ interface VendorDashboardPageProps {
 }
 
 type DashboardTab = 'requests' | 'inventory' | 'holds' | 'analytics' | 'settings';
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  stockCount: number;
-  inStock: boolean;
-  badge?: string;
-  imageUrl: string;
-}
-
-interface IncomingRequest {
-  id: string;
-  shopperName: string;
-  product: string;
-  size: string;
-  distance: string;
-  budget: string;
-  timeAgo: string;
-  status: 'pending' | 'accepted' | 'declined';
-  quotedPrice?: number;
-}
-
-interface WalkInHold {
-  id: string;
-  customerName: string;
-  phone: string;
-  product: string;
-  price: number;
-  expiresIn: string;
-  status: 'active' | 'completed' | 'cancelled';
-}
 
 export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   onSwitchToCustomer,
@@ -71,114 +51,50 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const [storePhone, setStorePhone] = useState('+91 98422 12345');
   const [storeHours, setStoreHours] = useState('10:00 AM – 9:30 PM (Mon–Sun)');
 
-  // Inventory State
-  const [inventory, setInventory] = useState<InventoryItem[]>([
-    {
-      id: 'inv-1',
-      name: 'Nike Air Max 270 (UK 9)',
-      category: 'Footwear & Sports',
-      price: 6499,
-      stockCount: 2,
-      inStock: true,
-      badge: 'Trending',
-      imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=150&q=80'
-    },
-    {
-      id: 'inv-2',
-      name: 'Nike Air Zoom Pegasus 40 (UK 9)',
-      category: 'Footwear & Sports',
-      price: 6499,
-      stockCount: 4,
-      inStock: true,
-      badge: 'Bestseller',
-      imageUrl: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&w=150&q=80'
-    },
-    {
-      id: 'inv-3',
-      name: 'Nike Revolution 6 Running (UK 8)',
-      category: 'Footwear & Sports',
-      price: 3695,
-      stockCount: 6,
-      inStock: true,
-      imageUrl: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=150&q=80'
-    },
-    {
-      id: 'inv-4',
-      name: 'Puma Velocity Nitro 2 (UK 9)',
-      category: 'Footwear & Sports',
-      price: 5999,
-      stockCount: 0,
-      inStock: false,
-      badge: 'Out of Stock',
-      imageUrl: 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?auto=format&fit=crop&w=150&q=80'
-    }
-  ]);
+  // Store ID
+  const [currentStoreId, setCurrentStoreId] = useState<string>('1');
+
+  // Modal Visibility State
+  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
 
   // Incoming Live Requests State
-  const [requests, setRequests] = useState<IncomingRequest[]>([
+  const [requests, setRequests] = useState<any[]>([
     {
       id: 'req-101',
       shopperName: 'Vignesh K.',
-      product: 'Nike Air Max 270',
-      size: 'Size UK 9',
+      product: 'Sony WH-1000XM5',
+      size: 'Black',
       distance: '350m away (RS Puram)',
-      budget: 'Under ₹7,000',
+      budget: 'Under ₹27,000',
       timeAgo: '2 mins ago',
       status: 'pending'
     },
     {
       id: 'req-102',
       shopperName: 'Priya R.',
-      product: 'Nike Pegasus 40 Black',
-      size: 'Size UK 6',
+      product: 'Apple iPhone 15',
+      size: '128GB Black',
       distance: '1.1 km away (Race Course)',
-      budget: 'Around ₹6,500',
+      budget: 'Around ₹70,000',
       timeAgo: '8 mins ago',
-      status: 'pending'
-    },
-    {
-      id: 'req-103',
-      shopperName: 'Arun Kumar',
-      product: 'Nike Court Vision Low White',
-      size: 'Size UK 10',
-      distance: '1.4 km away (Gandhipuram)',
-      budget: '₹4,000 – ₹5,500',
-      timeAgo: '15 mins ago',
       status: 'pending'
     }
   ]);
 
   // Active Walk-In Holds State
-  const [holds, setHolds] = useState<WalkInHold[]>([
+  const [holds, setHolds] = useState<any[]>([
     {
       id: 'hld-1',
       customerName: 'Karthik S.',
       phone: '+91 98433 98765',
-      product: 'Nike Air Max 270 (UK 9)',
-      price: 6499,
+      product: 'Sony WH-1000XM5',
+      price: 26990,
       expiresIn: '22 mins remaining',
       status: 'active'
-    },
-    {
-      id: 'hld-2',
-      customerName: 'Ananya M.',
-      phone: '+91 97890 12345',
-      product: 'Nike Pegasus 40 (UK 8)',
-      price: 6499,
-      expiresIn: 'Expired',
-      status: 'completed'
     }
   ]);
 
-  // New Item Modal
-  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemPrice, setNewItemPrice] = useState('');
-  const [newItemStock, setNewItemStock] = useState('3');
-  const [newItemCategory, setNewItemCategory] = useState('Footwear & Sports');
-
-  // Accept / Decline Request
-  const handleAcceptRequest = (id: string, quote = 6499) => {
+  const handleAcceptRequest = (id: string, quote = 26990) => {
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'accepted', quotedPrice: quote } : r));
     const targetReq = requests.find(r => r.id === id);
     if (targetReq) {
@@ -201,29 +117,195 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'declined' } : r));
   };
 
-  // Toggle Stock availability
-  const toggleStockStatus = (id: string) => {
-    setInventory(prev => prev.map(item => 
-      item.id === id ? { ...item, inStock: !item.inStock, stockCount: item.inStock ? 0 : 3 } : item
-    ));
+  // Inventory State
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [inventoryLoading, setInventoryLoading] = useState<boolean>(false);
+
+  // Catalog Search & Add Inventory State
+  const [catalogSearchQuery, setCatalogSearchQuery] = useState('');
+  const [catalogResults, setCatalogResults] = useState<any[]>([]);
+  const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
+
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+  
+  // Store-specific inventory input fields
+  const [itemPrice, setItemPrice] = useState('');
+  const [itemQuantity, setItemQuantity] = useState('2');
+  const [itemShelf, setItemShelf] = useState('');
+
+  // Create New Product Fallback State
+  const [showCreateProductForm, setShowCreateProductForm] = useState(false);
+  const [newProdName, setNewProdName] = useState('');
+  const [newProdBrand, setNewProdBrand] = useState('');
+  const [newProdModel, setNewProdModel] = useState('');
+  const [newProdGtin, setNewProdGtin] = useState('');
+  const [newProdCategory, setNewProdCategory] = useState('Electronics');
+  const [newProdDesc, setNewProdDesc] = useState('');
+  const [newProdImage, setNewProdImage] = useState('');
+  const [duplicateCheckWarning, setDuplicateCheckWarning] = useState<any | null>(null);
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+
+  // Categories list for product creation
+  const [dbCategories, setDbCategories] = useState<any[]>([]);
+
+  // Initial Data Fetching
+  useEffect(() => {
+    async function initVendorData() {
+      setInventoryLoading(true);
+      try {
+        const shops = await fetchShops();
+        const storeId = (shops && shops.length > 0) ? shops[0].id.toString() : '1';
+        setCurrentStoreId(storeId);
+        
+        if (shops && shops.length > 0) {
+          setStoreName(shops[0].name || 'Apex Footwear & Sports');
+          setStoreAddress(shops[0].address || '142 DB Road, RS Puram, Coimbatore');
+        }
+
+        const items = await getStoreInventory(storeId);
+        setInventory(items);
+
+        const cats = await fetchCategories();
+        setDbCategories(cats);
+      } catch (err) {
+        console.error('Failed loading vendor inventory:', err);
+      } finally {
+        setInventoryLoading(false);
+      }
+    }
+    initVendorData();
+  }, []);
+
+  // Debounced Catalog Search
+  useEffect(() => {
+    if (!catalogSearchQuery.trim()) {
+      setCatalogResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearchingCatalog(true);
+      const results = await searchProducts(catalogSearchQuery.trim());
+      setCatalogResults(results);
+      setIsSearchingCatalog(false);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [catalogSearchQuery]);
+
+  // Select a product from catalog search
+  const handleSelectCatalogProduct = (prod: any) => {
+    setSelectedProduct(prod);
+    if (prod.variants && prod.variants.length > 0) {
+      setSelectedVariantId(prod.variants[0].id.toString());
+    }
   };
 
-  const handleCreateItem = (e: React.FormEvent) => {
+  // Add Inventory to Store
+  const handleSaveInventory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newItemName || !newItemPrice) return;
-    const newItem: InventoryItem = {
-      id: `inv-${Date.now()}`,
-      name: newItemName,
-      category: newItemCategory,
-      price: parseFloat(newItemPrice) || 0,
-      stockCount: parseInt(newItemStock) || 1,
-      inStock: true,
-      imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=150&q=80'
-    };
-    setInventory(prev => [newItem, ...prev]);
+    if (!selectedVariantId || !itemPrice || !itemQuantity) {
+      alert('Please fill in price and quantity.');
+      return;
+    }
+
+    const newItem = await addStoreInventory(currentStoreId, {
+      productVariantId: selectedVariantId,
+      price: parseFloat(itemPrice),
+      quantity: parseInt(itemQuantity),
+      shelfLocation: itemShelf || 'Shelf Main'
+    });
+
+    if (newItem) {
+      const refreshed = await getStoreInventory(currentStoreId);
+      setInventory(refreshed);
+      resetModalState();
+    } else {
+      alert('Failed to add store inventory. Please ensure variant ID is valid.');
+    }
+  };
+
+  // Check Duplicate Product before Creation
+  const handleCheckAndCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProdName.trim()) return;
+
+    setIsCheckingDuplicate(true);
+    const check = await checkDuplicateProduct(
+      newProdGtin.trim(),
+      newProdBrand.trim(),
+      newProdModel.trim(),
+      newProdName.trim()
+    );
+    setIsCheckingDuplicate(false);
+
+    const isDup = check && (check.possibleDuplicateFound || check.isDuplicate);
+    const matched = check?.matchedProduct || check?.matchingProduct;
+
+    if (isDup && matched) {
+      setDuplicateCheckWarning({ matchedProduct: matched, reason: check.reason });
+      return; // Stop and let user confirm or pick existing
+    }
+
+    // Proceed to create
+    await executeProductCreation();
+  };
+
+  const executeProductCreation = async () => {
+    const matchedCategory = dbCategories.find(c => c.name.toLowerCase() === newProdCategory.toLowerCase());
+    const categoryId = matchedCategory ? matchedCategory.id.toString() : (dbCategories[0]?.id?.toString() || '1');
+
+    const created = await createGlobalProduct({
+      name: newProdName,
+      brandName: newProdBrand || 'Generic',
+      categoryId: categoryId,
+      modelNumber: newProdModel,
+      gtin: newProdGtin,
+      description: newProdDesc,
+      imageUrl: newProdImage || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80'
+    });
+
+    if (created && created.variants && created.variants.length > 0) {
+      setSelectedProduct(created);
+      setSelectedVariantId(created.variants[0].id.toString());
+      setShowCreateProductForm(false);
+      setDuplicateCheckWarning(null);
+    } else {
+      alert('Could not create global product.');
+    }
+  };
+
+  const resetModalState = () => {
     setIsAddItemOpen(false);
-    setNewItemName('');
-    setNewItemPrice('');
+    setSelectedProduct(null);
+    setSelectedVariantId('');
+    setCatalogSearchQuery('');
+    setCatalogResults([]);
+    setItemPrice('');
+    setItemQuantity('2');
+    setItemShelf('');
+    setShowCreateProductForm(false);
+    setDuplicateCheckWarning(null);
+  };
+
+  // Toggle Inventory Stock via API
+  const handleToggleInventoryStock = async (item: any) => {
+    const newQty = item.quantity > 0 ? 0 : 3;
+    await updateStoreInventory(currentStoreId, item.id.toString(), {
+      price: item.price,
+      quantity: newQty,
+      shelfLocation: item.shelfLocation,
+      isActive: newQty > 0
+    });
+    const refreshed = await getStoreInventory(currentStoreId);
+    setInventory(refreshed);
+  };
+
+  // Delete Inventory Item via API
+  const handleDeleteInventoryItem = async (itemId: string) => {
+    if (!confirm('Are you sure you want to remove this item from your store inventory?')) return;
+    await deleteStoreInventory(currentStoreId, itemId.toString());
+    const refreshed = await getStoreInventory(currentStoreId);
+    setInventory(refreshed);
   };
 
   const pendingRequestsCount = requests.filter(r => r.status === 'pending').length;
@@ -471,52 +553,90 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-white font-['Outfit']">Physical Shelf Inventory</h2>
-                  <p className="text-xs text-slate-400">Manage products visible to shoppers within 15 km</p>
+                  <p className="text-xs text-slate-400">Manage store inventory attached to the global product catalog</p>
                 </div>
                 <button
-                  onClick={() => setIsAddItemOpen(true)}
-                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md"
+                  onClick={() => { resetModalState(); setIsAddItemOpen(true); }}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
-                  <span>Add Shelf Item</span>
+                  <span>Add Shelf Inventory</span>
                 </button>
               </div>
 
               {/* Inventory Table / Grid */}
               <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-xl">
-                <div className="divide-y divide-slate-800">
-                  {inventory.map(item => (
-                    <div key={item.id} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-800/40 transition-colors">
-                      <div className="flex items-center gap-3.5">
-                        <img src={item.imageUrl} alt={item.name} className="h-12 w-12 rounded-xl object-cover bg-slate-800" />
-                        <div>
-                          <div className="font-bold text-white text-sm">{item.name}</div>
-                          <div className="text-xs text-slate-400">{item.category}</div>
-                          <div className="text-xs font-black text-indigo-400 font-['Outfit'] mt-0.5">₹{item.price.toLocaleString('en-IN')}</div>
-                        </div>
-                      </div>
+                {inventoryLoading ? (
+                  <div className="p-8 text-center text-xs text-slate-400 font-mono">Loading store inventory...</div>
+                ) : inventory.length === 0 ? (
+                  <div className="p-12 text-center space-y-3">
+                    <div className="text-sm font-bold text-white">No shelf inventory found.</div>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                      Search the global catalog to add existing products (e.g. Sony WH-1000XM5, iPhone 15) to your store!
+                    </p>
+                    <button
+                      onClick={() => { resetModalState(); setIsAddItemOpen(true); }}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
+                    >
+                      + Add First Product
+                    </button>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-800">
+                    {inventory.map((item: any) => {
+                      const prodName = item.productName || item.productVariantName || 'Product Item';
+                      const isAvailable = item.availableQuantity > 0 && item.quantity > 0 && item.isActive;
+                      return (
+                        <div key={item.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-800/40 transition-colors">
+                          <div className="flex items-center gap-3.5">
+                            <img 
+                              src={item.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=150&q=80'} 
+                              alt={prodName} 
+                              className="h-12 w-12 rounded-xl object-cover bg-slate-800 border border-slate-700 shrink-0" 
+                            />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-white text-sm">{prodName}</span>
+                                {item.shelfLocation && (
+                                  <span className="text-[10px] font-mono text-indigo-300 bg-indigo-950 border border-indigo-800 px-1.5 py-0.2 rounded">
+                                    {item.shelfLocation}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-slate-400">
+                                {item.brandName ? `${item.brandName} · ` : ''}{item.categoryName || 'General'}
+                              </div>
+                              <div className="text-xs font-black text-indigo-400 font-['Outfit'] mt-0.5">
+                                ₹{item.price ? item.price.toLocaleString('en-IN') : '0'}
+                              </div>
+                            </div>
+                          </div>
 
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => toggleStockStatus(item.id)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                            item.inStock
-                              ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800'
-                              : 'bg-red-950/60 text-red-400 border-red-800'
-                          }`}
-                        >
-                          {item.inStock ? `In Stock (${item.stockCount})` : 'Out of Stock'}
-                        </button>
-                        <button
-                          onClick={() => setInventory(prev => prev.filter(i => i.id !== item.id))}
-                          className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                          <div className="flex items-center gap-3 self-end sm:self-center">
+                            <button
+                              onClick={() => handleToggleInventoryStock(item)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                                isAvailable
+                                  ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800'
+                                  : 'bg-red-950/60 text-red-400 border-red-800'
+                              }`}
+                            >
+                              {isAvailable ? `In Stock (${item.availableQuantity} available)` : 'Out of Stock'}
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteInventoryItem(item.id)}
+                              className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                              title="Delete from Inventory"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -659,7 +779,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
                 <button
                   onClick={() => alert('✓ Store profile settings updated successfully!')}
-                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs text-white transition-colors"
+                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs text-white transition-colors cursor-pointer"
                 >
                   Save Store Profile
                 </button>
@@ -671,7 +791,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
       </div>
 
-      {/* ── ADD SHELF ITEM MODAL ── */}
+      {/* ── ADD SHELF ITEM MODAL (Global Catalog + Store Inventory Flow) ── */}
       <AnimatePresence>
         {isAddItemOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
@@ -679,74 +799,321 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 text-left shadow-2xl"
+              className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 text-left shadow-2xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-white font-['Outfit']">Add Product to Shelf</h3>
-                <button onClick={() => setIsAddItemOpen(false)} className="p-1 text-slate-400 hover:text-white">
-                  <X className="h-4 w-4" />
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <h3 className="text-lg font-bold text-white font-['Outfit']">Add Product to Store Inventory</h3>
+                  <p className="text-xs text-slate-400">Link your store to canonical global catalog products</p>
+                </div>
+                <button onClick={resetModalState} className="p-1 text-slate-400 hover:text-white cursor-pointer">
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <form onSubmit={handleCreateItem} className="space-y-3.5">
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Product Name & Variant</label>
-                  <input
-                    type="text"
-                    value={newItemName}
-                    onChange={(e) => setNewItemName(e.target.value)}
-                    placeholder="e.g. Nike Air Max 90 (UK 9)"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Category</label>
-                  <select
-                    value={newItemCategory}
-                    onChange={(e) => setNewItemCategory(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
-                  >
-                    <option value="Footwear & Sports">Footwear & Sports</option>
-                    <option value="Watches & Jewelry">Watches & Jewelry</option>
-                    <option value="Electronics & Gadgets">Electronics & Gadgets</option>
-                    <option value="Fashion & Apparel">Fashion & Apparel</option>
-                    <option value="Smart Home & Lighting">Smart Home & Lighting</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
+              {!showCreateProductForm ? (
+                /* STEP 1: CATALOG SEARCH & SELECTION */
+                <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">In-Store Price (₹)</label>
+                    <label className="text-xs font-bold text-slate-200 block mb-1">Search Product Catalog</label>
+                    <div className="relative">
+                      <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={catalogSearchQuery}
+                        onChange={(e) => setCatalogSearchQuery(e.target.value)}
+                        placeholder="Search by product name, model (e.g. sony xm5, iphone 15)..."
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Catalog Results Dropdown */}
+                  {catalogSearchQuery.trim() && (
+                    <div className="max-h-44 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950 divide-y divide-slate-800/60">
+                      {isSearchingCatalog ? (
+                        <div className="p-3 text-xs text-slate-400 text-center font-mono">Searching canonical catalog...</div>
+                      ) : catalogResults.length === 0 ? (
+                        <div className="p-3 text-xs text-slate-400 text-center">
+                          No matching product found in catalog.
+                        </div>
+                      ) : (
+                        catalogResults.map((prod: any) => (
+                          <div
+                            key={prod.id}
+                            onClick={() => handleSelectCatalogProduct(prod)}
+                            className={`p-3 flex items-center justify-between cursor-pointer hover:bg-indigo-950/40 transition-colors ${
+                              selectedProduct?.id === prod.id ? 'bg-indigo-950/70 border-l-4 border-indigo-500' : ''
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <img 
+                                src={prod.imageUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=150&q=80'} 
+                                alt={prod.name} 
+                                className="h-10 w-10 rounded-lg object-cover bg-slate-800 shrink-0" 
+                              />
+                              <div>
+                                <div className="text-xs font-bold text-white">{prod.name}</div>
+                                <div className="text-[11px] text-slate-400">
+                                  {prod.brandName ? `${prod.brandName} · ` : ''}{prod.categoryName || 'General'}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-xs font-bold text-indigo-400 px-2 py-1 rounded bg-indigo-950 border border-indigo-800">
+                              Select
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* Selected Product Banner & Form */}
+                  {selectedProduct ? (
+                    <form onSubmit={handleSaveInventory} className="space-y-4 border-t border-slate-800 pt-4">
+                      <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-800/60 flex items-center gap-3">
+                        <img 
+                          src={selectedProduct.imageUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=150&q=80'} 
+                          alt={selectedProduct.name} 
+                          className="h-12 w-12 rounded-lg object-cover bg-slate-800 shrink-0" 
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-mono text-indigo-300 font-bold uppercase">Selected Global Product</div>
+                          <div className="text-sm font-bold text-white truncate">{selectedProduct.name}</div>
+                          <div className="text-xs text-slate-400">{selectedProduct.brandName}</div>
+                        </div>
+                      </div>
+
+                      {/* Variant Selection if available */}
+                      {selectedProduct.variants && selectedProduct.variants.length > 0 && (
+                        <div>
+                          <label className="text-xs font-semibold text-slate-300 block mb-1">Product Variant</label>
+                          <select
+                            value={selectedVariantId}
+                            onChange={(e) => setSelectedVariantId(e.target.value)}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                          >
+                            {selectedProduct.variants.map((v: any) => (
+                              <option key={v.id} value={v.id}>
+                                {v.variantName} {v.color ? `(${v.color})` : ''} {v.sku ? `- SKU: ${v.sku}` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-300 block mb-1">Your Price (₹)</label>
+                          <input
+                            type="number"
+                            value={itemPrice}
+                            onChange={(e) => setItemPrice(e.target.value)}
+                            placeholder="e.g. 26990"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-300 block mb-1">Quantity</label>
+                          <input
+                            type="number"
+                            value={itemQuantity}
+                            onChange={(e) => setItemQuantity(e.target.value)}
+                            placeholder="e.g. 2"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-300 block mb-1">Shelf Location</label>
+                          <input
+                            type="text"
+                            value={itemShelf}
+                            onChange={(e) => setItemShelf(e.target.value)}
+                            placeholder="e.g. A12"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs text-white transition-colors cursor-pointer shadow-lg shadow-indigo-600/30"
+                      >
+                        Save Inventory to Store
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="pt-2 text-center space-y-2 border-t border-slate-800">
+                      <p className="text-xs text-slate-400">Can't find this product in the global catalog?</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateProductForm(true)}
+                        className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer"
+                      >
+                        + Create New Global Product
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* STEP 2: CREATE NEW GLOBAL PRODUCT (WITH DUPLICATE PREVENTION) */
+                <form onSubmit={handleCheckAndCreateProduct} className="space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">
+                      New Global Product Entry
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateProductForm(false)}
+                      className="text-xs text-slate-400 hover:text-white"
+                    >
+                      ← Back to Search
+                    </button>
+                  </div>
+
+                  {/* DUPLICATE WARNING ALERT */}
+                  {duplicateCheckWarning && (
+                    <div className="p-4 rounded-2xl bg-amber-950/70 border border-amber-700/80 space-y-3 text-left">
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="text-xs font-bold text-amber-300">
+                            Potential Duplicate Product Found!
+                          </div>
+                          <p className="text-xs text-amber-200/80 mt-1">
+                            Did you mean: <strong className="text-white">{duplicateCheckWarning.matchingProduct.name}</strong> ({duplicateCheckWarning.matchingProduct.brandName})?
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedProduct(duplicateCheckWarning.matchingProduct);
+                            if (duplicateCheckWarning.matchingProduct.variants && duplicateCheckWarning.matchingProduct.variants.length > 0) {
+                              setSelectedVariantId(duplicateCheckWarning.matchingProduct.variants[0].id.toString());
+                            }
+                            setShowCreateProductForm(false);
+                            setDuplicateCheckWarning(null);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-bold text-xs hover:bg-amber-300 transition-colors cursor-pointer"
+                        >
+                          Yes, Select Existing Product
+                        </button>
+                        <button
+                          type="button"
+                          onClick={executeProductCreation}
+                          className="px-3 py-1.5 rounded-xl border border-amber-600/60 text-amber-200 font-semibold text-xs hover:bg-amber-900/40 cursor-pointer"
+                        >
+                          Create New Anyway
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">Brand Name *</label>
                     <input
-                      type="number"
-                      value={newItemPrice}
-                      onChange={(e) => setNewItemPrice(e.target.value)}
-                      placeholder="e.g. 6499"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
+                      type="text"
+                      value={newProdBrand}
+                      onChange={(e) => setNewProdBrand(e.target.value)}
+                      placeholder="e.g. Sony, Apple, Nike"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                       required
                     />
                   </div>
+
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Stock Count</label>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">Product Name *</label>
                     <input
-                      type="number"
-                      value={newItemStock}
-                      onChange={(e) => setNewItemStock(e.target.value)}
-                      placeholder="e.g. 3"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
+                      type="text"
+                      value={newProdName}
+                      onChange={(e) => setNewProdName(e.target.value)}
+                      placeholder="e.g. Sony WH-1000XM5 Wireless Headphones"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                      required
                     />
                   </div>
-                </div>
 
-                <button
-                  type="submit"
-                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs text-white transition-colors"
-                >
-                  Save & Publish to Nearby Shoppers
-                </button>
-              </form>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">Model Number</label>
+                      <input
+                        type="text"
+                        value={newProdModel}
+                        onChange={(e) => setNewProdModel(e.target.value)}
+                        placeholder="e.g. WH-1000XM5"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">GTIN / Barcode</label>
+                      <input
+                        type="text"
+                        value={newProdGtin}
+                        onChange={(e) => setNewProdGtin(e.target.value)}
+                        placeholder="e.g. 4548736132580"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">Category</label>
+                    <select
+                      value={newProdCategory}
+                      onChange={(e) => setNewProdCategory(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    >
+                      {dbCategories.length > 0 ? (
+                        dbCategories.map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="Electronics">Electronics</option>
+                          <option value="Footwear">Footwear</option>
+                          <option value="Appliances">Appliances</option>
+                          <option value="Clothing">Clothing</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">Description</label>
+                    <textarea
+                      value={newProdDesc}
+                      onChange={(e) => setNewProdDesc(e.target.value)}
+                      placeholder="Key specifications, features, color, size details..."
+                      rows={2}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">Image URL</label>
+                    <input
+                      type="text"
+                      value={newProdImage}
+                      onChange={(e) => setNewProdImage(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isCheckingDuplicate}
+                    className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs text-white transition-colors cursor-pointer shadow-lg shadow-indigo-600/30"
+                  >
+                    {isCheckingDuplicate ? 'Checking Catalog Duplicates...' : 'Create & Proceed to Add Inventory'}
+                  </button>
+                </form>
+              )}
             </motion.div>
           </div>
         )}
