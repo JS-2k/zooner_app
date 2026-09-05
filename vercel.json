@@ -1,0 +1,10 @@
+{
+  "buildCommand": "cd client/zooner && npm install && npm run build",
+  "outputDirectory": "client/zooner/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
