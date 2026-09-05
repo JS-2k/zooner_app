@@ -13,6 +13,8 @@ import { TheProblem } from '../components/TheProblem';
 import { LocalDiscovery } from '../components/LocalDiscovery';
 import { FinalCTA } from '../components/FinalCTA';
 import { Footer } from '../components/Footer';
+import { ProductJourney } from '../components/ProductJourney';
+import { RetailerCallout } from '../components/RetailerCallout';
 import type { LocationArea } from '../types';
 
 interface PublicLandingPageProps {
@@ -224,6 +226,8 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({
       </section>
 
       {/* ── 01. THREE STEPS: HOW ZOONER WORKS ── */}
+      <ProductJourney />
+
       <TheIdea />
 
       {/* ── 02. THE DIFFERENCE: WHY LOCAL MATTERS ── */}
@@ -233,6 +237,11 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({
       <LocalDiscovery 
         currentLocation={currentLocation}
         onOpenLocationModal={onOpenLocationModal}
+        onNavigateToVendor={onNavigateToVendor}
+      />
+
+      <RetailerCallout
+        onOpenRetailerModal={onNavigateToVendor}
         onNavigateToVendor={onNavigateToVendor}
       />
 
