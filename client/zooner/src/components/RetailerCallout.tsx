@@ -52,15 +52,15 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
             <ul className="space-y-4 text-sm sm:text-base text-slate-300">
               <li className="flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-1" />
-                <span><strong className="text-white font-semibold">Zero hardware setup</strong> � receive and confirm holds from any smartphone or tablet</span>
+                <span><strong className="text-white font-semibold">Zero hardware setup</strong> — receive and confirm holds from any smartphone or tablet</span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-1" />
-                <span><strong className="text-white font-semibold">Direct in-store payments</strong> � customer pays directly at your store POS</span>
+                <span><strong className="text-white font-semibold">Direct in-store payments</strong> — customer pays directly at your store POS</span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-1" />
-                <span><strong className="text-white font-semibold">No delivery middlemen</strong> � 100% genuine local foot traffic without packaging friction</span>
+                <span><strong className="text-white font-semibold">No delivery middlemen</strong> — 100% genuine local foot traffic without packaging friction</span>
               </li>
             </ul>
 

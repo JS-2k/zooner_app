@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { 
   ArrowRight, 
@@ -74,7 +74,7 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({
         <div className="orb-2 absolute top-1/3 left-8 w-[420px] h-[420px] bg-emerald-500/8 blur-[140px] pointer-events-none rounded-full" />
         <div className="orb-3 absolute bottom-12 right-8 w-[500px] h-[500px] bg-blue-700/8 blur-[150px] pointer-events-none rounded-full" />
 
-        <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10">
+        <div className="max-w-6xl mx-auto text-center space-y-8 relative z-10">
           
           {/* Label */}
           <motion.p
@@ -261,85 +261,88 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({
       {/* ── 3. HOW IT WORKS ── */}
       <TheIdea />
 
-      {/* ── 4. 30-MINUTE HOLD SPOTLIGHT — Editorial, No Cards ── */}
-      <section id="hold-feature" className="relative py-28 sm:py-40 px-6 sm:px-8 bg-[#06070F] text-white overflow-hidden">
+      {/* ── 3. 30-MINUTE HOLD SPOTLIGHT ── */}
+      <section id="hold-feature" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#06070F] text-white border-t border-slate-800/60 overflow-hidden">
         
         {/* Subtle emerald ambient backlight */}
         <div className="orb-2 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-emerald-950/12 blur-[180px] pointer-events-none rounded-full" />
 
-        <div className="max-w-5xl mx-auto relative z-10">
-          
-          <div className="border-t border-slate-800/60 pt-16 sm:pt-20 space-y-16">
+        <div className="max-w-6xl mx-auto relative z-10 space-y-16 text-left">
 
-            {/* Section label + headline */}
-            <motion.div
-              initial={{ opacity: 0, y: 25 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="space-y-5 max-w-3xl"
+          {/* Section label + headline */}
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="space-y-4 max-w-2xl"
+          >
+            <span className="text-xs font-mono uppercase tracking-widest text-emerald-400 font-bold block">
+              03 / Signature Capability
+            </span>
+            <h2 
+              className="font-['Outfit'] font-black tracking-tight text-white leading-[0.98]"
+              style={{ fontSize: 'clamp(2.4rem, 5.5vw, 4.2rem)' }}
             >
-              <span className="text-xs font-mono uppercase tracking-widest text-emerald-500 font-bold block">
-                03 / Signature Capability
-              </span>
-              <h2 
-                className="font-['Outfit'] font-black tracking-tighter text-white leading-[1.0]"
-                style={{ fontSize: 'clamp(2.4rem, 6vw, 5rem)' }}
-              >
-                Never show up to an empty shelf.
-              </h2>
-              <p className="text-slate-400 text-base sm:text-xl leading-relaxed max-w-2xl">
-                When you spot what you need, tap <strong className="text-white">Hold for 30m</strong>. The retailer physically sets the product aside at the billing counter under your name so nobody else buys it while you walk over.
-              </p>
-            </motion.div>
+              Never show up to <br />
+              an empty shelf.
+            </h2>
+            <p className="text-slate-400 text-base sm:text-lg leading-relaxed pt-1">
+              When you spot what you need, tap <strong className="text-white">Hold for 30m</strong>. The retailer physically sets the product aside at the billing counter under your name so nobody else buys it while you walk over.
+            </p>
+          </motion.div>
 
-            {/* Giant live countdown — the visual anchor, no card */}
+          {/* Two-column editorial showcase */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-start">
+            
+            {/* Left: Giant live countdown */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-80px' }}
               transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-              className="space-y-3"
+              className="lg:col-span-6 space-y-4"
             >
-              <div className="flex items-baseline gap-3">
+              <div className="flex items-baseline gap-4">
                 <span 
-                  className="font-mono font-black text-emerald-400 tabular-nums leading-none"
-                  style={{ fontSize: 'clamp(4.5rem, 14vw, 9rem)' }}
+                  className="font-mono font-black text-emerald-400 tabular-nums leading-none tracking-tight"
+                  style={{ fontSize: 'clamp(4.5rem, 12vw, 7.5rem)' }}
                 >
                   {formatTimer(secondsLeft)}
                 </span>
-                <span className="text-slate-600 font-mono text-sm uppercase tracking-widest self-end pb-3">remaining</span>
+                <span className="text-slate-600 font-mono text-xs uppercase tracking-widest self-end pb-2">remaining</span>
               </div>
-              <div className="space-y-0.5">
-                <p className="text-white font-bold text-base sm:text-lg">Hold Pass #ZN-8842 · Nike Air Max 270 (UK 9) · Triple Black</p>
+              <div className="border-t border-slate-800 pt-4 space-y-1">
+                <p className="text-white font-bold text-base sm:text-lg">Hold Pass #ZN-8842 · Nike Air Max 270 (UK 9)</p>
                 <p className="text-slate-500 text-sm font-mono">Nike Official Store · DB Road Main Promenade · Billing Counter 01</p>
                 <p className="text-slate-600 text-xs mt-2">Zero deposit · Pay only after you inspect in store</p>
               </div>
             </motion.div>
 
-            {/* Two feature points — left-border accent, no card boxes */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 pt-4">
-              
+            {/* Right: Two feature points */}
+            <div className="lg:col-span-6 space-y-8 border-t lg:border-t-0 lg:border-l border-slate-800/80 pt-8 lg:pt-0 lg:pl-12">
               <motion.div
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -16 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: '-60px' }}
                 transition={{ duration: 0.7, delay: 0.1 }}
-                className="border-l-2 border-emerald-500/50 pl-6 space-y-2"
+                className="space-y-2"
               >
-                <span className="text-xs font-mono text-emerald-500 uppercase tracking-widest font-bold block">Physical Assurance</span>
+                <span className="text-xs font-mono text-emerald-400 uppercase tracking-widest font-bold block">Physical Assurance</span>
                 <h4 className="text-lg font-bold text-white">Reserved at the billing counter</h4>
                 <p className="text-sm text-slate-400 leading-relaxed">
                   The store manager physically places the boxed item at the front desk under your name. No customer can take it while you walk over.
                 </p>
               </motion.div>
 
+              <div className="border-t border-slate-800" />
+
               <motion.div
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -16 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: '-60px' }}
                 transition={{ duration: 0.7, delay: 0.2 }}
-                className="border-l-2 border-indigo-500/50 pl-6 space-y-2"
+                className="space-y-2"
               >
                 <span className="text-xs font-mono text-indigo-400 uppercase tracking-widest font-bold block">Turn-By-Turn · Live GPS</span>
                 <h4 className="text-lg font-bold text-white">Guided straight to the store</h4>
@@ -347,7 +350,6 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({
                   Get walking directions, store contact, and live operating hours directly in your navigation app with a single tap.
                 </p>
               </motion.div>
-
             </div>
 
           </div>

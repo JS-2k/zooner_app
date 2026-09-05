@@ -51,7 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={onOpenLocationModal}
-              className="hidden sm:flex items-center gap-1.5 text-xs text-slate-200 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 rounded-full px-3.5 py-1.5 transition-colors cursor-pointer shadow-sm"
+              className="hidden sm:flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3.5 py-1.5 transition-colors cursor-pointer"
             >
               <MapPin className="h-3 w-3 text-emerald-400" />
               <span className="font-medium">{currentLocation.name || 'RS Puram, Coimbatore'}</span>

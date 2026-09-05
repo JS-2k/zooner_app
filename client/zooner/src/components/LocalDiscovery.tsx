@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Navigation, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { PHYSICAL_STORES } from '../data/mockData';
@@ -54,7 +54,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
             </span>
             <h2 
               className="font-['Outfit'] font-black tracking-tight text-white leading-[0.98]"
-              style={{ fontSize: 'clamp(2.4rem, 6vw, 4.4rem)' }}
+              style={{ fontSize: 'clamp(2.4rem, 5.5vw, 4.2rem)' }}
             >
               Your city has the product.
             </h2>
@@ -131,7 +131,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                     <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{activePin.address}</p>
                     <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 font-mono">
                       <span className="text-emerald-400 font-bold">{activePin.distance}</span>
-                      <span>�</span>
+                      <span>·</span>
                       <span>{activePin.openStatus}</span>
                     </div>
                   </div>
@@ -169,7 +169,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                         {store.name}
                       </span>
                       <span className="text-xs text-slate-500 sm:ml-3">
-                        {store.area} � {store.category}
+                        {store.area} · {store.category}
                       </span>
                     </div>
                   </div>
@@ -178,7 +178,7 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
                     <span className={isSelected ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
                       {store.distance}
                     </span>
-                    <span className="text-slate-600 hidden sm:inline">�</span>
+                    <span className="text-slate-600 hidden sm:inline">·</span>
                     <span className="text-slate-400 hidden sm:inline">{store.openStatus}</span>
                     <ArrowUpRight className={`h-3.5 w-3.5 ${isSelected ? 'text-white' : 'text-slate-600'}`} />
                   </div>

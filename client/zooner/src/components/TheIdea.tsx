@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Navigation, ShieldCheck, Lock, ArrowRight } from 'lucide-react';
 
@@ -23,7 +23,7 @@ export const TheIdea: React.FC = () => {
         <div className="space-y-6 text-left py-2">
           <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
             <Search className="h-4 w-4 text-indigo-400 shrink-0" />
-            <span className="text-white text-base font-medium">Nike Air Max 270 � UK 9</span>
+            <span className="text-white text-base font-medium">Nike Air Max 270 · UK 9</span>
             <span className="ml-auto text-xs font-mono text-emerald-400 font-bold">
               3 Nearby
             </span>
@@ -31,9 +31,9 @@ export const TheIdea: React.FC = () => {
 
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="text-slate-400 border-b border-slate-800 pb-0.5">Within 2 km</span>
-            <span className="text-slate-600">�</span>
+            <span className="text-slate-600">·</span>
             <span className="text-slate-400 border-b border-slate-800 pb-0.5">Open Now</span>
-            <span className="text-slate-600">�</span>
+            <span className="text-slate-600">·</span>
             <span className="text-indigo-400 font-medium border-b border-indigo-500/30 pb-0.5">Official Dealer</span>
           </div>
 
@@ -41,7 +41,7 @@ export const TheIdea: React.FC = () => {
             <div className="flex items-center justify-between py-3 border-b border-slate-800/60">
               <div>
                 <div className="font-bold text-white text-sm">Nike Official Store</div>
-                <div className="text-xs text-slate-500 mt-0.5">DB Road � 350m (4 min walk)</div>
+                <div className="text-xs text-slate-500 mt-0.5">DB Road · 350m (4 min walk)</div>
               </div>
               <span className="text-emerald-400 font-bold font-mono text-xs">1 pair on shelf</span>
             </div>
@@ -49,7 +49,7 @@ export const TheIdea: React.FC = () => {
             <div className="flex items-center justify-between py-3 border-b border-slate-800/40">
               <div>
                 <div className="font-bold text-slate-400 text-sm">Footprint Athletics</div>
-                <div className="text-xs text-slate-600 mt-0.5">Crosscut Road � 800m</div>
+                <div className="text-xs text-slate-600 mt-0.5">Crosscut Road · 800m</div>
               </div>
               <span className="text-slate-500 font-mono text-xs">2 in stock</span>
             </div>
@@ -79,7 +79,7 @@ export const TheIdea: React.FC = () => {
             </div>
             <div className="text-xs font-mono text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <Lock className="h-3 w-3 text-emerald-400" />
-              <span>Counter Locked � Hold Remaining</span>
+              <span>Counter Locked · Hold Remaining</span>
             </div>
           </div>
 
@@ -87,9 +87,9 @@ export const TheIdea: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-white font-bold text-base block">Air Max 270 (Triple Black)</span>
-                <span className="text-xs text-slate-400">Nike Official Store � DB Road</span>
+                <span className="text-xs text-slate-400">Nike Official Store · DB Road</span>
               </div>
-              <span className="text-sm font-black text-white font-mono">?6,499</span>
+              <span className="text-sm font-black text-white font-mono">₹6,499</span>
             </div>
             <div className="text-xs text-slate-500 flex items-center justify-between border-t border-slate-800/60 pt-2">
               <span>Size: UK 9</span>
@@ -128,7 +128,7 @@ export const TheIdea: React.FC = () => {
               <ShieldCheck className="h-4 w-4" />
               Verified Authentic
             </span>
-            <span className="text-slate-600">�</span>
+            <span className="text-slate-600">·</span>
             <span className="text-slate-400">All standard store payment options</span>
           </div>
         </div>

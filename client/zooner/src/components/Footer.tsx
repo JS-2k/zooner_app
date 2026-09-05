@@ -30,7 +30,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenRetailerModal, onOpenLocat
 
             <button
               onClick={onOpenLocationModal}
-              className="inline-flex items-center gap-2 text-xs text-slate-200 hover:text-white bg-slate-800/90 border border-slate-700 px-3.5 py-1.5 rounded-full transition-all cursor-pointer shadow-sm"
+              className="inline-flex items-center gap-2 text-xs text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 px-3.5 py-1.5 rounded-full transition-all cursor-pointer"
             >
               <MapPin className="h-3.5 w-3.5 text-emerald-400" />
               <span>Active in <strong className="text-white">Coimbatore</strong> & expanding</span>
