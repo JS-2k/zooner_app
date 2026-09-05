@@ -86,13 +86,15 @@ jobs:
 
       - name: Push Build Log to Git on Failure
         if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           cp client/zooner/android/gradle-build.log ./LATEST_GRADLE_ERROR.log
           git add ./LATEST_GRADLE_ERROR.log
           git commit -m "build-log: capture failure log [skip ci]" || true
-          git push origin fix/android-apk-build || true
+          git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git fix/android-apk-build || true
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
