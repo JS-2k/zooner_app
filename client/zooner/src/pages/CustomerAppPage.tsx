@@ -435,24 +435,24 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 </div>
               </div>
 
-              {/* Category Pills (Typographic Horizontal Scroll) */}
-              <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pt-1">
+              {/* Visual Category Chips */}
+              <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pt-1 pb-1">
                 {CATEGORIES.map(cat => {
                   const isSelected = selectedCategory === cat.id;
                   return (
                     <button
                       key={cat.id}
                       onClick={() => setSelectedCategory(cat.id)}
-                      className={`text-xs font-mono uppercase tracking-wider transition-colors cursor-pointer whitespace-nowrap pb-1 relative ${
+                      className={`px-4 py-2 rounded-full text-xs font-semibold tracking-wide transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 border ${
                         isSelected 
-                          ? 'text-white font-bold' 
-                          : 'text-slate-500 hover:text-slate-300'
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold border-emerald-400 shadow-lg shadow-emerald-500/20 scale-[1.02]' 
+                          : 'bg-[#12141D] text-slate-300 border-white/10 hover:border-white/25 hover:text-white'
                       }`}
                     >
-                      {cat.label}
-                      {isSelected && (
-                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-emerald-400" />
-                      )}
+                      <span className="text-sm">
+                        {cat.id === 'all' ? '✨' : cat.id === 'footwear' ? '👟' : cat.id === 'electronics' ? '📱' : cat.id === 'appliances' ? '⚡' : cat.id === 'clothing' ? '👕' : '🛍️'}
+                      </span>
+                      <span>{cat.label}</span>
                     </button>
                   );
                 })}
@@ -461,7 +461,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
             {/* Empty State / Out of Range Handler */}
             {filteredProducts.length === 0 && (
-              <div className="border border-white/10 rounded-2xl p-8 sm:p-12 text-center space-y-4 my-8">
+              <div className="border border-white/10 bg-[#0B0C11]/80 backdrop-blur-md rounded-2xl p-8 sm:p-12 text-center space-y-4 my-8">
                 <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
                   Search Result Notice
                 </div>
@@ -487,7 +487,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                       setBroadcastProduct(searchQuery || 'Product inquiry');
                       setActiveTab('requests');
                     }}
-                    className="w-full sm:w-auto px-6 py-3 rounded-full bg-white text-slate-950 text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors cursor-pointer"
+                    className="w-full sm:w-auto px-6 py-3 rounded-full bg-emerald-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-2 hover:bg-emerald-300 transition-colors cursor-pointer shadow-lg shadow-emerald-400/20"
                   >
                     <Radio className="h-3.5 w-3.5" />
                     <span>Broadcast Live Ask to Stores</span>
@@ -496,89 +496,111 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </div>
             )}
 
-            {/* Verified On-Shelf Items (Editorial Typographic List) */}
+            {/* Verified On-Shelf Items (Visual Cards Grid) */}
             {filteredProducts.length > 0 && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <span className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold">
-                    Verified In-Store Stock ({radiusFilter})
-                  </span>
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs font-mono uppercase tracking-widest text-slate-300 font-bold">
+                      Verified In-Store Shelf Items ({filteredProducts.length})
+                    </span>
+                  </div>
                   <span className="text-[11px] font-mono text-slate-500">
-                    Direct counter pickup
+                    Within {radiusFilter} · 1-Tap Counter Hold
                   </span>
                 </div>
 
-                <div className="divide-y divide-white/10">
+                {/* 2-Column / 3-Column Visual Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                   {filteredProducts.map(product => (
                     <div
                       key={product.id}
                       onClick={() => setSelectedProduct(product)}
-                      className="py-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-white/[0.015] transition-colors"
+                      className="group border border-white/10 hover:border-emerald-500/40 bg-[#0B0C11] hover:bg-[#0E1017] rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between cursor-pointer relative"
                     >
-                      {/* Left: Thumbnail & Info */}
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="h-16 w-16 sm:h-18 sm:w-18 rounded-lg overflow-hidden bg-zinc-900 border border-white/10 shrink-0">
-                          <img 
-                            src={product.imageUrl} 
-                            alt={product.name}
-                            className="w-full h-full object-cover" 
-                          />
+                      {/* Top Badges over Image */}
+                      <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
+                        <img 
+                          src={product.imageUrl} 
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+                        
+                        {/* Status Badges */}
+                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+                          <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-emerald-400 font-semibold flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            {product.stockCount} on counter
+                          </span>
+
+                          <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-slate-300 font-semibold flex items-center gap-1">
+                            <MapPin className="h-2.5 w-2.5 text-emerald-400" />
+                            {product.distance}
+                          </span>
                         </div>
 
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-white truncate block">
-                              {product.name}
-                            </span>
-                            <span className="text-[10px] font-mono text-emerald-400 shrink-0 font-bold">
-                              · {product.stockCount} on shelf
-                            </span>
-                          </div>
+                        {/* Store Overlay Pill */}
+                        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-white drop-shadow-md truncate">
+                            {product.storeName}
+                          </span>
+                          <span className="text-[10px] text-slate-300 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded border border-white/10">
+                            {product.storeArea}
+                          </span>
+                        </div>
+                      </div>
 
-                          <div className="text-xs text-slate-400 flex items-center gap-2">
-                            <span className="text-slate-300 font-medium">{product.storeName}</span>
-                            <span>·</span>
-                            <span className="font-mono text-slate-500">{product.distance}</span>
-                            <span>·</span>
-                            <span className="text-slate-500">{product.storeArea}</span>
-                          </div>
+                      {/* Card Content Body */}
+                      <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
+                            {product.name}
+                          </h4>
+                          <p className="text-xs text-slate-400 line-clamp-1">
+                            Category: {product.category}
+                          </p>
+                        </div>
 
-                          <div className="flex items-baseline gap-2 pt-0.5">
-                            <span className="text-sm font-mono font-bold text-white">
+                        {/* Price & Action Row */}
+                        <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
+                          <div className="font-mono">
+                            <div className="text-base font-extrabold text-white">
                               ₹{product.price.toLocaleString('en-IN')}
-                            </span>
+                            </div>
                             {product.originalPrice && (
-                              <span className="text-xs font-mono text-slate-600 line-through">
+                              <div className="text-[10px] text-slate-500 line-through">
                                 ₹{product.originalPrice.toLocaleString('en-IN')}
-                              </span>
+                              </div>
                             )}
                           </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleHoldItem(product.name, product.storeName, product.price);
+                              }}
+                              className="px-3.5 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs transition-all shadow-md shadow-emerald-400/20 active:scale-95 cursor-pointer"
+                            >
+                              Hold 30m
+                            </button>
+
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${product.storeName}, ${product.storeArea}, Coimbatore`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-2 rounded-full border border-white/15 hover:border-white/40 text-slate-300 hover:text-white transition-colors shrink-0 cursor-pointer"
+                              title="View Map Navigation"
+                            >
+                              <Navigation className="h-3.5 w-3.5" />
+                            </a>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Right: Action Buttons */}
-                      <div className="flex items-center gap-2.5 sm:shrink-0 pt-2 sm:pt-0">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleHoldItem(product.name, product.storeName, product.price);
-                          }}
-                          className="flex-1 sm:flex-initial px-5 py-2.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
-                        >
-                          Hold for 30m
-                        </button>
-
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${product.storeName}, ${product.storeArea}, Coimbatore`)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-2.5 rounded-full border border-white/10 hover:border-white/25 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
-                          title="View on Map"
-                        >
-                          <Navigation className="h-3.5 w-3.5" />
-                        </a>
-                      </div>
                     </div>
                   ))}
                 </div>

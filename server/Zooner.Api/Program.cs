@@ -10,6 +10,8 @@ using Zooner.Api.Models.DTOs;
 using Zooner.Api.Services;
 using Zooner.Api.Services.Background;
 using Zooner.Api.Services.Realtime;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -186,7 +188,18 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        dbContext.Database.EnsureCreated();
+        var dbCreator = dbContext.GetService<IRelationalDatabaseCreator>();
+        if (dbCreator != null)
+        {
+            try
+            {
+                dbCreator.CreateTables();
+            }
+            catch
+            {
+                // Tables already exist or partially created
+            }
+        }
         await DbSeeder.SeedAsync(dbContext, logger);
     }
     catch (Exception ex)
