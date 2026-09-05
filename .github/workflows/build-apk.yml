@@ -15,6 +15,7 @@ jobs:
   build-apk:
     name: Build Native Android APK
     runs-on: ubuntu-latest
+    permissions: write-all
     env:
       CI: true
 
@@ -76,7 +77,12 @@ jobs:
 
       - name: Print Gradle Log On Failure
         if: failure()
-        run: tail -n 150 client/zooner/android/gradle-build.log
+        run: |
+          tail -n 150 client/zooner/android/gradle-build.log
+          echo "### Gradle Build Log" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 100 client/zooner/android/gradle-build.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Post Failure Log to Commit
         if: failure()
