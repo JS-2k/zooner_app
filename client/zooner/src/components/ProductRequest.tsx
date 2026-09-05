@@ -29,45 +29,19 @@ export const ProductRequest: React.FC<ProductRequestProps> = ({ prefillProduct }
     setIsBroadcasting(true);
 
     const result = await sendLiveRequest({
-      productName: `${productName} (${size})`,
-      specifications: `Budget: ${budget}`,
-      radiusKm: parseInt(radius) || 5,
+      requestText: `${productName} (${size}) - Budget: ${budget}`,
+      categoryId: 'all',
+      searchRadiusKm: parseInt(radius) || 5,
       latitude: 11.0168,
       longitude: 76.9558
     });
 
     setIsBroadcasting(false);
     setRequestSent(true);
-    if (result && Array.isArray(result.responses) && result.responses.length > 0) {
+    if (result && Array.isArray(result.responses)) {
       setResponses(result.responses);
     } else {
-      // Clean fallback sample responses
-      setResponses([
-        {
-          id: 'resp-1',
-          storeName: 'Nike Store · DB Road',
-          storeArea: 'RS Puram',
-          distance: '350m',
-          price: 6499,
-          available: true,
-          conditionNote: 'In stock! We have 2 pairs in UK 9. Reserved 1 pair for 30 mins — walk in anytime!',
-          rating: 4.9,
-          verified: true,
-          avatar: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=120&q=80',
-        },
-        {
-          id: 'resp-2',
-          storeName: 'Sprint Sports Hub',
-          storeArea: 'Race Course',
-          distance: '900m',
-          price: 6299,
-          available: true,
-          conditionNote: 'In stock in both Black and White colorways. We can hold it for 2 hours.',
-          rating: 4.8,
-          verified: true,
-          avatar: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&w=120&q=80',
-        }
-      ]);
+      setResponses([]);
     }
   };
 

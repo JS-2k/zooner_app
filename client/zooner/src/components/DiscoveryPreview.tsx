@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { 
   Search, 
   MapPin, 
@@ -17,8 +17,8 @@ import {
   ShoppingBag,
   Sparkle
 } from 'lucide-react';
-import { PRODUCTS, CATEGORIES } from '../data/mockData';
-import type { Product, LocationArea } from '../types';
+import { searchProducts, fetchCategories } from '../services/api';
+import type { LocationArea } from '../types';
 
 interface DiscoveryPreviewProps {
   currentLocation: LocationArea;
@@ -34,7 +34,74 @@ export const DiscoveryPreview: React.FC<DiscoveryPreviewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [likedProducts, setLikedProducts] = useState<string[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [categories, setCategories] = useState<{ id: string; label: string; icon: string }[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    async function loadCategories() {
+      const cats = await fetchCategories();
+      if (cats && cats.length > 0) {
+        setCategories([
+          { id: 'all', label: 'All Nearby', icon: 'Sparkles' },
+          ...cats.map((c: any) => ({
+            id: c.id || c.name.toLowerCase().replace(/\s+/g, '-'),
+            label: c.name,
+            icon: 'Sparkles'
+          }))
+        ]);
+      } else {
+        setCategories([
+          { id: 'all', label: 'All Nearby', icon: 'Sparkles' },
+          { id: 'footwear', label: 'Footwear & Sports', icon: 'Footprints' },
+          { id: 'fashion', label: 'Fashion & Apparel', icon: 'Shirt' },
+          { id: 'electronics', label: 'Electronics & Gadgets', icon: 'Smartphone' },
+          { id: 'watches', label: 'Watches & Jewelry', icon: 'Watch' },
+          { id: 'home', label: 'Smart Home & Lighting', icon: 'Home' },
+          { id: 'beauty', label: 'Beauty & Wellness', icon: 'Sparkle' },
+          { id: 'grocery', label: 'Artisan Grocery', icon: 'ShoppingBag' }
+        ]);
+      }
+    }
+    loadCategories();
+  }, []);
+
+  React.useEffect(() => {
+    async function loadProducts() {
+      try {
+        const dbProducts = await searchProducts(searchQuery, selectedCategory, currentLocation.lat, currentLocation.lng);
+        const mapped: any[] = [];
+        if (Array.isArray(dbProducts)) {
+          for (const p of dbProducts) {
+            if (p.carryingStores && p.carryingStores.length > 0) {
+              for (const s of p.carryingStores) {
+                mapped.push({
+                  id: `${p.id}-${s.storeId}`,
+                  productId: p.id,
+                  name: p.name,
+                  brandName: p.brandName,
+                  imageUrl: p.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80',
+                  storeName: s.storeName || 'Verified Partner Store',
+                  storeArea: s.storeArea || currentLocation.city,
+                  distance: s.distanceKm ? `${s.distanceKm.toFixed(1)} km` : 'Near you',
+                  price: s.price,
+                  stockCount: s.availableQuantity || s.quantity,
+                  category: p.categoryName || 'general',
+                  rating: 4.8,
+                  offerTag: s.availableQuantity > 0 ? 'In-Store Ready' : undefined
+                });
+              }
+            }
+          }
+        }
+        setProducts(mapped);
+      } catch (err) {
+        console.error('Failed loading live products for preview:', err);
+        setProducts([]);
+      }
+    }
+    loadProducts();
+  }, [searchQuery, selectedCategory, currentLocation]);
 
   const toggleLike = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -56,19 +123,7 @@ export const DiscoveryPreview: React.FC<DiscoveryPreviewProps> = ({
     }
   };
 
-  const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter(prod => {
-      const matchesSearch = 
-        prod.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        prod.storeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        prod.storeArea.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesCategory = 
-        selectedCategory === 'all' || prod.category === selectedCategory;
-
-      return matchesSearch && matchesCategory;
-    });
-  }, [searchQuery, selectedCategory]);
+  const filteredProducts = products;
 
   return (
     <section id="discover" className="relative py-20 md:py-32 bg-white dark:bg-[#0B0F19] border-t border-slate-200 dark:border-slate-800/80 transition-colors duration-200">
@@ -133,7 +188,7 @@ export const DiscoveryPreview: React.FC<DiscoveryPreviewProps> = ({
 
           {/* Category Chips Bar */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
-            {CATEGORIES.map((cat) => {
+            {categories.map((cat) => {
               const isSelected = selectedCategory === cat.id;
               return (
                 <button

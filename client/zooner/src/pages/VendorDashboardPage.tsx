@@ -20,14 +20,17 @@ import {
 } from 'lucide-react';
 import { 
   searchProducts, 
-  fetchShops, 
   getStoreInventory, 
   addStoreInventory, 
   updateStoreInventory, 
   deleteStoreInventory, 
   checkDuplicateProduct, 
   createGlobalProduct, 
-  fetchCategories 
+  fetchCategories,
+  getMyShops,
+  getIncomingRequests,
+  respondToLiveRequest,
+  setShopLiveStatus
 } from '../services/api';
 
 interface VendorDashboardPageProps {
@@ -42,59 +45,37 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   onNavigateToVendorLanding,
 }) => {
   const [activeTab, setActiveTab] = useState<DashboardTab>('requests');
-  const [isLiveOnline, setIsLiveOnline] = useState(true);
+  const [isLiveOnline, setIsLiveOnline] = useState(false);
 
   // Store profile
-  const [storeName, setStoreName] = useState('Apex Footwear & Sports');
-  const [storeCategory, setStoreCategory] = useState('Footwear & Sports');
-  const [storeAddress, setStoreAddress] = useState('142 DB Road, RS Puram, Coimbatore - 641002');
-  const [storePhone, setStorePhone] = useState('+91 98422 12345');
+  const [storeName, setStoreName] = useState('');
+  const [storeCategory, setStoreCategory] = useState('');
+  const [storeAddress, setStoreAddress] = useState('');
+  const [storePhone, setStorePhone] = useState('');
   const [storeHours, setStoreHours] = useState('10:00 AM – 9:30 PM (Mon–Sun)');
 
   // Store ID
-  const [currentStoreId, setCurrentStoreId] = useState<string>('1');
+  const [currentStoreId, setCurrentStoreId] = useState<string>('');
 
   // Modal Visibility State
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
 
   // Incoming Live Requests State
-  const [requests, setRequests] = useState<any[]>([
-    {
-      id: 'req-101',
-      shopperName: 'Vignesh K.',
-      product: 'Sony WH-1000XM5',
-      size: 'Black',
-      distance: '350m away (RS Puram)',
-      budget: 'Under ₹27,000',
-      timeAgo: '2 mins ago',
-      status: 'pending'
-    },
-    {
-      id: 'req-102',
-      shopperName: 'Priya R.',
-      product: 'Apple iPhone 15',
-      size: '128GB Black',
-      distance: '1.1 km away (Race Course)',
-      budget: 'Around ₹70,000',
-      timeAgo: '8 mins ago',
-      status: 'pending'
-    }
-  ]);
+  const [requests, setRequests] = useState<any[]>([]);
 
   // Active Walk-In Holds State
-  const [holds, setHolds] = useState<any[]>([
-    {
-      id: 'hld-1',
-      customerName: 'Karthik S.',
-      phone: '+91 98433 98765',
-      product: 'Sony WH-1000XM5',
-      price: 26990,
-      expiresIn: '22 mins remaining',
-      status: 'active'
-    }
-  ]);
+  const [holds, setHolds] = useState<any[]>([]);
 
-  const handleAcceptRequest = (id: string, quote = 26990) => {
+  const handleAcceptRequest = async (id: string) => {
+    if (!currentStoreId) return;
+    const response = await respondToLiveRequest(id, currentStoreId);
+    if (response) {
+      setRequests(previous => previous.filter(request => request.id !== id));
+      return;
+    }
+    return;
+    /* Legacy local demo path retained below temporarily. */
+    const quote = 0;
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'accepted', quotedPrice: quote } : r));
     const targetReq = requests.find(r => r.id === id);
     if (targetReq) {
@@ -154,17 +135,22 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     async function initVendorData() {
       setInventoryLoading(true);
       try {
-        const shops = await fetchShops();
-        const storeId = (shops && shops.length > 0) ? shops[0].id.toString() : '1';
+        const shops = await getMyShops();
+        const storeId = shops[0]?.id?.toString() || '';
         setCurrentStoreId(storeId);
         
         if (shops && shops.length > 0) {
-          setStoreName(shops[0].name || 'Apex Footwear & Sports');
-          setStoreAddress(shops[0].address || '142 DB Road, RS Puram, Coimbatore');
+          setStoreName(shops[0].name || '');
+          setStoreAddress(shops[0].address || '');
+          setStorePhone(shops[0].phone || '');
+          setStoreCategory(shops[0].categories?.map((category: any) => category.name).join(', ') || '');
+          setIsLiveOnline(Boolean(shops[0].isLiveEnabled));
+          const incoming = await getIncomingRequests(storeId);
+          setRequests(incoming.map((request: any) => ({ ...request, product: request.requestText, status: request.status?.toLowerCase() || 'pending', distance: request.distanceToShopKm ? `${request.distanceToShopKm.toFixed(1)} km away` : 'Nearby', timeAgo: new Date(request.createdAtUtc).toLocaleString() })));
+          setHolds([]);
         }
 
-        const items = await getStoreInventory(storeId);
-        setInventory(items);
+        if (storeId) setInventory(await getStoreInventory(storeId));
 
         const cats = await fetchCategories();
         setDbCategories(cats);
@@ -312,10 +298,10 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const activeHoldsCount = holds.filter(h => h.status === 'active').length;
 
   return (
-    <div className="min-h-screen bg-[#090b10] text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+    <div className="zooner-merchant min-h-screen text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
       
       {/* ── TOP MERCHANT HEADER BAR ── */}
-      <header className="sticky top-0 z-40 bg-[#0d1017]/95 backdrop-blur-xl border-b border-slate-800 px-4 sm:px-8 py-3.5">
+      <header className="zooner-merchant-header sticky top-0 z-40 px-4 sm:px-8 py-3.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           
           {/* Store Info & Live Switch */}
@@ -341,7 +327,11 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           <div className="flex items-center gap-3">
             {/* Live Status Toggle */}
             <button
-              onClick={() => setIsLiveOnline(!isLiveOnline)}
+              onClick={async () => {
+                if (!currentStoreId) return;
+                const nextStatus = !isLiveOnline;
+                if (await setShopLiveStatus(currentStoreId, nextStatus)) setIsLiveOnline(nextStatus);
+              }}
               className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                 isLiveOnline 
                   ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/80 hover:bg-emerald-900/60' 
@@ -373,10 +363,10 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
       </header>
 
       {/* ── MAIN DASHBOARD CONTAINER ── */}
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-6 flex-1 flex flex-col md:flex-row gap-6">
+      <div className="zooner-merchant-content max-w-7xl mx-auto w-full px-4 sm:px-8 py-6 flex-1 flex flex-col md:flex-row gap-6">
         
         {/* ── LEFT SIDEBAR NAVIGATION ── */}
-        <aside className="w-full md:w-64 shrink-0 space-y-1">
+        <aside className="zooner-merchant-nav w-full md:w-64 shrink-0 space-y-1">
           <div className="text-[11px] font-mono uppercase tracking-widest text-slate-500 px-3 py-2">
             Store Operations
           </div>
@@ -516,7 +506,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                         {req.status === 'pending' && (
                           <>
                             <button
-                              onClick={() => handleAcceptRequest(req.id, 6499)}
+                              onClick={() => handleAcceptRequest(req.id)}
                               className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center gap-1.5"
                             >
                               <Check className="h-3.5 w-3.5" />

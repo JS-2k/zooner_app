@@ -9,6 +9,58 @@ export interface ApiResponse<T> {
   errors?: string[];
 }
 
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem('zooner_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function responseData<T>(response: Response): Promise<T | null> {
+  if (!response.ok) return null;
+  const body: ApiResponse<T> = await response.json();
+  return body.data ?? null;
+}
+
+export async function getMyShops(): Promise<any[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/Shops/my-shops`, { headers: authHeaders() });
+    return (await responseData<any[]>(response)) ?? [];
+  } catch { return []; }
+}
+
+export async function updateShop(shopId: string, shop: any): Promise<any | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/Shops/${shopId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(shop)
+    });
+    return responseData<any>(response);
+  } catch { return null; }
+}
+
+export async function setShopLiveStatus(shopId: string, isLiveEnabled: boolean): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/Shops/${shopId}/live-status`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ isLiveEnabled })
+    });
+    return response.ok;
+  } catch { return false; }
+}
+
+export async function getIncomingRequests(shopId: string): Promise<any[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/Shops/${shopId}/incoming-requests`, { headers: authHeaders() });
+    return (await responseData<any[]>(response)) ?? [];
+  } catch { return []; }
+}
+
+export async function respondToLiveRequest(requestId: string, shopId: string): Promise<any | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/Requests/${requestId}/respond`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ shopId })
+    });
+    return responseData<any>(response);
+  } catch { return null; }
+}
+
 export async function fetchCategories(): Promise<any[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/Categories`);
@@ -39,21 +91,19 @@ export async function fetchShops(lat?: number, lon?: number): Promise<any[]> {
 }
 
 export async function sendLiveRequest(requestData: {
-  productName: string;
-  specifications?: string;
-  budgetMin?: number;
-  budgetMax?: number;
-  radiusKm: number;
+  requestText: string;
+  categoryId: string;
+  subCategoryId?: string;
+  searchRadiusKm: number;
   latitude: number;
   longitude: number;
 }): Promise<any | null> {
   try {
-    const token = localStorage.getItem('zooner_token');
     const res = await fetch(`${API_BASE_URL}/Requests`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
+        ...authHeaders()
       },
       body: JSON.stringify(requestData)
     });

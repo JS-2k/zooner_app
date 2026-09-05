@@ -82,7 +82,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   const [liveStores, setLiveStores] = useState<Store[]>([]);
   const [liveProducts, setLiveProducts] = useState<Product[]>([]);
   const [categoriesList, setCategoriesList] = useState<{ id: string; label: string }[]>([
-    { id: 'all', label: 'All Categories' }
+    { id: 'all', label: 'All' }
   ]);
 
   // Fetch Live Database Data from API (Supabase)
@@ -244,7 +244,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
         return JSON.parse(saved);
       } catch {}
     }
-    return { name: 'Karthik S.', phone: '+91 98422 12345' };
+    return { name: '', phone: '' };
   });
   const [profileSavedFeedback, setProfileSavedFeedback] = useState(false);
 
@@ -256,7 +256,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
         return JSON.parse(saved);
       } catch {}
     }
-    return ['store-nike-dbroad', 'store-croma-rspuram'];
+    return [];
   });
 
   // Live Broadcast State
@@ -266,6 +266,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [broadcastSent, setBroadcastSent] = useState(false);
   const [liveResponses, setLiveResponses] = useState<RetailerResponse[]>([]);
+  const [broadcastError, setBroadcastError] = useState('');
 
   // Sync holds to localStorage
   const saveHolds = (updated: HoldPass[]) => {
@@ -333,9 +334,17 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     if (!broadcastProduct.trim()) return;
     setIsBroadcasting(true);
 
+    const selectedLiveCategory = categoriesList.find(category => category.id === selectedCategory);
+    if (!selectedLiveCategory || selectedLiveCategory.id === 'all') {
+      setBroadcastError('Choose a category in Explore before sending a live request.');
+      setIsBroadcasting(false);
+      return;
+    }
+    setBroadcastError('');
     const result = await sendLiveRequest({
-      productName: `${broadcastProduct} (${broadcastSize})`,
-      radiusKm: parseInt(broadcastRadius) || 5,
+      requestText: `${broadcastProduct}${broadcastSize ? ` (${broadcastSize})` : ''}`,
+      categoryId: selectedLiveCategory.id,
+      searchRadiusKm: parseInt(broadcastRadius) || 5,
       latitude: currentLocation.lat || 11.0168,
       longitude: currentLocation.lng || 76.9558
     });
@@ -344,7 +353,18 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     setBroadcastSent(true);
 
     if (result && Array.isArray(result.responses) && result.responses.length > 0) {
-      setLiveResponses(result.responses);
+      setLiveResponses(result.responses.map((response: any) => ({
+        id: response.id,
+        storeName: response.shopName,
+        storeArea: response.shopAddress,
+        distance: response.distanceKm ? `${response.distanceKm.toFixed(1)} km` : 'Nearby',
+        price: 0,
+        available: response.status === 'Available',
+        conditionNote: 'This shop has confirmed availability. Contact them to confirm price and variant.',
+        rating: 0,
+        verified: true,
+        avatar: ''
+      })));
     } else {
       setLiveResponses([]);
     }
@@ -408,10 +428,10 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   const activeHolds = holds.filter(h => h.status === 'active' && h.expiresAt > Date.now());
 
   return (
-    <div className="min-h-screen bg-[#07080B] text-white flex flex-col selection:bg-white selection:text-black pb-28 md:pb-16 font-sans">
+    <div className="zooner-app min-h-screen text-white flex flex-col selection:bg-white selection:text-black pb-28 md:pb-16 font-sans">
       
       {/* ── TOP APP BAR (Compact, Minimalist) ── */}
-      <header className="sticky top-0 z-40 bg-[#07080B]/95 backdrop-blur-xl border-b border-white/10 px-4 sm:px-8 py-3.5">
+      <header className="zooner-app-header sticky top-0 z-40 px-4 sm:px-8 py-3.5">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           
           {/* Brand Logo */}
@@ -427,19 +447,19 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </button>
             )}
 
-            <span className="text-lg font-black tracking-tight text-white font-['Outfit']">
-              zooner<span className="text-slate-500">.</span>
+            <span className="text-xl font-black tracking-tight text-white font-['Outfit']">
+              zooner<span className="text-cyan-300">.</span>
             </span>
 
-            <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider px-2 py-0.5 border border-emerald-500/30 rounded bg-emerald-950/40">
-              LIVE APP
+            <span className="zooner-live-pill text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded">
+              Live nearby
             </span>
           </div>
 
           {/* Location Trigger (GPS) */}
           <button
             onClick={onOpenLocationModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 text-xs font-mono text-slate-300 hover:text-white transition-colors cursor-pointer"
+            className="zooner-location-control flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-colors cursor-pointer"
           >
             <MapPin className="h-3 w-3 text-emerald-400 shrink-0" />
             <span className="truncate max-w-[130px] sm:max-w-[200px]">{currentLocation.name || 'RS Puram'}</span>
@@ -500,17 +520,29 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       )}
 
       {/* ── MAIN APP VIEW CONTAINER ── */}
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-8 py-6 space-y-8">
+      <main className="zooner-app-content flex-1 max-w-6xl mx-auto w-full px-4 sm:px-8 py-6 space-y-8">
         
         {/* ========================================================
             TAB 1: DISCOVER (Search, Categories, Shelf Feed & Stores)
            ======================================================== */}
         {activeTab === 'discover' && (
           <div className="space-y-6 text-left">
+            <section className="zooner-explore-hero">
+              <div>
+                <div className="zooner-eyebrow"><span /> Your neighborhood, in stock</div>
+                <h1>Explore local shelves,<br className="hidden sm:block" /> not endless delivery lists.</h1>
+                <p>Compare what is available around {currentLocation.city || 'you'} and reserve it before you leave.</p>
+              </div>
+              <div className="zooner-hero-stat">
+                <span className="h-2 w-2 rounded-full bg-cyan-300 animate-pulse" />
+                <strong>{filteredStores.length || '—'}</strong>
+                <small>stores in your area</small>
+              </div>
+            </section>
             
             {/* Search Bar with 300ms Debounce */}
-            <div className="space-y-3">
-              <div className="flex items-center border border-white/15 focus-within:border-white/40 rounded-full px-4 py-3 bg-[#0B0C11] transition-colors">
+            <div className="zooner-discovery-controls space-y-3">
+              <div className="zooner-search flex items-center rounded-full px-4 py-3 transition-colors">
                 <Search className="h-4 w-4 text-slate-400 mr-3 shrink-0" />
                 <input
                   type="text"
@@ -572,8 +604,8 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 </div>
               </div>
 
-              {/* Visual Category Chips */}
-              <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pt-1 pb-1">
+              {/* Categories stay deliberately quiet: one horizontal filter, no icon noise. */}
+              <div className="zooner-category-filter overflow-x-auto no-scrollbar" role="tablist" aria-label="Product categories">
                 {categoriesList.map(cat => {
                   const isSelected = selectedCategory === cat.id;
                   return (
@@ -920,6 +952,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
             {/* Broadcast Form */}
             <form onSubmit={handleBroadcast} className="space-y-4 border border-white/10 rounded-2xl p-6 bg-[#0B0C11]">
+              {broadcastError && (
+                <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600">{broadcastError}</p>
+              )}
               <div className="space-y-1.5">
                 <label className="text-xs font-mono uppercase tracking-wider text-slate-400 block">
                   Product Name &amp; Model
@@ -1657,7 +1692,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       />
 
       {/* ── NATIVE MOBILE BOTTOM NAVIGATION (4 Tabs) ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#07080B]/98 backdrop-blur-2xl border-t border-white/[0.07] safe-area-pb">
+      <nav className="zooner-bottom-nav fixed bottom-0 left-0 right-0 z-40 safe-area-pb">
         <div className="flex items-center justify-around px-2 pt-2 pb-3">
 
           {/* Tab 1: Discover */}
