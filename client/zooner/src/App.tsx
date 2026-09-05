@@ -37,6 +37,12 @@ export function AppContent() {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isRetailerModalOpen, setIsRetailerModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
+  const [signInRoleHint, setSignInRoleHint] = useState<'C' | 'V' | 'VC'>('C');
+
+  const openSignInWithRole = (roleHint: 'C' | 'V' | 'VC' = 'C') => {
+    setSignInRoleHint(roleHint);
+    setIsSignInModalOpen(true);
+  };
 
   // Auto-detect real-time browser GPS location on startup
   useEffect(() => {
@@ -107,13 +113,14 @@ export function AppContent() {
       <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black">
         <VendorLandingPage
           onSwitchToCustomer={() => navigateTo('customer')}
-          onOpenSignIn={() => setIsSignInModalOpen(true)}
+          onOpenSignIn={() => openSignInWithRole('V')}
           onNavigateToDashboard={() => navigateTo('vendor-dashboard')}
         />
         <SignInModal
           isOpen={isSignInModalOpen}
           onClose={() => setIsSignInModalOpen(false)}
           onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
+          initialRole={signInRoleHint}
         />
         <RetailerModal
           isOpen={isRetailerModalOpen}
@@ -132,7 +139,7 @@ export function AppContent() {
           onOpenLocationModal={() => setIsLocationModalOpen(true)}
           onNavigateToHome={() => navigateTo('marketing')}
           onNavigateToVendor={() => navigateTo('vendor-dashboard')}
-          onOpenSignIn={() => setIsSignInModalOpen(true)}
+          onOpenSignIn={(roleHint) => openSignInWithRole(roleHint || 'C')}
         />
         <LocationModal
           isOpen={isLocationModalOpen}
@@ -144,6 +151,7 @@ export function AppContent() {
           isOpen={isSignInModalOpen}
           onClose={() => setIsSignInModalOpen(false)}
           onSwitchToRetailer={() => navigateTo('vendor-dashboard')}
+          initialRole={signInRoleHint}
         />
       </div>
     );

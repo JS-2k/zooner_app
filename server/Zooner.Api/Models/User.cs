@@ -22,10 +22,23 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
 
     [MaxLength(50)]
-    public string Role { get; set; } = "Customer"; // Customer, ShopOwner, Admin
+    public string Role { get; set; } = "C"; // C = Customer, V = Vendor, VC / V/C = Both, Admin
 
-    public bool IsCustomer => Role.Equals("Customer", StringComparison.OrdinalIgnoreCase);
-    public bool IsShopOwner => Role.Equals("ShopOwner", StringComparison.OrdinalIgnoreCase);
+    public bool IsCustomer => 
+        Role.Equals("C", StringComparison.OrdinalIgnoreCase) || 
+        Role.Equals("Customer", StringComparison.OrdinalIgnoreCase) || 
+        Role.Equals("VC", StringComparison.OrdinalIgnoreCase) || 
+        Role.Equals("V/C", StringComparison.OrdinalIgnoreCase) || 
+        Role.Equals("Both", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsShopOwner => 
+        Role.Equals("V", StringComparison.OrdinalIgnoreCase) || 
+        Role.Equals("Vendor", StringComparison.OrdinalIgnoreCase) || 
+        Role.Equals("ShopOwner", StringComparison.OrdinalIgnoreCase) || 
+        Role.Equals("VC", StringComparison.OrdinalIgnoreCase) || 
+        Role.Equals("V/C", StringComparison.OrdinalIgnoreCase) || 
+        Role.Equals("Both", StringComparison.OrdinalIgnoreCase);
+
     public bool IsAdmin => Role.Equals("Admin", StringComparison.OrdinalIgnoreCase);
 
     public bool IsActive { get; set; } = true;

@@ -16,12 +16,14 @@ import {
   User, 
   SlidersHorizontal, 
   ChevronRight,
-  MessageSquare
+  MessageSquare,
+  Store as StoreIcon
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { fetchShops, fetchCategories, sendLiveRequest } from '../services/api';
 import { HoldPassSheet, type HoldPass } from '../components/HoldPassSheet';
 import { DirectChatDrawer } from '../components/DirectChatDrawer';
+import { MobileWelcomeModal } from '../components/MobileWelcomeModal';
 import type { Store, Product, LocationArea, RetailerResponse } from '../types';
 
 interface CustomerAppPageProps {
@@ -29,7 +31,7 @@ interface CustomerAppPageProps {
   onOpenLocationModal: () => void;
   onNavigateToHome: () => void;
   onNavigateToVendor: () => void;
-  onOpenSignIn: () => void;
+  onOpenSignIn: (roleHint?: 'C' | 'V' | 'VC') => void;
 }
 
 type TabType = 'discover' | 'requests' | 'holds' | 'account';
@@ -39,8 +41,38 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   onOpenLocationModal,
   onNavigateToHome,
   onNavigateToVendor,
+  onOpenSignIn,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('discover');
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(() => {
+    const saved = localStorage.getItem('zooner_user_profile');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    const syncUser = () => {
+      const saved = localStorage.getItem('zooner_user_profile');
+      if (saved) {
+        try { setUserProfile(JSON.parse(saved)); } catch {}
+      } else {
+        setUserProfile(null);
+      }
+    };
+    window.addEventListener('storage', syncUser);
+    return () => window.removeEventListener('storage', syncUser);
+  }, []);
+
+  const isVendor = userProfile && (
+    userProfile.role === 'V' || 
+    userProfile.role === 'VC' || 
+    userProfile.role === 'Vendor' || 
+    userProfile.role === 'ShopOwner' || 
+    userProfile.isVendor
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -358,13 +390,25 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             <span className="truncate max-w-[130px] sm:max-w-[200px]">{currentLocation.name || 'RS Puram'}</span>
           </button>
 
-          {/* Right link: Store Portal */}
-          <div className="flex items-center gap-3">
+          {/* Right link: Vendor Dashboard / Sign In */}
+          <div className="flex items-center gap-2">
+            {isVendor && (
+              <button
+                onClick={onNavigateToVendor}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-xs font-bold transition-all cursor-pointer shadow-md shadow-amber-500/10"
+              >
+                <StoreIcon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Merchant OS</span>
+                <span className="sm:hidden">Vendor</span>
+              </button>
+            )}
+
             <button
-              onClick={onNavigateToVendor}
-              className="hidden sm:inline-flex text-xs font-mono text-slate-400 hover:text-white transition-colors cursor-pointer"
+              onClick={() => setIsWelcomeModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-xs font-semibold text-white transition-colors cursor-pointer"
             >
-              Store Portal →
+              <User className="h-3.5 w-3.5 text-emerald-400" />
+              <span>{userProfile ? (userProfile.name.split(' ')[0]) : 'Sign In'}</span>
             </button>
           </div>
 
@@ -1095,23 +1139,30 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               )}
             </div>
 
-            {/* Store Owner Switcher */}
-            <div className="border border-white/10 rounded-2xl p-6 bg-[#0B0C11] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            {/* Store Owner & Vendor Passport Switcher */}
+            <div className="border border-amber-500/30 rounded-2xl p-6 bg-gradient-to-br from-amber-500/10 via-[#0B0C11] to-[#07080B] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="space-y-1">
-                <span className="text-xs font-mono uppercase tracking-widest text-slate-500 font-bold block">
-                  Retailer Access
-                </span>
-                <div className="text-sm font-bold text-white">Own a physical store in the city?</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono uppercase tracking-widest text-amber-400 font-bold block">
+                    {isVendor ? 'Vendor Passport (V / VC)' : 'Retailer Access'}
+                  </span>
+                </div>
+                <div className="text-sm font-bold text-white">
+                  {isVendor ? 'Your Merchant OS Dashboard is Active' : 'Own a physical store in the city?'}
+                </div>
                 <p className="text-xs text-slate-400">
-                  Manage in-store holds and receive live shopper requests from nearby.
+                  {isVendor 
+                    ? 'Manage incoming live requests, shelf inventory, and customer 30-min hold passes.' 
+                    : 'Manage in-store holds and receive live shopper requests from nearby.'}
                 </p>
               </div>
 
               <button
                 onClick={onNavigateToVendor}
-                className="px-6 py-3 rounded-full border border-white/20 hover:border-white/40 text-xs font-mono font-bold text-white transition-colors cursor-pointer shrink-0"
+                className="px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 text-xs font-mono font-bold hover:brightness-105 transition-all cursor-pointer shrink-0 shadow-lg shadow-amber-500/20 flex items-center gap-2"
               >
-                Store Portal →
+                <StoreIcon className="h-4 w-4" />
+                <span>{isVendor ? 'Open Vendor Dashboard →' : 'Store Portal →'}</span>
               </button>
             </div>
 
@@ -1304,6 +1355,14 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
         pass={chatPass}
         isOpen={Boolean(chatPass)}
         onClose={() => setChatPass(null)}
+      />
+
+      {/* ── MOBILE WELCOME ENTRY SHEET ── */}
+      <MobileWelcomeModal
+        isOpen={isWelcomeModalOpen}
+        onClose={() => setIsWelcomeModalOpen(false)}
+        onContinueAsGuest={() => setIsWelcomeModalOpen(false)}
+        onOpenSignIn={(roleHint) => onOpenSignIn(roleHint)}
       />
 
       {/* ── NATIVE MOBILE BOTTOM NAVIGATION (4 Tabs) ── */}
