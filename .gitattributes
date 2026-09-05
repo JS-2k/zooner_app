@@ -1,0 +1,6 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Ensure shell scripts and gradlew retain LF endings on all platforms
+gradlew text eol=lf
+*.sh text eol=lf

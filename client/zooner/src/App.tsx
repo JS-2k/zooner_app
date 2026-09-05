@@ -9,6 +9,7 @@ import { LocationModal } from './components/LocationModal';
 import { RetailerModal } from './components/RetailerModal';
 import { SignInModal } from './components/SignInModal';
 import { DEFAULT_LOCATION } from './data/mockData';
+import { Capacitor } from '@capacitor/core';
 import type { LocationArea } from './types';
 
 type AppRoute = 'marketing' | 'customer' | 'vendor' | 'vendor-dashboard';
@@ -19,6 +20,7 @@ export function AppContent() {
     if (hash.includes('vendor/dashboard') || hash.includes('vendordashboard')) return 'vendor-dashboard';
     if (hash.includes('vendor')) return 'vendor';
     if (hash.includes('app') || hash.includes('customer')) return 'customer';
+    if (Capacitor.isNativePlatform()) return 'customer';
     return 'marketing';
   });
 
