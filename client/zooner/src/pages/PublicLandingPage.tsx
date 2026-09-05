@@ -5,7 +5,6 @@ import {
   Download, 
   ShieldCheck, 
   MapPin, 
-  Store as StoreIcon,
   Navigation,
   CheckCircle2,
   Lock
@@ -13,7 +12,6 @@ import {
 import { TheIdea } from '../components/TheIdea';
 import { TheProblem } from '../components/TheProblem';
 import { LocalDiscovery } from '../components/LocalDiscovery';
-import { RetailerCallout } from '../components/RetailerCallout';
 import { FinalCTA } from '../components/FinalCTA';
 import { Footer } from '../components/Footer';
 import type { LocationArea } from '../types';
@@ -104,33 +102,23 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({
             Search verified shelf inventory in nearby stores, reserve what you need for 30 minutes, and pick it up today.
           </motion.p>
 
-          {/* Clean Action Buttons */}
+          {/* Clean Action Button */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2"
+            className="flex items-center justify-center pt-2"
           >
             <motion.button
               onClick={onLaunchCustomerApp}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full bg-white text-slate-950 font-bold text-sm sm:text-base hover:bg-slate-200 transition-all cursor-pointer shadow-lg shadow-white/5"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-9 py-4 rounded-full bg-white text-slate-950 font-bold text-sm sm:text-base hover:bg-slate-200 transition-all cursor-pointer shadow-lg shadow-white/5"
             >
               <Download className="h-4 w-4 stroke-[2.5]" />
               <span>Download Zooner</span>
               <ArrowRight className="h-4 w-4" />
             </motion.button>
-
-            <motion.a
-              href="#stores"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-full border border-white/10 hover:border-white/20 text-sm font-semibold text-slate-300 hover:text-white transition-all cursor-pointer"
-            >
-              <StoreIcon className="h-4 w-4 text-slate-400" />
-              <span>Explore Local Stores</span>
-            </motion.a>
           </motion.div>
 
           {/* Value Props - Clean Inline Text */}
@@ -242,19 +230,14 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({
       {/* ── 02. THE DIFFERENCE: WHY LOCAL MATTERS ── */}
       <TheProblem />
 
-      {/* ── 03. LOCAL STORE DISCOVERY & MAP ── */}
+      {/* ── 03. STORES: DISCOVERY, DIRECTORY & MERCHANT ACCESS ── */}
       <LocalDiscovery 
         currentLocation={currentLocation}
         onOpenLocationModal={onOpenLocationModal}
-      />
-
-      {/* ── 04. FOR RETAILERS ── */}
-      <RetailerCallout
-        onOpenRetailerModal={onNavigateToVendor}
         onNavigateToVendor={onNavigateToVendor}
       />
 
-      {/* ── 05. FINAL CTA ── */}
+      {/* ── 04. FINAL CTA ── */}
       <FinalCTA
         onOpenRetailerModal={onNavigateToVendor}
         onSearchClick={onLaunchCustomerApp}

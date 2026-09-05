@@ -48,25 +48,22 @@ export const Footer: React.FC<FooterProps> = ({ onOpenRetailerModal, onOpenLocat
                 <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
               </li>
               <li>
-                <a href="#hold-feature" className="hover:text-white transition-colors">30-Min Hold</a>
-              </li>
-              <li>
-                <a href="#stores" className="hover:text-white transition-colors">Local Stores</a>
+                <a href="#stores" className="hover:text-white transition-colors">Stores</a>
               </li>
             </ul>
           </div>
 
           {/* Merchants */}
           <div className="md:col-span-3 text-left space-y-3">
-            <span className="font-bold text-white text-sm block">For Physical Retailers</span>
+            <span className="font-bold text-white text-sm block">For Retailers</span>
             <ul className="space-y-2.5 text-slate-300 font-medium">
               <li>
-                <a 
-                  href="#merchants"
-                  className="hover:text-white transition-colors"
+                <button 
+                  onClick={onOpenRetailerModal}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
                 >
-                  Partner with Zooner
-                </a>
+                  Register Store
+                </button>
               </li>
               <li>
                 <button 

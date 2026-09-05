@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Navigation, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { MapPin, Navigation, ArrowUpRight, CheckCircle2, Store, ArrowRight } from 'lucide-react';
 import { PHYSICAL_STORES } from '../data/mockData';
 import type { Store as StoreType, LocationArea } from '../types';
 
 interface LocalDiscoveryProps {
   currentLocation: LocationArea;
   onOpenLocationModal: () => void;
+  onNavigateToVendor?: () => void;
 }
 
 export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
   currentLocation,
   onOpenLocationModal,
+  onNavigateToVendor,
 }) => {
   const [activePin, setActivePin] = useState<StoreType | null>(PHYSICAL_STORES[0] || null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -188,6 +190,32 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
           {filteredStores.length === 0 && (
             <div className="py-8 text-center text-xs text-slate-500">
               No stores found in this category.
+            </div>
+          )}
+
+          {/* Integrated Retailer Registration — Single Unified Stores Section */}
+          {onNavigateToVendor && (
+            <div className="pt-10 border-t border-slate-800/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 text-left">
+              <div className="space-y-1.5 max-w-xl">
+                <span className="text-xs font-mono uppercase tracking-widest text-slate-500 font-bold block">
+                  For Store Owners
+                </span>
+                <h3 className="text-lg sm:text-xl font-bold text-white font-['Outfit']">
+                  Turn nearby online searches into walk-in counter sales.
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-400">
+                  Zero hardware setup · Zero commission on walk-in visits · Direct counter payment.
+                </p>
+              </div>
+
+              <button
+                onClick={onNavigateToVendor}
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-all cursor-pointer shrink-0 shadow-lg shadow-white/5"
+              >
+                <Store className="h-3.5 w-3.5" />
+                <span>Register Your Store</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
         </div>

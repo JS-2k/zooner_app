@@ -60,7 +60,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right: Desktop Navigation Links & Actions */}
           <div className="hidden md:flex items-center gap-8">
-            <nav className="flex items-center gap-6 text-sm tracking-wide text-slate-300 font-medium">
+            <nav className="flex items-center gap-7 text-sm tracking-wide text-slate-300 font-medium">
               <a 
                 href="#how-it-works"
                 className="hover:text-white transition-colors"
@@ -68,22 +68,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 How It Works
               </a>
               <a 
-                href="#hold-feature"
-                className="hover:text-white transition-colors"
-              >
-                30-Min Hold
-              </a>
-              <a 
                 href="#stores" 
                 className="hover:text-white transition-colors"
               >
-                Local Stores
-              </a>
-              <a
-                href="#merchants"
-                className="hover:text-white transition-colors cursor-pointer text-left"
-              >
-                For Stores
+                Stores
               </a>
             </nav>
 
@@ -141,28 +129,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 How It Works
               </a>
               <a 
-                href="#hold-feature"
-                onClick={() => setMobileMenuOpen(false)}
-                className="py-2 border-b border-slate-800"
-              >
-                30-Min Hold
-              </a>
-              <a 
                 href="#stores" 
                 onClick={() => setMobileMenuOpen(false)}
                 className="py-2 border-b border-slate-800"
               >
-                Local Stores
-              </a>
-              <a
-                href="#merchants"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onNavigateToVendor();
-                }}
-                className="text-left py-2 border-b border-slate-800"
-              >
-                For Stores
+                Stores
               </a>
             </nav>
 
