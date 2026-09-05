@@ -18,8 +18,9 @@ import {
   ChevronRight,
   MessageSquare
 } from 'lucide-react';
-import { PHYSICAL_STORES, PRODUCTS, CATEGORIES } from '../data/mockData';
-import { sendLiveRequest } from '../services/api';
+import { Capacitor } from '@capacitor/core';
+import { PHYSICAL_STORES, PRODUCTS } from '../data/mockData';
+import { fetchShops, fetchCategories, sendLiveRequest } from '../services/api';
 import { HoldPassSheet, type HoldPass } from '../components/HoldPassSheet';
 import { DirectChatDrawer } from '../components/DirectChatDrawer';
 import type { Store, Product, LocationArea, RetailerResponse } from '../types';
@@ -46,6 +47,60 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [radiusFilter, setRadiusFilter] = useState<'2km' | '5km' | '10km' | '15km'>('5km');
   const [inStockOnly, setInStockOnly] = useState(true);
+
+  const [liveStores, setLiveStores] = useState<Store[]>(PHYSICAL_STORES);
+  const [categoriesList, setCategoriesList] = useState<{ id: string; label: string }[]>([
+    { id: 'all', label: 'All Categories' },
+    { id: 'footwear', label: 'Footwear & Apparel' },
+    { id: 'electronics', label: 'Electronics & Mobile' },
+    { id: 'appliances', label: 'Home Appliances' },
+    { id: 'clothing', label: 'Clothing & Fashion' }
+  ]);
+
+  // Fetch Live Database Data from API (Supabase)
+  useEffect(() => {
+    async function loadLiveData() {
+      try {
+        const [shopsData, categoriesData] = await Promise.all([
+          fetchShops(currentLocation.lat, currentLocation.lng),
+          fetchCategories()
+        ]);
+
+        if (shopsData && shopsData.length > 0) {
+          const formatted: Store[] = shopsData.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            category: s.categoryName || 'General Store',
+            area: s.address || s.city || 'Local Area',
+            address: s.address || s.city || '',
+            phone: s.phone || '',
+            openStatus: s.isOpen ? 'Open Now' : 'Closed',
+            verified: s.isVerified ?? true,
+            rating: s.rating || 4.9,
+            reviewCount: 24,
+            tags: s.tags ? s.tags.split(',') : ['verified', 'store'],
+            latitude: s.latitude,
+            longitude: s.longitude,
+            distance: s.distanceKm ? `${s.distanceKm.toFixed(1)} km` : '350m'
+          }));
+          setLiveStores(formatted);
+        }
+
+        if (categoriesData && categoriesData.length > 0) {
+          setCategoriesList([
+            { id: 'all', label: 'All Categories' },
+            ...categoriesData.map((c: any) => ({
+              id: c.slug || c.id,
+              label: c.name
+            }))
+          ]);
+        }
+      } catch (err) {
+        console.error('API live fetch fallback:', err);
+      }
+    }
+    loadLiveData();
+  }, [currentLocation]);
 
   // 300ms Search Debounce
   useEffect(() => {
@@ -262,7 +317,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   });
 
   // Stores filtering
-  const filteredStores = PHYSICAL_STORES.filter(st => {
+  const filteredStores = liveStores.filter(st => {
     const matchesQuery = debouncedQuery === '' ||
       st.name.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
       st.category.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
@@ -294,23 +349,25 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       <header className="sticky top-0 z-40 bg-[#07080B]/95 backdrop-blur-xl border-b border-white/10 px-4 sm:px-8 py-3.5">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           
-          {/* Brand Logo & Back to Marketing Site */}
+          {/* Brand Logo */}
           <div className="flex items-center gap-3">
-            <button 
-              onClick={onNavigateToHome}
-              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
-              title="Back to Landing Page"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Website</span>
-            </button>
+            {!Capacitor.isNativePlatform() && (
+              <button 
+                onClick={onNavigateToHome}
+                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+                title="Back to Landing Page"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Website</span>
+              </button>
+            )}
 
             <span className="text-lg font-black tracking-tight text-white font-['Outfit']">
               zooner<span className="text-slate-500">.</span>
             </span>
 
-            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider px-2 py-0.5 border border-white/10 rounded">
-              App
+            <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider px-2 py-0.5 border border-emerald-500/30 rounded bg-emerald-950/40">
+              LIVE APP
             </span>
           </div>
 
@@ -437,7 +494,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
               {/* Visual Category Chips */}
               <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pt-1 pb-1">
-                {CATEGORIES.map(cat => {
+                {categoriesList.map(cat => {
                   const isSelected = selectedCategory === cat.id;
                   return (
                     <button

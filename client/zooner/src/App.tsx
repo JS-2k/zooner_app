@@ -115,14 +115,14 @@ export function AppContent() {
   }
 
   // ── EXPERIENCE 2: CUSTOMER MOBILE-FIRST APPLICATION (Discovery & Shopping) ──
-  if (currentRoute === 'customer') {
+  if (Capacitor.isNativePlatform() || currentRoute === 'customer') {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black">
         <CustomerAppPage
           currentLocation={currentLocation}
           onOpenLocationModal={() => setIsLocationModalOpen(true)}
           onNavigateToHome={() => navigateTo('marketing')}
-          onNavigateToVendor={() => navigateTo('vendor')}
+          onNavigateToVendor={() => navigateTo('vendor-dashboard')}
           onOpenSignIn={() => setIsSignInModalOpen(true)}
         />
         <LocationModal
@@ -134,13 +134,13 @@ export function AppContent() {
         <SignInModal
           isOpen={isSignInModalOpen}
           onClose={() => setIsSignInModalOpen(false)}
-          onSwitchToRetailer={() => navigateTo('vendor')}
+          onSwitchToRetailer={() => navigateTo('vendor-dashboard')}
         />
       </div>
     );
   }
 
-  // ── EXPERIENCE 1: PUBLIC MARKETING WEBSITE (App Promotion & Trust) ──
+  // ── EXPERIENCE 1: PUBLIC MARKETING WEBSITE (App Promotion & Trust - Desktop Web Only) ──
   return (
     <div className="min-h-screen bg-[#070A11] text-white flex flex-col selection:bg-white selection:text-black relative">
       <Navbar
