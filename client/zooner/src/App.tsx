@@ -8,9 +8,18 @@ import { VendorDashboardPage } from './pages/VendorDashboardPage';
 import { LocationModal } from './components/LocationModal';
 import { RetailerModal } from './components/RetailerModal';
 import { SignInModal } from './components/SignInModal';
-import { DEFAULT_LOCATION } from './data/mockData';
 import { Capacitor } from '@capacitor/core';
 import type { LocationArea } from './types';
+
+const DEFAULT_LOCATION: LocationArea = {
+  id: 'loc-live',
+  name: 'Current Location',
+  city: 'Coimbatore',
+  storesCount: 0,
+  activeRequests: 0,
+  lat: 11.0168,
+  lng: 76.9558
+};
 
 type AppRoute = 'marketing' | 'customer' | 'vendor' | 'vendor-dashboard';
 

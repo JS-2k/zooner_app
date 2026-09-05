@@ -19,7 +19,6 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
-import { PHYSICAL_STORES, PRODUCTS } from '../data/mockData';
 import { fetchShops, fetchCategories, sendLiveRequest } from '../services/api';
 import { HoldPassSheet, type HoldPass } from '../components/HoldPassSheet';
 import { DirectChatDrawer } from '../components/DirectChatDrawer';
@@ -48,13 +47,10 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   const [radiusFilter, setRadiusFilter] = useState<'2km' | '5km' | '10km' | '15km'>('5km');
   const [inStockOnly, setInStockOnly] = useState(true);
 
-  const [liveStores, setLiveStores] = useState<Store[]>(PHYSICAL_STORES);
+  const [liveStores, setLiveStores] = useState<Store[]>([]);
+  const [liveProducts, setLiveProducts] = useState<Product[]>([]);
   const [categoriesList, setCategoriesList] = useState<{ id: string; label: string }[]>([
-    { id: 'all', label: 'All Categories' },
-    { id: 'footwear', label: 'Footwear & Apparel' },
-    { id: 'electronics', label: 'Electronics & Mobile' },
-    { id: 'appliances', label: 'Home Appliances' },
-    { id: 'clothing', label: 'Clothing & Fashion' }
+    { id: 'all', label: 'All Categories' }
   ]);
 
   // Fetch Live Database Data from API (Supabase)
@@ -84,6 +80,30 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             distance: s.distanceKm ? `${s.distanceKm.toFixed(1)} km` : '350m'
           }));
           setLiveStores(formatted);
+
+          const prods: Product[] = [];
+          shopsData.forEach((s: any) => {
+            if (Array.isArray(s.products)) {
+              s.products.forEach((p: any) => {
+                prods.push({
+                  id: p.id,
+                  name: p.name,
+                  category: s.categoryName || 'General',
+                  price: p.price,
+                  originalPrice: p.originalPrice,
+                  storeName: s.name,
+                  storeArea: s.address || s.city || 'Local Area',
+                  distance: s.distanceKm ? `${s.distanceKm.toFixed(1)} km` : '350m',
+                  inStock: p.inStock ?? true,
+                  stockCount: p.stockCount || 5,
+                  imageUrl: p.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80',
+                  rating: 4.8,
+                  reviewsCount: 12
+                });
+              });
+            }
+          });
+          setLiveProducts(prods);
         }
 
         if (categoriesData && categoriesData.length > 0) {
@@ -96,7 +116,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           ]);
         }
       } catch (err) {
-        console.error('API live fetch fallback:', err);
+        console.error('API live fetch:', err);
       }
     }
     loadLiveData();
@@ -120,28 +140,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     if (saved) {
       try {
         return JSON.parse(saved);
-      } catch {
-        // Fallback
-      }
+      } catch {}
     }
-    // Default initial active hold pass
-    return [
-      {
-        id: 'hold-init-1',
-        passCode: 'ZN-4821',
-        productName: 'Nike Air Max 270 (UK 9)',
-        storeName: 'Nike Store · DB Road',
-        storeAddress: '142 DB Road, RS Puram, Coimbatore - 641002',
-        storePhone: '+91 422 254 8890',
-        storeClosing: 'Open until 9:30 PM',
-        price: 6499,
-        customerName: 'Karthik S.',
-        customerPhone: '+91 98422 12345',
-        createdAt: Date.now() - 6 * 60 * 1000,
-        expiresAt: Date.now() + 24 * 60 * 1000,
-        status: 'active'
-      }
-    ];
+    return [];
   });
 
   // Sheet & Drawer States
@@ -194,7 +195,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   ) => {
     const codeNum = Math.floor(1000 + Math.random() * 9000);
     const now = Date.now();
-    const matchingStore = PHYSICAL_STORES.find(s => 
+    const matchingStore = liveStores.find((s: Store) => 
       s.name.toLowerCase().includes(storeName.toLowerCase().split('·')[0].trim())
     );
 
@@ -258,32 +259,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     if (result && Array.isArray(result.responses) && result.responses.length > 0) {
       setLiveResponses(result.responses);
     } else {
-      setLiveResponses([
-        {
-          id: 'resp-live-1',
-          storeName: 'Nike Store · DB Road',
-          storeArea: 'RS Puram',
-          distance: '350m',
-          price: 6499,
-          available: true,
-          conditionNote: 'In stock on shelf. Verified by floor manager.',
-          rating: 4.9,
-          verified: true,
-          avatar: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=120&q=80',
-        },
-        {
-          id: 'resp-live-2',
-          storeName: 'Sprint Sports Hub',
-          storeArea: 'Race Course',
-          distance: '900m',
-          price: 6299,
-          available: true,
-          conditionNote: 'In stock in Black/White. Ready for counter pickup.',
-          rating: 4.8,
-          verified: true,
-          avatar: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&w=120&q=80',
-        }
-      ]);
+      setLiveResponses([]);
     }
   };
 
@@ -291,7 +267,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   const maxRadiusKm = parseInt(radiusFilter) || 5;
 
   // Products filtering based on query, category, and radius
-  const filteredProducts = PRODUCTS.filter(prod => {
+  const filteredProducts = liveProducts.filter(prod => {
     const matchesQuery = debouncedQuery === '' || 
       prod.name.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
       prod.category.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
@@ -1092,7 +1068,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               ) : (
                 <div className="divide-y divide-white/10">
                   {savedStores.map(storeId => {
-                    const st = PHYSICAL_STORES.find(s => s.id === storeId);
+                    const st = liveStores.find((s: Store) => s.id === storeId);
                     if (!st) return null;
                     return (
                       <div key={st.id} className="py-3.5 flex items-center justify-between gap-4">
@@ -1193,7 +1169,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   </div>
 
                   <div className="divide-y divide-white/10">
-                    {PRODUCTS.filter(p => p.storeName.includes(selectedStore.name.split('·')[0].trim())).map(p => (
+                    {liveProducts.filter((p: Product) => p.storeName.includes(selectedStore.name.split('·')[0].trim())).map((p: Product) => (
                       <div key={p.id} className="py-3 flex items-center justify-between gap-3">
                         <div>
                           <div className="text-xs font-bold text-white">{p.name}</div>
