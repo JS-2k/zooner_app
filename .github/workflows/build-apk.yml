@@ -63,7 +63,16 @@ jobs:
 
       - name: Build Android Debug APK
         working-directory: client/zooner/android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: |
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee gradle-build.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Upload Build Failure Log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-failure-log
+          path: client/zooner/android/gradle-build.log
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
