@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -8,19 +8,20 @@ import {
   Clock, 
   Send, 
   Radio, 
-  Store as StoreIcon, 
   Phone, 
   Bookmark, 
-  Sparkles, 
   ArrowLeft,
-  X,
-  Compass,
-  User,
-  SlidersHorizontal,
-  ChevronRight
+  X, 
+  Compass, 
+  User, 
+  SlidersHorizontal, 
+  ChevronRight,
+  MessageSquare
 } from 'lucide-react';
 import { PHYSICAL_STORES, PRODUCTS, CATEGORIES } from '../data/mockData';
 import { sendLiveRequest } from '../services/api';
+import { HoldPassSheet, type HoldPass } from '../components/HoldPassSheet';
+import { DirectChatDrawer } from '../components/DirectChatDrawer';
 import type { Store, Product, LocationArea, RetailerResponse } from '../types';
 
 interface CustomerAppPageProps {
@@ -31,75 +32,162 @@ interface CustomerAppPageProps {
   onOpenSignIn: () => void;
 }
 
-type TabType = 'discover' | 'search' | 'requests' | 'saved' | 'profile';
+type TabType = 'discover' | 'requests' | 'holds' | 'account';
 
 export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   currentLocation,
   onOpenLocationModal,
   onNavigateToHome,
   onNavigateToVendor,
-  onOpenSignIn
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('discover');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [radiusFilter, setRadiusFilter] = useState<'2km' | '5km' | '10km'>('5km');
+  const [radiusFilter, setRadiusFilter] = useState<'2km' | '5km' | '10km' | '15km'>('5km');
   const [inStockOnly, setInStockOnly] = useState(true);
-  
-  // Selected Store / Product Detail Modal State
+
+  // 300ms Search Debounce
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Selected Store / Product Detail State
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  
-  // Active Holds / Saved Items
-  const [activeHolds, setActiveHolds] = useState<{ id: string; name: string; store: string; expires: string }[]>([
-    {
-      id: 'hold-1',
-      name: 'Nike Air Max 270 (UK 9)',
-      store: 'Nike Store · DB Road',
-      expires: '24 mins remaining'
+
+  // Active Hold Passes (persisted in localStorage)
+  const [holds, setHolds] = useState<HoldPass[]>(() => {
+    const saved = localStorage.getItem('zooner_customer_holds');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // Fallback
+      }
     }
-  ]);
-  const [savedStores, setSavedStores] = useState<string[]>(['store-nike-dbroad', 'store-croma-rspuram']);
+    // Default initial active hold pass
+    return [
+      {
+        id: 'hold-init-1',
+        passCode: 'ZN-4821',
+        productName: 'Nike Air Max 270 (UK 9)',
+        storeName: 'Nike Store · DB Road',
+        storeAddress: '142 DB Road, RS Puram, Coimbatore - 641002',
+        storePhone: '+91 422 254 8890',
+        storeClosing: 'Open until 9:30 PM',
+        price: 6499,
+        customerName: 'Karthik S.',
+        customerPhone: '+91 98422 12345',
+        createdAt: Date.now() - 6 * 60 * 1000,
+        expiresAt: Date.now() + 24 * 60 * 1000,
+        status: 'active'
+      }
+    ];
+  });
+
+  // Sheet & Drawer States
+  const [selectedPassForSheet, setSelectedPassForSheet] = useState<HoldPass | null>(null);
+  const [chatPass, setChatPass] = useState<HoldPass | null>(null);
+
+  // Customer Profile (Counter Identity)
+  const [customerProfile, setCustomerProfile] = useState<{ name: string; phone: string }>(() => {
+    const saved = localStorage.getItem('zooner_customer_profile');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    return { name: 'Karthik S.', phone: '+91 98422 12345' };
+  });
+  const [profileSavedFeedback, setProfileSavedFeedback] = useState(false);
+
+  // Saved Stores
+  const [savedStores, setSavedStores] = useState<string[]>(() => {
+    const saved = localStorage.getItem('zooner_saved_stores');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    return ['store-nike-dbroad', 'store-croma-rspuram'];
+  });
 
   // Live Broadcast State
-  const [broadcastProduct, setBroadcastProduct] = useState('Nike Pegasus UK 9');
+  const [broadcastProduct, setBroadcastProduct] = useState('');
   const [broadcastSize, setBroadcastSize] = useState('UK 9');
-  const [broadcastRadius, setBroadcastRadius] = useState('Within 5 km');
+  const [broadcastRadius, setBroadcastRadius] = useState('5 km');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [broadcastSent, setBroadcastSent] = useState(false);
   const [liveResponses, setLiveResponses] = useState<RetailerResponse[]>([]);
 
-  // Filtered Products based on Search Query & Category
-  const filteredProducts = PRODUCTS.filter(prod => {
-    const matchesQuery = searchQuery === '' || 
-      prod.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prod.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prod.storeName.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = selectedCategory === 'all' || 
-      prod.category.toLowerCase().includes(selectedCategory.toLowerCase());
+  // Sync holds to localStorage
+  const saveHolds = (updated: HoldPass[]) => {
+    setHolds(updated);
+    localStorage.setItem('zooner_customer_holds', JSON.stringify(updated));
+  };
 
-    const matchesStock = !inStockOnly || prod.inStock;
+  const handleHoldItem = (
+    prodName: string, 
+    storeName: string, 
+    price: number = 0,
+    storeAddress?: string,
+    storePhone?: string
+  ) => {
+    const codeNum = Math.floor(1000 + Math.random() * 9000);
+    const now = Date.now();
+    const matchingStore = PHYSICAL_STORES.find(s => 
+      s.name.toLowerCase().includes(storeName.toLowerCase().split('·')[0].trim())
+    );
 
-    return matchesQuery && matchesCategory && matchesStock;
-  });
+    const newPass: HoldPass = {
+      id: `hold-${now}`,
+      passCode: `ZN-${codeNum}`,
+      productName: prodName,
+      storeName: storeName,
+      storeAddress: storeAddress || matchingStore?.address || '142 DB Road, RS Puram, Coimbatore',
+      storePhone: storePhone || '+91 422 254 8890',
+      storeClosing: matchingStore?.openStatus || 'Open until 9:30 PM',
+      price: price || 6499,
+      customerName: customerProfile.name || 'Customer',
+      customerPhone: customerProfile.phone || '+91 98422 12345',
+      createdAt: now,
+      expiresAt: now + 30 * 60 * 1000,
+      status: 'active'
+    };
 
-  // Filtered Stores based on Search Query & Category
-  const filteredStores = PHYSICAL_STORES.filter(st => {
-    const matchesQuery = searchQuery === '' ||
-      st.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      st.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      st.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+    const updated = [newPass, ...holds];
+    saveHolds(updated);
+    setSelectedPassForSheet(newPass);
+  };
 
-    const matchesCategory = selectedCategory === 'all' ||
-      st.category.toLowerCase().includes(selectedCategory.toLowerCase());
+  const handleCancelHold = (passId: string) => {
+    const updated = holds.map(h => h.id === passId ? { ...h, status: 'cancelled' as const } : h);
+    saveHolds(updated);
+  };
 
-    return matchesQuery && matchesCategory;
-  });
+  const toggleSaveStore = (storeId: string) => {
+    setSavedStores(prev => {
+      const next = prev.includes(storeId) ? prev.filter(id => id !== storeId) : [...prev, storeId];
+      localStorage.setItem('zooner_saved_stores', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('zooner_customer_profile', JSON.stringify(customerProfile));
+    setProfileSavedFeedback(true);
+    setTimeout(() => setProfileSavedFeedback(false), 2000);
+  };
 
   // Broadcast Live Request Handler
   const handleBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!broadcastProduct.trim()) return;
     setIsBroadcasting(true);
 
     const result = await sendLiveRequest({
@@ -123,7 +211,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           distance: '350m',
           price: 6499,
           available: true,
-          conditionNote: '2 pairs on shelf! Reserved 1 pair for you on counter.',
+          conditionNote: 'In stock on shelf. Verified by floor manager.',
           rating: 4.9,
           verified: true,
           avatar: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=120&q=80',
@@ -135,7 +223,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           distance: '900m',
           price: 6299,
           available: true,
-          conditionNote: 'In stock in Black/White. Held for 2 hours for walk-in.',
+          conditionNote: 'In stock in Black/White. Ready for counter pickup.',
           rating: 4.8,
           verified: true,
           avatar: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&w=120&q=80',
@@ -144,325 +232,414 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     }
   };
 
-  const toggleSaveStore = (storeId: string) => {
-    setSavedStores(prev => 
-      prev.includes(storeId) ? prev.filter(id => id !== storeId) : [...prev, storeId]
-    );
-  };
+  // Radius limit parsing (numeric km)
+  const maxRadiusKm = parseInt(radiusFilter) || 5;
 
-  const handleHoldItem = (prodName: string, storeName: string) => {
-    const newHold = {
-      id: `hold-${Date.now()}`,
-      name: prodName,
-      store: storeName,
-      expires: '30 mins remaining'
-    };
-    setActiveHolds(prev => [newHold, ...prev]);
-    alert(`✓ Hold active! "${prodName}" reserved at ${storeName} for 30 minutes.`);
-  };
+  // Products filtering based on query, category, and radius
+  const filteredProducts = PRODUCTS.filter(prod => {
+    const matchesQuery = debouncedQuery === '' || 
+      prod.name.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+      prod.category.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+      prod.storeName.toLowerCase().includes(debouncedQuery.toLowerCase());
+    
+    const matchesCategory = selectedCategory === 'all' || 
+      prod.category.toLowerCase().includes(selectedCategory.toLowerCase());
+
+    const matchesStock = !inStockOnly || prod.inStock;
+
+    // Radius distance check (e.g. "350m", "1.2 km")
+    let prodDistanceKm = 1.0;
+    if (prod.distance) {
+      if (prod.distance.includes('km')) {
+        prodDistanceKm = parseFloat(prod.distance) || 1.0;
+      } else if (prod.distance.includes('m')) {
+        prodDistanceKm = (parseFloat(prod.distance) || 300) / 1000;
+      }
+    }
+    const matchesRadius = prodDistanceKm <= maxRadiusKm;
+
+    return matchesQuery && matchesCategory && matchesStock && matchesRadius;
+  });
+
+  // Stores filtering
+  const filteredStores = PHYSICAL_STORES.filter(st => {
+    const matchesQuery = debouncedQuery === '' ||
+      st.name.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+      st.category.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+      st.tags.some(t => t.toLowerCase().includes(debouncedQuery.toLowerCase()));
+
+    const matchesCategory = selectedCategory === 'all' ||
+      st.category.toLowerCase().includes(selectedCategory.toLowerCase());
+
+    let storeDistanceKm = 1.0;
+    if (st.distance) {
+      if (st.distance.includes('km')) {
+        storeDistanceKm = parseFloat(st.distance) || 1.0;
+      } else if (st.distance.includes('m')) {
+        storeDistanceKm = (parseFloat(st.distance) || 300) / 1000;
+      }
+    }
+    const matchesRadius = storeDistanceKm <= maxRadiusKm;
+
+    return matchesQuery && matchesCategory && matchesRadius;
+  });
+
+  // Active holds count
+  const activeHolds = holds.filter(h => h.status === 'active' && h.expiresAt > Date.now());
 
   return (
-    <div className="min-h-screen bg-[#070709] text-white flex flex-col selection:bg-white selection:text-black pb-24 md:pb-12">
+    <div className="min-h-screen bg-[#07080B] text-white flex flex-col selection:bg-white selection:text-black pb-28 md:pb-16 font-sans">
       
-      {/* ── TOP APP BAR (Compact, Native Feel) ── */}
-      <header className="sticky top-0 z-40 bg-[#0c0c10]/90 backdrop-blur-xl border-b border-white/[0.08] px-4 sm:px-8 py-3.5">
+      {/* ── TOP APP BAR (Compact, Minimalist) ── */}
+      <header className="sticky top-0 z-40 bg-[#07080B]/95 backdrop-blur-xl border-b border-white/10 px-4 sm:px-8 py-3.5">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           
-          {/* Logo & Switcher */}
+          {/* Brand Logo & Back to Marketing Site */}
           <div className="flex items-center gap-3">
             <button 
               onClick={onNavigateToHome}
-              className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors"
-              title="Back to Public Website"
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+              title="Back to Landing Page"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Back to Site</span>
+              <span className="hidden sm:inline">Website</span>
             </button>
 
-            <span className="text-lg sm:text-xl font-black tracking-tight text-white font-['Outfit']">
-              zooner<span className="text-indigo-400">.</span>
+            <span className="text-lg font-black tracking-tight text-white font-['Outfit']">
+              zooner<span className="text-slate-500">.</span>
             </span>
 
-            <span className="rounded-md bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-400 uppercase tracking-wider">
+            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider px-2 py-0.5 border border-white/10 rounded">
               App
             </span>
           </div>
 
-          {/* Location Trigger */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          {/* Location Trigger (GPS) */}
+          <button
             onClick={onOpenLocationModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.1] text-xs font-semibold text-white/90 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 text-xs font-mono text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
-            <MapPin className="h-3 w-3 text-emerald-400" />
-            <span className="truncate max-w-[140px] sm:max-w-[200px]">{currentLocation.name}</span>
-          </motion.button>
+            <MapPin className="h-3 w-3 text-emerald-400 shrink-0" />
+            <span className="truncate max-w-[130px] sm:max-w-[200px]">{currentLocation.name || 'RS Puram'}</span>
+          </button>
 
-          {/* Right Actions */}
-          <div className="flex items-center gap-2">
+          {/* Right link: Store Portal */}
+          <div className="flex items-center gap-3">
             <button
               onClick={onNavigateToVendor}
-              className="hidden sm:inline-flex text-xs font-semibold text-white/60 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/[0.05] transition-colors"
+              className="hidden sm:inline-flex text-xs font-mono text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
-              Store Portal
-            </button>
-            <button
-              onClick={onOpenSignIn}
-              className="flex items-center gap-1.5 text-xs font-bold text-black bg-white hover:bg-white/90 px-3.5 py-1.5 rounded-full transition-colors"
-            >
-              <User className="h-3.5 w-3.5" />
-              <span>Sign In</span>
+              Store Portal →
             </button>
           </div>
 
         </div>
       </header>
 
-      {/* ── MAIN APP VIEW CONTAINER ── */}
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-8 py-6 space-y-6">
-        
-        {/* Active Holds Notification Bar (If any) */}
-        {activeHolds.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl bg-emerald-950/40 border border-emerald-500/30 p-3.5 flex items-center justify-between text-xs text-emerald-300"
-          >
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+      {/* ── GLOBAL ACTIVE HOLD TICKER BANNER ── */}
+      {activeHolds.length > 0 && (
+        <div className="bg-[#07080B] border-b border-white/10 px-4 sm:px-8 py-2.5">
+          <div className="max-w-6xl mx-auto flex items-center justify-between text-xs">
+            <div 
+              onClick={() => setSelectedPassForSheet(activeHolds[0])}
+              className="flex items-center gap-2.5 truncate cursor-pointer group"
+            >
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="font-mono text-emerald-400 font-bold uppercase text-[10px] tracking-wider shrink-0">
+                Active Hold
               </span>
-              <span className="font-semibold">Active Counter Hold:</span>
-              <span className="text-white truncate">{activeHolds[0].name} at {activeHolds[0].store}</span>
+              <span className="text-white truncate font-medium group-hover:underline">
+                {activeHolds[0].productName} · {activeHolds[0].storeName}
+              </span>
             </div>
-            <span className="font-mono text-emerald-400 shrink-0 font-bold">{activeHolds[0].expires}</span>
-          </motion.div>
-        )}
 
-        {/* ── SEARCH BAR (Prominent, Quick Action) ── */}
-        <div className="relative">
-          <div className="flex items-center bg-white/[0.06] hover:bg-white/[0.09] focus-within:bg-white/[0.1] border border-white/[0.12] focus-within:border-white/40 rounded-2xl p-2 pl-4 transition-all shadow-xl backdrop-blur-md">
-            <Search className="h-4 w-4 text-white/40 mr-2.5 shrink-0" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="What are you looking for nearby? (e.g. Nike shoes, Titan watch, Philips bulb, iPhone)"
-              className="w-full bg-transparent text-white placeholder-white/40 text-sm font-normal focus:outline-none"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="p-1 text-white/40 hover:text-white mr-1"
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                onClick={() => setSelectedPassForSheet(activeHolds[0])}
+                className="font-mono text-xs font-bold text-white px-3 py-1 rounded-full border border-white/20 hover:border-white/40 transition-colors cursor-pointer"
               >
-                <X className="h-4 w-4" />
+                View Pass
               </button>
-            )}
+            </div>
           </div>
         </div>
+      )}
 
-        {/* ── CATEGORY PILLS ── */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-          {CATEGORIES.map(cat => {
-            const isSelected = selectedCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  isSelected 
-                    ? 'bg-white text-black shadow-md' 
-                    : 'bg-white/[0.04] text-white/60 hover:text-white border border-white/[0.06]'
-                }`}
-              >
-                {cat.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── TAB CONTENT: DISCOVER / SEARCH ── */}
-        {(activeTab === 'discover' || activeTab === 'search') && (
-          <div className="space-y-8">
+      {/* ── MAIN APP VIEW CONTAINER ── */}
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-8 py-6 space-y-8">
+        
+        {/* ========================================================
+            TAB 1: DISCOVER (Search, Categories, Shelf Feed & Stores)
+           ======================================================== */}
+        {activeTab === 'discover' && (
+          <div className="space-y-8 text-left">
             
-            {/* Quick Filters Bar */}
-            <div className="flex items-center justify-between text-xs text-white/50 border-b border-white/[0.06] pb-3">
-              <div className="flex items-center gap-3">
-                <span className="font-semibold text-white/70 flex items-center gap-1">
-                  <SlidersHorizontal className="h-3 w-3" /> Filters:
-                </span>
-                <button
-                  onClick={() => setInStockOnly(!inStockOnly)}
-                  className={`px-2.5 py-1 rounded-lg border transition-colors ${
-                    inStockOnly 
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold' 
-                      : 'border-white/10 text-white/40'
-                  }`}
-                >
-                  ✓ In Stock Only
-                </button>
-                <div className="flex items-center gap-1 bg-white/[0.04] rounded-lg p-0.5 border border-white/[0.06]">
-                  {(['2km', '5km', '10km'] as const).map(rad => (
-                    <button
-                      key={rad}
-                      onClick={() => setRadiusFilter(rad)}
-                      className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors ${
-                        radiusFilter === rad ? 'bg-white text-black font-bold' : 'text-white/40'
-                      }`}
-                    >
-                      {rad}
-                    </button>
-                  ))}
+            {/* Search Bar with 300ms Debounce */}
+            <div className="space-y-3">
+              <div className="flex items-center border border-white/15 focus-within:border-white/40 rounded-full px-4 py-3 bg-[#0B0C11] transition-colors">
+                <Search className="h-4 w-4 text-slate-400 mr-3 shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search verified in-store shelf items (e.g. Nike Air Max, Titan, Philips)..."
+                  className="w-full bg-transparent text-white placeholder-slate-500 text-xs sm:text-sm font-normal focus:outline-none"
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="p-1 text-slate-500 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filters Bar: Scope Radius & In-Stock */}
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1 border-b border-white/10 pb-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-slate-500 font-mono text-[11px] uppercase tracking-wider flex items-center gap-1">
+                    <SlidersHorizontal className="h-3 w-3" /> Radius:
+                  </span>
+                  
+                  <div className="flex items-center gap-1.5">
+                    {(['2km', '5km', '10km', '15km'] as const).map(rad => (
+                      <button
+                        key={rad}
+                        onClick={() => setRadiusFilter(rad)}
+                        className={`px-2.5 py-1 text-xs font-mono rounded-full border transition-colors cursor-pointer ${
+                          radiusFilter === rad 
+                            ? 'bg-white text-slate-950 font-bold border-white' 
+                            : 'border-white/10 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {rad}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setInStockOnly(!inStockOnly)}
+                    className={`px-2.5 py-1 text-xs font-mono rounded-full border transition-colors cursor-pointer ${
+                      inStockOnly 
+                        ? 'border-emerald-400/40 text-emerald-400 font-bold bg-emerald-950/20' 
+                        : 'border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    In Stock Only
+                  </button>
+                </div>
+
+                <div className="text-slate-500 font-mono text-[11px]">
+                  {filteredProducts.length} Items · {filteredStores.length} Stores
                 </div>
               </div>
 
-              <span>{filteredProducts.length} Items · {filteredStores.length} Stores</span>
+              {/* Category Pills (Typographic Horizontal Scroll) */}
+              <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pt-1">
+                {CATEGORIES.map(cat => {
+                  const isSelected = selectedCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.id)}
+                      className={`text-xs font-mono uppercase tracking-wider transition-colors cursor-pointer whitespace-nowrap pb-1 relative ${
+                        isSelected 
+                          ? 'text-white font-bold' 
+                          : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      {cat.label}
+                      {isSelected && (
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-emerald-400" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Verified Shelf Products Grid */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-white font-['Outfit'] flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-emerald-400" />
-                  Verified On-Shelf Nearby
+            {/* Empty State / Out of Range Handler */}
+            {filteredProducts.length === 0 && (
+              <div className="border border-white/10 rounded-2xl p-8 sm:p-12 text-center space-y-4 my-8">
+                <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
+                  Search Result Notice
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black font-['Outfit'] text-white">
+                  No shelf inventory found within {radiusFilter}.
                 </h3>
-              </div>
+                <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+                  Local physical stores might still carry this in their backroom stock, or a store slightly farther away may have it.
+                </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProducts.map(product => (
-                  <motion.div
-                    key={product.id}
-                    whileHover={{ y: -3 }}
-                    onClick={() => setSelectedProduct(product)}
-                    className="rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/20 p-4 space-y-3 cursor-pointer transition-all shadow-lg group"
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
+                  {radiusFilter !== '15km' && (
+                    <button
+                      onClick={() => setRadiusFilter(radiusFilter === '2km' ? '5km' : radiusFilter === '5km' ? '10km' : '15km')}
+                      className="w-full sm:w-auto px-6 py-3 rounded-full border border-white/20 hover:border-white/40 text-xs font-bold font-mono text-white transition-colors cursor-pointer"
+                    >
+                      Expand Radius to {radiusFilter === '2km' ? '5km' : radiusFilter === '5km' ? '10km' : '15km'}
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setBroadcastProduct(searchQuery || 'Product inquiry');
+                      setActiveTab('requests');
+                    }}
+                    className="w-full sm:w-auto px-6 py-3 rounded-full bg-white text-slate-950 text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors cursor-pointer"
                   >
-                    <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-zinc-900">
-                      <img 
-                        src={product.imageUrl} 
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-400 flex items-center gap-1">
-                        <CheckCircle2 className="h-2.5 w-2.5" />
-                        <span>{product.stockCount} in stock</span>
-                      </div>
-                      <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-full text-[10px] font-mono text-white/80">
-                        {product.distance}
-                      </div>
-                    </div>
+                    <Radio className="h-3.5 w-3.5" />
+                    <span>Broadcast Live Ask to Stores</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
-                    <div className="space-y-1 text-left">
-                      <div className="text-xs text-white/40">{product.storeName} · {product.storeArea}</div>
-                      <h4 className="font-bold text-white text-sm leading-snug line-clamp-1">{product.name}</h4>
-                      
-                      <div className="flex items-baseline justify-between pt-1">
-                        <div>
-                          <span className="text-base font-black text-white font-['Outfit']">₹{product.price.toLocaleString('en-IN')}</span>
-                          {product.originalPrice && (
-                            <span className="text-xs text-white/40 line-through ml-1.5">₹{product.originalPrice.toLocaleString('en-IN')}</span>
-                          )}
+            {/* Verified On-Shelf Items (Editorial Typographic List) */}
+            {filteredProducts.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <span className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold">
+                    Verified In-Store Stock ({radiusFilter})
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-500">
+                    Direct counter pickup
+                  </span>
+                </div>
+
+                <div className="divide-y divide-white/10">
+                  {filteredProducts.map(product => (
+                    <div
+                      key={product.id}
+                      onClick={() => setSelectedProduct(product)}
+                      className="py-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-white/[0.015] transition-colors"
+                    >
+                      {/* Left: Thumbnail & Info */}
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="h-16 w-16 sm:h-18 sm:w-18 rounded-lg overflow-hidden bg-zinc-900 border border-white/10 shrink-0">
+                          <img 
+                            src={product.imageUrl} 
+                            alt={product.name}
+                            className="w-full h-full object-cover" 
+                          />
                         </div>
-                        <span className="text-[10px] font-bold text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded">
-                          {product.badge || 'Verified'}
-                        </span>
+
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-white truncate block">
+                              {product.name}
+                            </span>
+                            <span className="text-[10px] font-mono text-emerald-400 shrink-0 font-bold">
+                              · {product.stockCount} on shelf
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-slate-400 flex items-center gap-2">
+                            <span className="text-slate-300 font-medium">{product.storeName}</span>
+                            <span>·</span>
+                            <span className="font-mono text-slate-500">{product.distance}</span>
+                            <span>·</span>
+                            <span className="text-slate-500">{product.storeArea}</span>
+                          </div>
+
+                          <div className="flex items-baseline gap-2 pt-0.5">
+                            <span className="text-sm font-mono font-bold text-white">
+                              ₹{product.price.toLocaleString('en-IN')}
+                            </span>
+                            {product.originalPrice && (
+                              <span className="text-xs font-mono text-slate-600 line-through">
+                                ₹{product.originalPrice.toLocaleString('en-IN')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Action Buttons */}
+                      <div className="flex items-center gap-2.5 sm:shrink-0 pt-2 sm:pt-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleHoldItem(product.name, product.storeName, product.price);
+                          }}
+                          className="flex-1 sm:flex-initial px-5 py-2.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
+                        >
+                          Hold for 30m
+                        </button>
+
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${product.storeName}, ${product.storeArea}, Coimbatore`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-2.5 rounded-full border border-white/10 hover:border-white/25 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                          title="View on Map"
+                        >
+                          <Navigation className="h-3.5 w-3.5" />
+                        </a>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2 pt-2 border-t border-white/[0.04]">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleHoldItem(product.name, product.storeName);
-                        }}
-                        className="flex-1 py-1.5 rounded-xl bg-white text-black text-xs font-bold hover:bg-white/90 transition-colors"
-                      >
-                        Hold for 30m
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${product.storeName}, ${product.storeArea}, Coimbatore`)}`, '_blank');
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-xs font-semibold text-white/80 flex items-center gap-1"
-                      >
-                        <Navigation className="h-3 w-3" />
-                        <span>Map</span>
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Nearby Verified Physical Stores List */}
-            <div className="space-y-4 pt-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-white font-['Outfit'] flex items-center gap-2">
-                  <StoreIcon className="h-4 w-4 text-indigo-400" />
-                  Verified Physical Stores Nearby
-                </h3>
+            {/* Nearby Verified Physical Stores Directory */}
+            <div className="space-y-4 pt-6">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <span className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold">
+                  Physical Stores Nearby
+                </span>
+                <span className="text-[11px] font-mono text-slate-500">
+                  Within {radiusFilter}
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="divide-y divide-white/10">
                 {filteredStores.map(store => {
                   const isSaved = savedStores.includes(store.id);
                   return (
-                    <motion.div
+                    <div
                       key={store.id}
-                      whileHover={{ y: -2 }}
                       onClick={() => setSelectedStore(store)}
-                      className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/20 transition-all cursor-pointer text-left space-y-3 shadow-lg"
+                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-white/[0.015] transition-colors"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <h4 className="font-bold text-white text-base">{store.name}</h4>
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                          </div>
-                          <p className="text-xs text-white/50 mt-0.5">{store.category} · {store.area}</p>
-                          <p className="text-[11px] text-white/40 mt-1 truncate max-w-xs">{store.address}</p>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-white">{store.name}</span>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                         </div>
-
-                        <div className="text-right shrink-0">
-                          <span className="text-xs font-bold text-white/90 bg-white/[0.08] px-2.5 py-1 rounded-full font-mono">
-                            {store.distance}
-                          </span>
-                          <span className="block text-[10px] text-emerald-400 font-semibold mt-1">
-                            {store.openStatus}
-                          </span>
+                        <div className="text-xs text-slate-400">
+                          <span>{store.category}</span>
+                          <span className="mx-2 text-slate-600">·</span>
+                          <span>{store.area}</span>
+                          <span className="mx-2 text-slate-600">·</span>
+                          <span className="font-mono text-slate-400">{store.distance}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-mono">
+                          {store.openStatus}
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {store.tags.map(tag => (
-                          <span key={tag} className="text-[10px] text-white/60 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.04]">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2 border-t border-white/[0.04] text-xs">
+                      <div className="flex items-center gap-3 self-end sm:self-center">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleSaveStore(store.id);
                           }}
-                          className={`flex items-center gap-1 text-xs font-semibold ${
-                            isSaved ? 'text-indigo-400' : 'text-white/40 hover:text-white'
-                          }`}
+                          className="p-2 text-slate-500 hover:text-white transition-colors cursor-pointer"
+                          title={isSaved ? 'Remove Bookmark' : 'Save Store'}
                         >
-                          <Bookmark className={`h-3.5 w-3.5 ${isSaved ? 'fill-indigo-400' : ''}`} />
-                          <span>{isSaved ? 'Saved' : 'Save Store'}</span>
+                          <Bookmark className={`h-4 w-4 ${isSaved ? 'text-white fill-white' : ''}`} />
                         </button>
 
-                        <span className="text-indigo-400 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                          <span>View Shelf Catalog</span>
+                        <span className="text-xs font-mono text-slate-400 hover:text-white flex items-center gap-1">
+                          <span>Catalog</span>
                           <ChevronRight className="h-3.5 w-3.5" />
                         </span>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>
@@ -471,191 +648,414 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           </div>
         )}
 
-        {/* ── TAB CONTENT: REQUESTS (Broadcasting) ── */}
+        {/* ========================================================
+            TAB 2: LIVE ASK (Direct Merchant Stock Broadcast)
+           ======================================================== */}
         {activeTab === 'requests' && (
-          <div className="space-y-6 text-left max-w-2xl mx-auto">
+          <div className="space-y-8 text-left max-w-2xl mx-auto">
             
-            <div className="space-y-2">
-              <span className="text-xs font-mono uppercase tracking-widest text-indigo-400 block">
+            <div className="space-y-2 border-b border-white/10 pb-4">
+              <span className="text-xs font-mono uppercase tracking-widest text-slate-500 font-bold block">
                 Direct Merchant Broadcast
               </span>
-              <h2 className="text-2xl sm:text-3xl font-bold text-white font-['Outfit']">
-                Ask all nearby stores in 1 click
+              <h2 className="text-2xl sm:text-3xl font-black text-white font-['Outfit']">
+                Ask all local stores in 1 click.
               </h2>
-              <p className="text-sm text-white/60">
-                Can't find your exact size or model on the shelf? Broadcast what you need to local store managers.
+              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                Can't find your exact size, variant, or model on the shelf? Broadcast directly to verified shopkeepers in your area.
               </p>
             </div>
 
             {/* Broadcast Form */}
-            <form onSubmit={handleBroadcast} className="bg-white/[0.03] border border-white/[0.08] rounded-3xl p-6 space-y-4 shadow-xl">
-              <div>
-                <label className="text-xs font-semibold text-white/70 block mb-1.5">Product Name & Model</label>
+            <form onSubmit={handleBroadcast} className="space-y-4 border border-white/10 rounded-2xl p-6 bg-[#0B0C11]">
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono uppercase tracking-wider text-slate-400 block">
+                  Product Name &amp; Model
+                </label>
                 <input
                   type="text"
                   value={broadcastProduct}
                   onChange={(e) => setBroadcastProduct(e.target.value)}
-                  placeholder="e.g. Nike Air Pegasus 40, Titan Edge watch"
-                  className="w-full bg-white/[0.04] border border-white/[0.1] focus:border-white/40 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none"
+                  placeholder="e.g. Nike Pegasus 40, Titan Edge watch, Philips 12W LED"
+                  className="w-full bg-[#07080B] border border-white/15 focus:border-white/40 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-600 focus:outline-none"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-white/70 block mb-1.5">Size / Fit</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono uppercase tracking-wider text-slate-400 block">
+                    Size / Variant
+                  </label>
                   <input
                     type="text"
                     value={broadcastSize}
                     onChange={(e) => setBroadcastSize(e.target.value)}
                     placeholder="e.g. UK 9, 256GB"
-                    className="w-full bg-white/[0.04] border border-white/[0.1] focus:border-white/40 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none"
+                    className="w-full bg-[#07080B] border border-white/15 focus:border-white/40 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-600 focus:outline-none"
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-white/70 block mb-1.5">Search Radius</label>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono uppercase tracking-wider text-slate-400 block">
+                    Target Radius
+                  </label>
                   <select
                     value={broadcastRadius}
                     onChange={(e) => setBroadcastRadius(e.target.value)}
-                    className="w-full bg-[#121216] border border-white/[0.1] focus:border-white/40 rounded-xl px-4 py-3 text-sm text-white focus:outline-none"
+                    className="w-full bg-[#07080B] border border-white/15 focus:border-white/40 rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none"
                   >
-                    <option value="Within 2 km">Within 2 km</option>
-                    <option value="Within 5 km">Within 5 km</option>
-                    <option value="Within 10 km">Within 10 km</option>
+                    <option value="2 km">Within 2 km</option>
+                    <option value="5 km">Within 5 km</option>
+                    <option value="10 km">Within 10 km</option>
                   </select>
                 </div>
               </div>
 
-              <motion.button
+              <button
                 type="submit"
-                disabled={isBroadcasting}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full py-3.5 rounded-xl bg-white text-black font-bold text-sm hover:bg-white/90 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-50"
+                disabled={isBroadcasting || !broadcastProduct.trim()}
+                className="w-full py-3.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
               >
                 {isBroadcasting ? (
                   <>
-                    <span className="h-4 w-4 rounded-full border-2 border-black border-t-transparent animate-spin" />
-                    <span>Pinging Verified Shops Nearby…</span>
+                    <span className="h-3.5 w-3.5 rounded-full border-2 border-slate-950 border-t-transparent animate-spin" />
+                    <span>Pinging Verified Retailers...</span>
                   </>
                 ) : (
                   <>
-                    <Send className="h-4 w-4" />
+                    <Send className="h-3.5 w-3.5" />
                     <span>Broadcast Live Request</span>
                   </>
                 )}
-              </motion.button>
+              </button>
             </form>
 
-            {/* Broadcast Results */}
+            {/* Broadcast Live Response Feed */}
             {broadcastSent && (
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between text-xs text-white/50 pb-2 border-b border-white/[0.06]">
-                  <span className="flex items-center gap-1.5 text-emerald-400 font-semibold font-mono">
-                    <Radio className="h-3 w-3 animate-pulse" />
-                    Live Responses Feed
-                  </span>
-                  <span>{liveResponses.length} Shops Confirmed</span>
+              <div className="space-y-4 pt-4 border-t border-white/10">
+                <div className="flex items-center justify-between text-xs pb-1">
+                  <div className="flex items-center gap-2 text-emerald-400 font-mono font-bold">
+                    <Radio className="h-3.5 w-3.5 animate-pulse" />
+                    <span>Live Merchant Replies</span>
+                  </div>
+                  <span className="text-slate-500 font-mono">{liveResponses.length} Shops Responded</span>
                 </div>
 
-                {liveResponses.map(resp => (
-                  <motion.div
-                    key={resp.id}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.1] space-y-2.5 shadow-lg"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-1.5 font-bold text-white text-sm">
-                          <span>{resp.storeName}</span>
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                <div className="space-y-3">
+                  {liveResponses.map(resp => (
+                    <div
+                      key={resp.id}
+                      className="border border-white/10 rounded-2xl p-5 bg-[#0B0C11] space-y-3 text-left"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-1.5 font-bold text-white text-sm">
+                            <span>{resp.storeName}</span>
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          </div>
+                          <span className="text-xs text-slate-400 font-mono">{resp.storeArea} · {resp.distance}</span>
                         </div>
-                        <span className="text-xs text-white/40">{resp.storeArea} · {resp.distance} away</span>
+
+                        <div className="text-right font-mono">
+                          <span className="text-base font-bold text-white">₹{resp.price.toLocaleString('en-IN')}</span>
+                          <span className="block text-[10px] text-emerald-400 font-bold uppercase">In Stock</span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className="text-base font-black text-white">₹{resp.price.toLocaleString('en-IN')}</span>
-                        <span className="block text-[10px] text-emerald-400 font-medium">In Stock</span>
+
+                      <p className="text-xs text-slate-300 font-normal leading-relaxed border-l-2 border-white/20 pl-3">
+                        "{resp.conditionNote}"
+                      </p>
+
+                      <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+                        <button
+                          onClick={() => {
+                            handleHoldItem(broadcastProduct, resp.storeName, resp.price);
+                            setActiveTab('holds');
+                          }}
+                          className="flex-1 py-2.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer text-center"
+                        >
+                          Accept &amp; Hold for 30m
+                        </button>
+
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${resp.storeName}, ${resp.storeArea}, Coimbatore`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2.5 rounded-full border border-white/15 text-xs text-slate-300 hover:text-white flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                        >
+                          <Navigation className="h-3 w-3" />
+                          <span>Directions</span>
+                        </a>
                       </div>
                     </div>
-
-                    <p className="text-xs text-white/70 italic bg-white/[0.02] p-2 rounded-lg border border-white/[0.04]">
-                      "{resp.conditionNote}"
-                    </p>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <button
-                        onClick={() => handleHoldItem(broadcastProduct, resp.storeName)}
-                        className="text-xs font-bold px-3.5 py-1.5 rounded-lg bg-white text-black hover:bg-white/90 transition-colors shadow"
-                      >
-                        Hold for Walk-in (30m)
-                      </button>
-                      <button
-                        onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${resp.storeName}, ${resp.storeArea}, Coimbatore`)}`, '_blank')}
-                        className="text-xs font-semibold text-white/60 hover:text-white flex items-center gap-1"
-                      >
-                        <Navigation className="h-3 w-3" />
-                        <span>Directions</span>
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
 
           </div>
         )}
 
-        {/* ── TAB CONTENT: PROFILE & SAVED ── */}
-        {(activeTab === 'saved' || activeTab === 'profile') && (
-          <div className="space-y-6 text-left max-w-2xl mx-auto">
+        {/* ========================================================
+            TAB 3: MY HOLDS (The 30-Minute Counter Pass & Timer)
+           ======================================================== */}
+        {activeTab === 'holds' && (
+          <div className="space-y-8 text-left max-w-2xl mx-auto">
             
-            <div className="space-y-1">
-              <h2 className="text-2xl font-bold text-white font-['Outfit']">Your Activity</h2>
-              <p className="text-xs text-white/50">Active holds, saved stores, and past requests.</p>
+            <div className="space-y-2 border-b border-white/10 pb-4">
+              <span className="text-xs font-mono uppercase tracking-widest text-slate-500 font-bold block">
+                Counter Holds
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-white font-['Outfit']">
+                Active 30-Minute Passes
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                Your items reserved on physical shelves. Show the verification code at the store counter.
+              </p>
             </div>
 
-            {/* Active Holds Section */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">Active Walk-in Holds</h3>
-              {activeHolds.length > 0 ? (
-                activeHolds.map(h => (
-                  <div key={h.id} className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-white text-sm">{h.name}</div>
-                      <div className="text-xs text-white/50">{h.store}</div>
-                    </div>
-                    <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-lg">
-                      {h.expires}
-                    </span>
-                  </div>
-                ))
+            {/* Active Holds List */}
+            <div className="space-y-4">
+              {holds.length === 0 ? (
+                <div className="border border-white/10 rounded-2xl p-10 text-center space-y-3">
+                  <Clock className="h-8 w-8 text-slate-600 mx-auto" />
+                  <div className="text-sm font-bold text-white">No active holds</div>
+                  <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                    When you reserve an item on Discover or Live Ask, your 30-minute counter ticket will appear here.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab('discover')}
+                    className="px-6 py-2.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer mt-2"
+                  >
+                    Search In-Store Shelves
+                  </button>
+                </div>
               ) : (
-                <div className="p-6 text-center bg-white/[0.02] rounded-2xl text-xs text-white/40">No active holds.</div>
+                holds.map(hold => {
+                  const isHoldActive = hold.status === 'active' && hold.expiresAt > Date.now();
+                  const remainingSecs = Math.max(0, Math.floor((hold.expiresAt - Date.now()) / 1000));
+                  const mins = Math.floor(remainingSecs / 60);
+                  const secs = remainingSecs % 60;
+                  const timeFormatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+                  return (
+                    <div
+                      key={hold.id}
+                      className="border border-white/10 rounded-2xl p-6 bg-[#0B0C11] space-y-5"
+                    >
+                      {/* Top status line */}
+                      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                        <div>
+                          <span className="text-xs font-mono text-slate-500 uppercase tracking-wider block">
+                            Pass Code
+                          </span>
+                          <span className="text-xl sm:text-2xl font-mono font-black text-white">
+                            #{hold.passCode}
+                          </span>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="text-xs font-mono text-slate-500 uppercase tracking-wider block">
+                            Status
+                          </span>
+                          <span className={`text-xs font-mono font-bold uppercase ${isHoldActive ? 'text-emerald-400' : 'text-slate-500'}`}>
+                            {isHoldActive ? `${timeFormatted} remaining` : hold.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Item & Store details */}
+                      <div className="space-y-1">
+                        <h4 className="text-base font-bold text-white">{hold.productName}</h4>
+                        <div className="text-xs text-slate-400">{hold.storeName}</div>
+                        <div className="text-[11px] text-slate-500 font-mono">{hold.storeAddress}</div>
+                      </div>
+
+                      <div className="flex items-baseline justify-between pt-1 border-t border-white/5 text-xs font-mono">
+                        <span className="text-slate-500">Counter Price</span>
+                        <span className="text-white font-bold text-sm">₹{hold.price.toLocaleString('en-IN')}</span>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2">
+                        <button
+                          onClick={() => setSelectedPassForSheet(hold)}
+                          className="py-2.5 px-3 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer text-center"
+                        >
+                          View Pass Ticket
+                        </button>
+
+                        <button
+                          onClick={() => setChatPass(hold)}
+                          className="py-2.5 px-3 rounded-full border border-white/20 hover:border-white/40 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          <span>Chat with Store</span>
+                        </button>
+
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${hold.storeName}, ${hold.storeAddress}`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="col-span-2 sm:col-span-1 py-2.5 px-3 rounded-full border border-white/20 hover:border-white/40 text-slate-300 hover:text-white font-mono text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Navigation className="h-3.5 w-3.5" />
+                          <span>Directions</span>
+                        </a>
+                      </div>
+
+                      {isHoldActive && (
+                        <div className="pt-2 text-right">
+                          <button
+                            onClick={() => {
+                              if (confirm('Cancel reservation and release item?')) {
+                                handleCancelHold(hold.id);
+                              }
+                            }}
+                            className="text-[11px] font-mono text-slate-600 hover:text-red-400 transition-colors cursor-pointer"
+                          >
+                            Release Hold
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
 
-            {/* Saved Stores */}
-            <div className="space-y-3 pt-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">Saved Stores</h3>
-              {savedStores.map(storeId => {
-                const st = PHYSICAL_STORES.find(s => s.id === storeId);
-                if (!st) return null;
-                return (
-                  <div key={st.id} className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-white text-sm">{st.name}</div>
-                      <div className="text-xs text-white/50">{st.address}</div>
-                    </div>
-                    <button
-                      onClick={() => toggleSaveStore(st.id)}
-                      className="text-xs text-red-400/80 hover:text-red-400 font-semibold"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                );
-              })}
+          </div>
+        )}
+
+        {/* ========================================================
+            TAB 4: ACCOUNT & SAVED (Profile, Bookmarks, Merchant Link)
+           ======================================================== */}
+        {activeTab === 'account' && (
+          <div className="space-y-8 text-left max-w-2xl mx-auto">
+            
+            <div className="space-y-2 border-b border-white/10 pb-4">
+              <span className="text-xs font-mono uppercase tracking-widest text-slate-500 font-bold block">
+                Preferences
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-white font-['Outfit']">
+                Account &amp; Saved Stores
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                Manage your counter pickup identity, bookmarked stores, and retail access.
+              </p>
+            </div>
+
+            {/* Counter Reservation Identity Form */}
+            <form onSubmit={handleSaveProfile} className="border border-white/10 rounded-2xl p-6 bg-[#0B0C11] space-y-4">
+              <div>
+                <span className="text-xs font-mono uppercase tracking-wider text-white font-bold block">
+                  Store Counter Identity
+                </span>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Used by store clerks to verify your reservation when you walk in.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-mono text-slate-400 block">Your Full Name</label>
+                  <input
+                    type="text"
+                    value={customerProfile.name}
+                    onChange={(e) => setCustomerProfile({ ...customerProfile, name: e.target.value })}
+                    className="w-full bg-[#07080B] border border-white/15 focus:border-white/40 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-mono text-slate-400 block">Mobile Number (For Pass SMS/Verification)</label>
+                  <input
+                    type="text"
+                    value={customerProfile.phone}
+                    onChange={(e) => setCustomerProfile({ ...customerProfile, phone: e.target.value })}
+                    className="w-full bg-[#07080B] border border-white/15 focus:border-white/40 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white focus:outline-none font-mono"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
+                >
+                  Save Counter Info
+                </button>
+
+                {profileSavedFeedback && (
+                  <span className="text-xs font-mono text-emerald-400 font-bold">
+                    Saved to device
+                  </span>
+                )}
+              </div>
+            </form>
+
+            {/* Saved Stores List */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <span className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold">
+                  Bookmarked Local Stores
+                </span>
+                <span className="text-[11px] font-mono text-slate-500">{savedStores.length} Saved</span>
+              </div>
+
+              {savedStores.length === 0 ? (
+                <div className="p-6 text-center text-xs text-slate-500 border border-white/5 rounded-xl">
+                  No bookmarked stores. Tap the bookmark icon on any store card to save it.
+                </div>
+              ) : (
+                <div className="divide-y divide-white/10">
+                  {savedStores.map(storeId => {
+                    const st = PHYSICAL_STORES.find(s => s.id === storeId);
+                    if (!st) return null;
+                    return (
+                      <div key={st.id} className="py-3.5 flex items-center justify-between gap-4">
+                        <div 
+                          onClick={() => setSelectedStore(st)}
+                          className="cursor-pointer group"
+                        >
+                          <div className="text-sm font-bold text-white group-hover:underline">{st.name}</div>
+                          <div className="text-xs text-slate-400">{st.area} · {st.category}</div>
+                        </div>
+
+                        <button
+                          onClick={() => toggleSaveStore(st.id)}
+                          className="text-xs font-mono text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Store Owner Switcher */}
+            <div className="border border-white/10 rounded-2xl p-6 bg-[#0B0C11] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-mono uppercase tracking-widest text-slate-500 font-bold block">
+                  Retailer Access
+                </span>
+                <div className="text-sm font-bold text-white">Own a physical store in the city?</div>
+                <p className="text-xs text-slate-400">
+                  Manage in-store holds and receive live shopper requests from nearby.
+                </p>
+              </div>
+
+              <button
+                onClick={onNavigateToVendor}
+                className="px-6 py-3 rounded-full border border-white/20 hover:border-white/40 text-xs font-mono font-bold text-white transition-colors cursor-pointer shrink-0"
+              >
+                Store Portal →
+              </button>
             </div>
 
           </div>
@@ -663,191 +1063,245 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
       </main>
 
-      {/* ── STORE DETAIL MODAL ── */}
+      {/* ── STORE DETAIL & SHELF CATALOG MODAL ── */}
       <AnimatePresence>
         {selectedStore && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg bg-[#0f0f13] border border-white/[0.12] rounded-3xl p-6 space-y-5 text-left shadow-2xl max-h-[85vh] overflow-y-auto"
+              initial={{ opacity: 0, y: '100%' }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: '100%' }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full sm:max-w-lg bg-[#07080B] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto text-left selection:bg-white selection:text-black"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-xl font-bold text-white font-['Outfit']">{selectedStore.name}</h3>
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  </div>
-                  <p className="text-xs text-white/50">{selectedStore.category} · {selectedStore.area}</p>
+              {/* Modal Header */}
+              <div className="sticky top-0 bg-[#07080B]/95 backdrop-blur-md px-6 py-4 border-b border-white/10 flex items-center justify-between z-10">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-white font-['Outfit']">{selectedStore.name}</h3>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
                 </div>
-                <button 
+                <button
                   onClick={() => setSelectedStore(null)}
-                  className="p-1.5 text-white/50 hover:text-white rounded-full bg-white/[0.06]"
+                  className="p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="space-y-2 text-xs text-white/70 bg-white/[0.03] p-4 rounded-2xl border border-white/[0.05]">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5 text-emerald-400" />
-                  <span>{selectedStore.address}</span>
+              <div className="p-6 space-y-6">
+                {/* Store Meta */}
+                <div className="space-y-2 border-b border-white/10 pb-5 text-xs text-slate-300">
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <MapPin className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    <span>{selectedStore.address}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-400 font-mono">
+                    <Clock className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                    <span>{selectedStore.openStatus}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-400 font-mono">
+                    <Phone className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                    <span>+91 422 254 8890 (Counter Desk)</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-3.5 w-3.5 text-white/50" />
-                  <span>{selectedStore.openStatus}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="h-3.5 w-3.5 text-white/50" />
-                  <span>+91 422 254 8890 (Counter Desk)</span>
-                </div>
-              </div>
 
-              {/* Verified Products in this Store */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-white/60">Shelf Catalog Available Today</h4>
-                <div className="space-y-2">
-                  {PRODUCTS.filter(p => p.storeName.includes(selectedStore.name.split('·')[0].trim())).map(p => (
-                    <div key={p.id} className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-between">
-                      <div>
-                        <div className="text-xs font-bold text-white">{p.name}</div>
-                        <div className="text-[11px] text-emerald-400">₹{p.price.toLocaleString('en-IN')} · In Stock</div>
+                {/* Available Shelf Inventory */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold">
+                      Available on Shelf Today
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-white/10">
+                    {PRODUCTS.filter(p => p.storeName.includes(selectedStore.name.split('·')[0].trim())).map(p => (
+                      <div key={p.id} className="py-3 flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-xs font-bold text-white">{p.name}</div>
+                          <div className="text-[11px] font-mono text-emerald-400">
+                            ₹{p.price.toLocaleString('en-IN')} · {p.stockCount} in stock
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            handleHoldItem(p.name, selectedStore.name, p.price);
+                            setSelectedStore(null);
+                          }}
+                          className="px-4 py-1.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer shrink-0"
+                        >
+                          Hold 30m
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleHoldItem(p.name, selectedStore.name)}
-                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-white text-black hover:bg-white/90"
-                      >
-                        Hold 30m
-                      </button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-3 pt-2">
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${selectedStore.name}, ${selectedStore.address}, Coimbatore`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 py-3 rounded-xl bg-white text-black font-bold text-xs text-center flex items-center justify-center gap-1.5 hover:bg-white/90"
-                >
-                  <Navigation className="h-3.5 w-3.5" />
-                  <span>Get Walking Directions</span>
-                </a>
+                {/* Navigation Button */}
+                <div className="pt-2">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${selectedStore.name}, ${selectedStore.address}, Coimbatore`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3.5 rounded-full bg-white text-slate-950 font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors cursor-pointer"
+                  >
+                    <Navigation className="h-3.5 w-3.5" />
+                    <span>Get Walking Directions</span>
+                  </a>
+                </div>
+
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* ── PRODUCT DETAIL MODAL ── */}
+      {/* ── PRODUCT DETAIL SHEET ── */}
       <AnimatePresence>
         {selectedProduct && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-[#0f0f13] border border-white/[0.12] rounded-3xl p-6 space-y-4 text-left shadow-2xl"
+              initial={{ opacity: 0, y: '100%' }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: '100%' }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full sm:max-w-md bg-[#07080B] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto text-left selection:bg-white selection:text-black"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest">{selectedProduct.badge || 'Verified Stock'}</span>
-                  <h3 className="text-lg font-bold text-white font-['Outfit']">{selectedProduct.name}</h3>
-                </div>
-                <button 
-                  onClick={() => setSelectedProduct(null)}
-                  className="p-1.5 text-white/50 hover:text-white rounded-full bg-white/[0.06]"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-zinc-900">
-                <img src={selectedProduct.imageUrl} alt={selectedProduct.name} className="w-full h-full object-cover" />
-              </div>
-
-              <div className="flex items-baseline justify-between">
-                <div>
-                  <span className="text-2xl font-black text-white">₹{selectedProduct.price.toLocaleString('en-IN')}</span>
-                  {selectedProduct.originalPrice && (
-                    <span className="text-xs text-white/40 line-through ml-2">₹{selectedProduct.originalPrice.toLocaleString('en-IN')}</span>
-                  )}
-                </div>
-                <span className="text-xs text-emerald-400 font-semibold">{selectedProduct.stockCount} Pairs on Counter</span>
-              </div>
-
-              <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl text-xs space-y-1">
-                <div className="font-bold text-white">{selectedProduct.storeName}</div>
-                <div className="text-white/50">{selectedProduct.storeArea} · {selectedProduct.distance} away (4 min walk)</div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
+              <div className="sticky top-0 bg-[#07080B]/95 backdrop-blur-md px-6 py-4 border-b border-white/10 flex items-center justify-between z-10">
+                <span className="text-[11px] font-mono uppercase tracking-widest text-emerald-400 font-bold">
+                  Verified In-Store Stock
+                </span>
                 <button
-                  onClick={() => {
-                    handleHoldItem(selectedProduct.name, selectedProduct.storeName);
-                    setSelectedProduct(null);
-                  }}
-                  className="flex-1 py-3 rounded-xl bg-white text-black font-bold text-xs hover:bg-white/90"
+                  onClick={() => setSelectedProduct(null)}
+                  className="p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
                 >
-                  Hold 30 Mins for Walk-in
+                  <X className="h-5 w-5" />
                 </button>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedProduct.storeName}, Coimbatore`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-3 rounded-xl bg-white/[0.06] border border-white/[0.1] text-white hover:bg-white/[0.12]"
-                >
-                  <Navigation className="h-4 w-4" />
-                </a>
+              </div>
+
+              <div className="p-6 space-y-5">
+                <div className="aspect-[4/3] rounded-xl overflow-hidden bg-zinc-900 border border-white/10">
+                  <img 
+                    src={selectedProduct.imageUrl} 
+                    alt={selectedProduct.name} 
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-white">{selectedProduct.name}</h3>
+                  <div className="text-xs text-slate-400">{selectedProduct.storeName} · {selectedProduct.storeArea}</div>
+                </div>
+
+                <div className="flex items-baseline justify-between border-t border-b border-white/10 py-3 font-mono">
+                  <div>
+                    <span className="text-xl font-bold text-white">₹{selectedProduct.price.toLocaleString('en-IN')}</span>
+                    {selectedProduct.originalPrice && (
+                      <span className="text-xs text-slate-600 line-through ml-2">₹{selectedProduct.originalPrice.toLocaleString('en-IN')}</span>
+                    )}
+                  </div>
+                  <span className="text-xs font-bold text-emerald-400">{selectedProduct.stockCount} on Counter</span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      handleHoldItem(selectedProduct.name, selectedProduct.storeName, selectedProduct.price);
+                      setSelectedProduct(null);
+                    }}
+                    className="flex-1 py-3.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer text-center"
+                  >
+                    Hold for 30 Mins
+                  </button>
+
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedProduct.storeName}, Coimbatore`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3.5 rounded-full border border-white/20 hover:border-white/40 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
+                    title="View Map"
+                  >
+                    <Navigation className="h-4 w-4" />
+                  </a>
+                </div>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* ── MOBILE BOTTOM NAVIGATION BAR (iOS / Android Style) ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0c0c10]/95 backdrop-blur-2xl border-t border-white/[0.08] px-6 py-2.5 flex items-center justify-around md:hidden">
+      {/* ── HOLD PASS TICKET SHEET ── */}
+      <HoldPassSheet
+        pass={selectedPassForSheet}
+        isOpen={Boolean(selectedPassForSheet)}
+        onClose={() => setSelectedPassForSheet(null)}
+        onCancelHold={handleCancelHold}
+        onOpenChat={(pass) => {
+          setSelectedPassForSheet(null);
+          setChatPass(pass);
+        }}
+      />
+
+      {/* ── DIRECT TEXT CHAT DRAWER ── */}
+      <DirectChatDrawer
+        pass={chatPass}
+        isOpen={Boolean(chatPass)}
+        onClose={() => setChatPass(null)}
+      />
+
+      {/* ── NATIVE MOBILE BOTTOM NAVIGATION (4 Tabs) ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#07080B]/98 backdrop-blur-2xl border-t border-white/10 px-4 sm:px-8 py-2.5 flex items-center justify-around">
+        
+        {/* Tab 1: Discover */}
         <button
           onClick={() => setActiveTab('discover')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${
-            activeTab === 'discover' ? 'text-white font-bold' : 'text-white/40'
+          className={`flex flex-col items-center gap-1 text-[10px] font-mono tracking-wider transition-colors cursor-pointer ${
+            activeTab === 'discover' ? 'text-white font-bold' : 'text-slate-500 hover:text-slate-300'
           }`}
         >
-          <Compass className="h-5 w-5" />
+          <Compass className="h-4.5 w-4.5" />
           <span>Discover</span>
         </button>
 
+        {/* Tab 2: Live Ask */}
         <button
           onClick={() => setActiveTab('requests')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors relative ${
-            activeTab === 'requests' ? 'text-white font-bold' : 'text-white/40'
+          className={`flex flex-col items-center gap-1 text-[10px] font-mono tracking-wider transition-colors cursor-pointer relative ${
+            activeTab === 'requests' ? 'text-white font-bold' : 'text-slate-500 hover:text-slate-300'
           }`}
         >
-          <Radio className="h-5 w-5" />
+          <Radio className="h-4.5 w-4.5" />
           <span>Live Ask</span>
+          {liveResponses.length > 0 && (
+            <span className="absolute top-0 right-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          )}
         </button>
 
+        {/* Tab 3: My Holds */}
         <button
-          onClick={() => setActiveTab('saved')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${
-            activeTab === 'saved' ? 'text-white font-bold' : 'text-white/40'
+          onClick={() => setActiveTab('holds')}
+          className={`flex flex-col items-center gap-1 text-[10px] font-mono tracking-wider transition-colors cursor-pointer relative ${
+            activeTab === 'holds' ? 'text-white font-bold' : 'text-slate-500 hover:text-slate-300'
           }`}
         >
-          <Bookmark className="h-5 w-5" />
-          <span>Saved</span>
+          <Clock className="h-4.5 w-4.5" />
+          <span>My Holds</span>
+          {activeHolds.length > 0 && (
+            <span className="absolute top-0 right-1 h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+          )}
         </button>
 
+        {/* Tab 4: Account & Saved */}
         <button
-          onClick={() => setActiveTab('profile')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${
-            activeTab === 'profile' ? 'text-white font-bold' : 'text-white/40'
+          onClick={() => setActiveTab('account')}
+          className={`flex flex-col items-center gap-1 text-[10px] font-mono tracking-wider transition-colors cursor-pointer ${
+            activeTab === 'account' ? 'text-white font-bold' : 'text-slate-500 hover:text-slate-300'
           }`}
         >
-          <User className="h-5 w-5" />
-          <span>Activity</span>
+          <User className="h-4.5 w-4.5" />
+          <span>Account</span>
         </button>
+
       </nav>
 
     </div>
