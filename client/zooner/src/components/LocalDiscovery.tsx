@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Navigation, ArrowUpRight, CheckCircle2, Store } from 'lucide-react';
+import { MapPin, Navigation, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { PHYSICAL_STORES } from '../data/mockData';
 import type { Store as StoreType, LocationArea } from '../types';
 
@@ -17,11 +17,11 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const categories = [
-    { id: 'all', label: 'All Verified Stores' },
-    { id: 'Footwear & Sports', label: 'Sports & Footwear' },
-    { id: 'Fashion', label: 'Fashion & Apparel' },
+    { id: 'all', label: 'All Stores' },
+    { id: 'Footwear & Sports', label: 'Footwear & Sports' },
+    { id: 'Fashion', label: 'Fashion' },
     { id: 'Electronics', label: 'Electronics & Audio' },
-    { id: 'Beauty', label: 'Beauty & Skincare' },
+    { id: 'Beauty', label: 'Beauty' },
   ];
 
   const filteredStores = PHYSICAL_STORES.filter(st => {
@@ -35,10 +35,8 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
   const googleMapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapSearchQuery)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
   return (
-    <section id="stores" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#090D18] text-white border-t border-slate-800/80 overflow-hidden">
-      
-      {/* Subtle ambient lighting */}
-      <div className="absolute top-1/4 right-10 w-[600px] h-[600px] bg-blue-950/15 blur-[160px] pointer-events-none rounded-full" />
+    <section id="stores" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#06070F] text-white border-t border-slate-800/60 overflow-hidden">
+      <div className="orb-2 absolute top-1/4 right-10 w-[600px] h-[600px] bg-blue-950/10 blur-[180px] pointer-events-none rounded-full" />
 
       <div className="max-w-6xl mx-auto space-y-12 relative z-10">
         
@@ -60,12 +58,11 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
             >
               Your city has the product.
             </h2>
-            <p className="text-slate-300 text-base sm:text-lg leading-relaxed">
-              Every authorized brand store, boutique, and local dealer near you — connected in real time to your mobile screen.
+            <p className="text-slate-400 text-base sm:text-lg leading-relaxed">
+              Every authorized brand store, boutique, and local dealer near you � connected in real time to your mobile screen.
             </p>
           </motion.div>
 
-          {/* Location Trigger */}
           <motion.button
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -73,118 +70,117 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
             onClick={onOpenLocationModal}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-xs font-medium text-slate-200 transition-colors cursor-pointer shrink-0 shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 rounded-full border border-slate-800 hover:border-slate-700 text-xs font-medium text-slate-300 transition-colors cursor-pointer shrink-0"
           >
             <MapPin className="h-3.5 w-3.5 text-emerald-400" />
             <span>{currentLocation.name || 'RS Puram, Coimbatore'}</span>
           </motion.button>
         </div>
 
-        {/* Category Filters with Framer Motion layout pill */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+        {/* Category Filters - Sleek typographic tabs */}
+        <div className="flex items-center gap-6 border-b border-slate-800/80 overflow-x-auto no-scrollbar pb-3">
           {categories.map(cat => {
             const isSelected = selectedCategory === cat.id;
             return (
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`relative px-4 py-2 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap z-10 ${
-                  isSelected ? 'text-slate-950 font-bold' : 'text-slate-300 hover:text-white'
+                className={`text-xs font-mono uppercase tracking-wider transition-colors cursor-pointer whitespace-nowrap relative pb-1 ${
+                  isSelected ? 'text-white font-bold' : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
+                {cat.label}
                 {isSelected && (
                   <motion.div
-                    layoutId="activeCategoryPill"
-                    className="absolute inset-0 bg-white rounded-full -z-10 shadow-lg"
-                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                    layoutId="activeCategoryUnderline"
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-emerald-400"
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
-                {!isSelected && (
-                  <div className="absolute inset-0 bg-slate-900/90 border border-slate-800 rounded-full -z-10" />
-                )}
-                {cat.label}
               </button>
             );
           })}
         </div>
 
-        {/* Centerpiece Dominant Map Layout */}
-        <div className="space-y-6">
-          
-          {/* Dominant Map Container */}
-          <div className="rounded-3xl overflow-hidden border border-slate-700/80 bg-[#0A0F1E] h-[380px] sm:h-[460px] relative shadow-2xl">
+        {/* Map view */}
+        <div className="space-y-8">
+          <div className="overflow-hidden border border-slate-800 h-[360px] sm:h-[420px] relative">
             <iframe
               title="Store Map"
               src={googleMapUrl}
-              className="w-full h-full border-0 filter invert-[0.9] hue-rotate-180 contrast-[1.1] opacity-85"
+              className="w-full h-full border-0 filter invert-[0.92] hue-rotate-180 contrast-[1.15] opacity-80"
               loading="lazy"
             />
 
-            {/* Selected Store Floating Overlay Card */}
+            {/* Selected Store Floating Info */}
             <AnimatePresence>
               {activePin && (
                 <motion.div 
                   key={activePin.id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.3 }}
-                  className="absolute bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-md bg-[#0A0F1E]/95 backdrop-blur-xl border border-slate-700 rounded-2xl p-4 text-left flex items-center justify-between gap-4 shadow-2xl z-20"
+                  exit={{ opacity: 0, y: 15 }}
+                  transition={{ duration: 0.25 }}
+                  className="absolute bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-md bg-[#06070F]/95 border border-slate-700/80 p-4 text-left flex items-center justify-between gap-4 backdrop-blur-md z-20"
                 >
                   <div>
                     <div className="flex items-center gap-1.5">
                       <h4 className="text-sm font-bold text-white">{activePin.name}</h4>
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                     </div>
-                    <p className="text-xs text-slate-300 mt-0.5 truncate max-w-xs">{activePin.address}</p>
-                    <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400 font-mono">
+                    <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{activePin.address}</p>
+                    <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 font-mono">
                       <span className="text-emerald-400 font-bold">{activePin.distance}</span>
-                      <span>·</span>
+                      <span>�</span>
                       <span>{activePin.openStatus}</span>
                     </div>
                   </div>
 
-                  <motion.a
+                  <a
                     href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${activePin.name}, ${activePin.address}, Coimbatore`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="px-4 py-2.5 rounded-xl bg-white text-slate-950 text-xs font-bold shrink-0 hover:bg-slate-100 transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
+                    className="px-4 py-2 bg-white text-slate-950 text-xs font-bold shrink-0 hover:bg-slate-100 transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Navigation className="h-3.5 w-3.5" />
+                    <Navigation className="h-3 w-3" />
                     <span>Directions</span>
-                  </motion.a>
+                  </a>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Horizontal Quick-Select Store Pills */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-left">
-            {filteredStores.slice(0, 6).map(store => {
+          {/* Clean Directory Table List - No Card Boxes */}
+          <div className="border-t border-slate-800/80">
+            {filteredStores.slice(0, 6).map((store) => {
               const isSelected = activePin?.id === store.id;
               return (
                 <div
                   key={store.id}
                   onClick={() => setActivePin(store)}
-                  className={`p-3.5 rounded-2xl transition-all cursor-pointer border ${
-                    isSelected 
-                      ? 'bg-slate-800/95 border-indigo-500/80 shadow-lg' 
-                      : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'
+                  className={`py-3.5 px-2 flex items-center justify-between border-b border-slate-800/50 cursor-pointer transition-colors ${
+                    isSelected ? 'bg-white/[0.03] text-white' : 'hover:bg-white/[0.015] text-slate-400'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="font-bold text-white text-xs truncate max-w-[180px]">{store.name}</div>
-                    <span className="text-[10px] font-mono font-bold text-slate-300 bg-slate-800 px-2 py-0.5 rounded">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <span className={`h-1.5 w-1.5 rounded-full ${isSelected ? 'bg-emerald-400' : 'bg-slate-700'}`} />
+                    <div className="truncate">
+                      <span className={`text-sm font-bold block sm:inline ${isSelected ? 'text-white' : 'text-slate-300'}`}>
+                        {store.name}
+                      </span>
+                      <span className="text-xs text-slate-500 sm:ml-3">
+                        {store.area} � {store.category}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs shrink-0 font-mono">
+                    <span className={isSelected ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
                       {store.distance}
                     </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
-                    <span className="truncate">{store.category}</span>
-                    <span className="text-indigo-400 font-medium flex items-center gap-0.5">
-                      Focus <ArrowUpRight className="h-2.5 w-2.5" />
-                    </span>
+                    <span className="text-slate-600 hidden sm:inline">�</span>
+                    <span className="text-slate-400 hidden sm:inline">{store.openStatus}</span>
+                    <ArrowUpRight className={`h-3.5 w-3.5 ${isSelected ? 'text-white' : 'text-slate-600'}`} />
                   </div>
                 </div>
               );
@@ -192,17 +188,13 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
           </div>
 
           {filteredStores.length === 0 && (
-            <div className="p-8 text-center bg-slate-900/80 border border-slate-800 rounded-2xl space-y-2">
-              <Store className="h-6 w-6 text-slate-400 mx-auto" />
-              <p className="text-xs text-slate-300">No stores found in this category.</p>
+            <div className="py-8 text-center text-xs text-slate-500">
+              No stores found in this category.
             </div>
           )}
-
         </div>
 
       </div>
     </section>
   );
 };
-
-

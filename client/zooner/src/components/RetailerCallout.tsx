@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, CheckCircle2, Store, Bell, Check, Zap } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Store } from 'lucide-react';
 
 interface RetailerCalloutProps {
   onOpenRetailerModal: () => void;
@@ -11,14 +11,11 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
   onNavigateToVendor,
 }) => {
   return (
-    <section id="merchants" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#070A11] text-white border-t border-slate-800/80 overflow-hidden">
-      
-      {/* Ambient background glow */}
-      <div className="absolute top-1/2 left-10 w-[550px] h-[550px] bg-purple-950/15 blur-[160px] pointer-events-none rounded-full" />
+    <section id="merchants" className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#06070F] text-white border-t border-slate-800/60 overflow-hidden">
+      <div className="orb-3 absolute top-1/2 left-10 w-[550px] h-[550px] bg-purple-950/10 blur-[180px] pointer-events-none rounded-full" />
 
       <div className="max-w-6xl mx-auto text-left relative z-10">
-        
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-start">
           
           {/* Left: Editorial Proposition */}
           <div className="lg:col-span-6 space-y-8">
@@ -47,23 +44,23 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
                 into walk-in customers.
               </h2>
 
-              <p className="text-slate-300 text-base sm:text-lg leading-relaxed pt-2">
+              <p className="text-slate-400 text-base sm:text-lg leading-relaxed pt-2">
                 Thousands of shoppers within 2 km of your store are searching online for items already sitting on your physical shelves. Zooner routes them directly to your billing counter.
               </p>
             </motion.div>
 
-            <ul className="space-y-3.5 text-sm text-slate-200">
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                <span><strong>Zero hardware setup</strong> — receive and confirm holds from any smartphone or tablet</span>
+            <ul className="space-y-4 text-sm sm:text-base text-slate-300">
+              <li className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-1" />
+                <span><strong className="text-white font-semibold">Zero hardware setup</strong> � receive and confirm holds from any smartphone or tablet</span>
               </li>
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                <span><strong>Direct in-store payments</strong> — customer pays directly at your store POS</span>
+              <li className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-1" />
+                <span><strong className="text-white font-semibold">Direct in-store payments</strong> � customer pays directly at your store POS</span>
               </li>
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                <span><strong>No delivery middlemen</strong> — 100% genuine local foot traffic without packaging friction</span>
+              <li className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-1" />
+                <span><strong className="text-white font-semibold">No delivery middlemen</strong> � 100% genuine local foot traffic without packaging friction</span>
               </li>
             </ul>
 
@@ -78,7 +75,7 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
                 onClick={onNavigateToVendor}
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
-                className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full bg-white text-slate-950 font-bold text-sm hover:bg-slate-100 transition-colors cursor-pointer shadow-xl shadow-white/10"
+                className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full bg-white text-slate-950 font-bold text-sm hover:bg-slate-100 transition-all cursor-pointer shadow-xl shadow-white/10"
               >
                 <Store className="h-4 w-4" />
                 <span>Register Your Store</span>
@@ -87,77 +84,57 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
             </motion.div>
           </div>
 
-          {/* Right: Realistic Merchant Terminal Preview */}
+          {/* Right: Editorial stats without card boxes */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="lg:col-span-6"
+            className="lg:col-span-6 space-y-10 border-t lg:border-t-0 lg:border-l border-slate-800/80 pt-8 lg:pt-0 lg:pl-12"
           >
-            <div className="rounded-3xl bg-[#0A0F1E] border border-slate-700/80 p-6 sm:p-7 space-y-5 shadow-2xl relative overflow-hidden">
-              
-              {/* Terminal Header */}
-              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                    <Store className="h-4.5 w-4.5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white">Merchant Companion</h4>
-                    <p className="text-[11px] text-slate-400">Sneaker Hub · RS Puram Branch</p>
-                  </div>
-                </div>
-                <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold bg-emerald-950/80 border border-emerald-500/40 px-3 py-1 rounded-full font-mono">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                  Live (14 nearby shoppers)
-                </span>
+            <div>
+              <div 
+                className="font-['Outfit'] font-black text-white leading-none tracking-tight"
+                style={{ fontSize: 'clamp(3.8rem, 8vw, 6.5rem)' }}
+              >
+                &lt; 2 km
               </div>
+              <p className="text-slate-400 text-sm sm:text-base mt-3 leading-relaxed">
+                Average distance between a local customer searching on their phone and the product already in your store.
+              </p>
+            </div>
 
-              {/* Live Request Notification Slip */}
-              <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1.5 text-indigo-300 font-bold">
-                    <Bell className="h-3.5 w-3.5 text-indigo-400" />
-                    <span>Incoming Request (350m away)</span>
-                  </div>
-                  <span className="text-slate-400 font-mono text-[11px]">Just now</span>
-                </div>
+            <div className="border-t border-slate-800" />
 
-                <div className="text-sm font-bold text-white">
-                  "Nike Air Max 270 (UK 9) - Black"
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-slate-300 pt-1 border-t border-slate-800">
-                  <span>Price: <strong>₹6,499</strong></span>
-                  <span className="text-emerald-400 font-medium">In Stock on Shelf ✓</span>
-                </div>
-
-                {/* Instant Merchant Action Button */}
-                <div className="pt-1">
-                  <div className="py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs text-center flex items-center justify-center gap-1.5 shadow-sm">
-                    <Check className="h-3.5 w-3.5 stroke-[3]" />
-                    <span>Hold Reserved (30m Counter Hold #ZN-8842)</span>
-                  </div>
+            <div className="space-y-6">
+              <div className="flex items-start gap-4">
+                <span className="text-emerald-400 font-mono font-bold text-sm shrink-0">01</span>
+                <div>
+                  <h4 className="font-bold text-white text-sm sm:text-base">Immediate Hold Confirmation</h4>
+                  <p className="text-xs sm:text-sm text-slate-400 mt-1">Accept holds in 1-tap. Shoppers are given a 30-minute window to walk in.</p>
                 </div>
               </div>
 
-              {/* Merchant Status Footer */}
-              <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-                <span className="flex items-center gap-1">
-                  <Zap className="h-3 w-3 text-emerald-400" /> Shopper arriving in: <strong>~4 mins</strong>
-                </span>
-                <span className="text-slate-300 font-mono">Payment: Store POS</span>
+              <div className="flex items-start gap-4">
+                <span className="text-emerald-400 font-mono font-bold text-sm shrink-0">02</span>
+                <div>
+                  <h4 className="font-bold text-white text-sm sm:text-base">Zero Commission on Walk-Ins</h4>
+                  <p className="text-xs sm:text-sm text-slate-400 mt-1">Keep 100% of your retail margin. No platform deductions at counter checkout.</p>
+                </div>
               </div>
 
+              <div className="flex items-start gap-4">
+                <span className="text-emerald-400 font-mono font-bold text-sm shrink-0">03</span>
+                <div>
+                  <h4 className="font-bold text-white text-sm sm:text-base">Verified Merchant Network</h4>
+                  <p className="text-xs sm:text-sm text-slate-400 mt-1">Join leading authorized footwear, electronics, and fashion brands in your district.</p>
+                </div>
+              </div>
             </div>
           </motion.div>
 
         </div>
-
       </div>
     </section>
   );
 };
-
-

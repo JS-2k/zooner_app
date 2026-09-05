@@ -12,7 +12,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenRetailerModal, onOpenLocat
   };
 
   return (
-    <footer className="bg-[#070A11] border-t border-slate-800/80 pt-20 pb-14 px-6 sm:px-8 text-slate-300 text-xs selection:bg-white selection:text-black">
+    <footer className="bg-[#06070F] border-t border-slate-800/60 pt-20 pb-14 px-6 sm:px-8 text-slate-400 text-xs selection:bg-white selection:text-black">
       <div className="max-w-6xl mx-auto space-y-16">
         
         {/* Top Grid */}

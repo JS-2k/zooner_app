@@ -1,138 +1,132 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { PackageX, Sparkles, Clock, CheckCircle2 } from 'lucide-react';
 
 export const TheProblem: React.FC = () => {
-  return (
-    <section className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#090D18] text-white border-t border-slate-800/80 overflow-hidden">
-      
-      {/* Background ambient lighting */}
-      <div className="absolute top-1/2 right-0 w-[500px] h-[500px] bg-red-950/10 blur-[150px] pointer-events-none rounded-full" />
-      <div className="absolute bottom-0 left-10 w-[450px] h-[450px] bg-emerald-950/15 blur-[140px] pointer-events-none rounded-full" />
+  const oldWay = [
+    'Refreshing tracking links and waiting 3-5 days for delivery vans',
+    'Guessing shoe sizes, fabric texture, or audio comfort from catalog images',
+    'Repacking cardboard boxes and waiting a week for return refunds',
+  ];
 
-      <div className="max-w-5xl mx-auto text-left space-y-16 relative z-10">
-        
-        {/* Editorial Subtitle */}
-        <motion.div 
+  const zoonerWay = [
+    'Know in seconds which nearby authorized store has your exact item in stock',
+    'Try it on in person � test audio, fit, and quality before paying anything',
+    'Hold it at the billing counter for 30 minutes and walk home with it today',
+  ];
+
+  return (
+    <section className="relative py-28 sm:py-36 px-6 sm:px-8 bg-[#06070F] text-white overflow-hidden">
+      <div className="absolute top-1/2 right-0 w-[500px] h-[500px] bg-red-950/5 blur-[180px] pointer-events-none rounded-full" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-950/6 blur-[160px] pointer-events-none rounded-full" />
+
+      <div className="max-w-5xl mx-auto relative z-10">
+
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.7 }}
-          className="space-y-4 max-w-2xl"
+          className="space-y-5 max-w-2xl mb-16 sm:mb-20"
         >
           <span className="text-xs font-mono uppercase tracking-widest text-indigo-400 font-bold block">
             01 / The Friction
           </span>
-          <h2 
+          <h2
             className="font-['Outfit'] font-black tracking-tight text-white leading-[0.98]"
             style={{ fontSize: 'clamp(2.4rem, 6vw, 4.4rem)' }}
           >
             Why wait 4 days for a box <br />
-            that's already down the street?
+            that is already down the street?
           </h2>
-          <p className="text-slate-300 text-base sm:text-lg leading-relaxed pt-1">
-            Online retail taught us to treat delivery delays, wrong sizes, and return hassles as inevitable. Yet in every neighborhood, authorized brand stores already have the exact stock waiting on physical shelves.
+          <p className="text-slate-400 text-base sm:text-lg leading-relaxed">
+            Online retail taught us to treat delays, wrong sizes, and return hassles as inevitable. Yet authorized brand stores near you already have the exact stock waiting on physical shelves.
           </p>
         </motion.div>
 
-        {/* High-Craft Contrast Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
-          
-          {/* Column 1: The E-Commerce Delivery Loop */}
-          <motion.div 
-            initial={{ opacity: 0, y: 25 }}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1px_1fr] items-start">
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-            className="p-8 sm:p-10 rounded-3xl bg-slate-900/50 border border-slate-800 space-y-6 flex flex-col justify-between"
+            transition={{ duration: 0.7, delay: 0.05 }}
+            className="space-y-8 pr-0 md:pr-14 pb-12 md:pb-0"
           >
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-red-400 bg-red-950/60 border border-red-500/30 px-3 py-1 rounded-full flex items-center gap-1.5">
-                  <PackageX className="h-3.5 w-3.5" />
-                  <span>Online E-Commerce</span>
-                </span>
-                <span className="text-xs font-mono text-slate-500 flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  3–5 Days
-                </span>
-              </div>
-
-              <h3 className="text-2xl font-bold text-slate-100">
-                The delivery & return cycle
+            <div className="space-y-1">
+              <span className="text-xs font-mono uppercase tracking-widest text-red-400 font-bold block">
+                Online E-Commerce 3-5 Days
+              </span>
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-300">
+                The delivery and return cycle
               </h3>
-
-              <ul className="space-y-4 text-sm text-slate-300 pt-2">
-                <li className="flex items-start gap-3">
-                  <span className="text-red-400 font-bold text-base leading-none">✕</span>
-                  <span>Refreshing tracking links and waiting days for delivery vans</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-red-400 font-bold text-base leading-none">✕</span>
-                  <span>Guessing shoe sizes, fabric texture, or audio comfort from catalog images</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-red-400 font-bold text-base leading-none">✕</span>
-                  <span>Repacking cardboard boxes and waiting a week for return refunds</span>
-                </li>
-              </ul>
             </div>
 
-            <div className="pt-6 border-t border-slate-800/80 text-xs text-slate-500 font-mono">
-              Outcome: 4 days wasted + 30% return risk
+            <div className="border-t border-slate-800/80" />
+
+            <div className="space-y-7">
+              {oldWay.map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -12 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.1 + i * 0.08 }}
+                  className="flex items-start gap-4"
+                >
+                  <span className="text-red-500 font-bold text-base leading-none mt-0.5 shrink-0">-</span>
+                  <span className="text-slate-400 leading-relaxed text-sm sm:text-base">{item}</span>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="border-t border-slate-800/50 pt-5">
+              <span className="text-xs font-mono text-slate-600">Outcome: 4 days wasted 30% return risk</span>
             </div>
           </motion.div>
 
-          {/* Column 2: The Zooner Experience */}
-          <motion.div 
-            initial={{ opacity: 0, y: 25 }}
+          <div className="hidden md:block w-px bg-slate-800/60 self-stretch" />
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            className="p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-slate-900/90 to-[#0F1D2F] border border-emerald-500/40 space-y-6 shadow-2xl shadow-emerald-950/20 flex flex-col justify-between"
+            transition={{ duration: 0.7, delay: 0.15 }}
+            className="space-y-8 pl-0 md:pl-14 pt-12 md:pt-0 border-t border-slate-800/60 md:border-t-0"
           >
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-3 py-1 rounded-full flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-                  <span>Zooner Walk-In</span>
-                </span>
-                <span className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  15 Minutes
-                </span>
-              </div>
-
-              <h3 className="text-2xl font-bold text-white">
+            <div className="space-y-1">
+              <span className="text-xs font-mono uppercase tracking-widest text-emerald-500 font-bold block">
+                Zooner Walk-In 15 Minutes
+              </span>
+              <h3 className="text-xl sm:text-2xl font-bold text-white">
                 Instant physical verification
               </h3>
-
-              <ul className="space-y-4 text-sm text-slate-200 pt-2">
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Know in seconds which nearby authorized store has your exact item</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Try it on in person, test audio or fit, and inspect before purchasing</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Hold at the counter for 30 minutes and walk home with it today</span>
-                </li>
-              </ul>
             </div>
 
-            <div className="pt-6 border-t border-emerald-500/20 text-xs text-emerald-400 font-mono font-bold">
-              Outcome: 15 min walk-in · 100% genuine · Zero return hassle
+            <div className="border-t border-slate-800/80" />
+
+            <div className="space-y-7">
+              {zoonerWay.map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: 12 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.15 + i * 0.08 }}
+                  className="flex items-start gap-4"
+                >
+                  <span className="text-emerald-500 font-bold text-base leading-none mt-0.5 shrink-0">+</span>
+                  <span className="text-slate-200 leading-relaxed text-sm sm:text-base">{item}</span>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="border-t border-slate-800/50 pt-5">
+              <span className="text-xs font-mono text-emerald-500/70 font-bold">Outcome: 15 min walk-in 100% genuine Zero return hassle</span>
             </div>
           </motion.div>
 
         </div>
-
       </div>
     </section>
   );
 };
-
-
