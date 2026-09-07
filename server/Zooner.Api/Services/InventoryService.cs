@@ -348,7 +348,15 @@ public class InventoryService : IInventoryService
         };
 
         _context.InventoryHolds.Add(hold);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Concurrency conflict reserving inventory hold for item {InventoryId}", inventoryId);
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("Item was just reserved by another customer or stock changed. Please refresh and try again.");
+        }
 
         var dto = new InventoryHoldDto
         {

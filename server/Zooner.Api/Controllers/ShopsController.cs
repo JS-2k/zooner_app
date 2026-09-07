@@ -20,9 +20,9 @@ public class ShopsController : ControllerBase
     }
 
     /// <summary>
-    /// Register a new shop (Requires ShopOwner or Admin role)
+    /// Register a new shop (Requires Vendor capability or Admin)
     /// </summary>
-    [Authorize(Roles = "ShopOwner,Admin,Customer")]
+    [Authorize(Roles = "Vendor,ShopOwner,Retailer,Both,VC,V,Admin")]
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<ShopDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ShopDto>), StatusCodes.Status400BadRequest)]

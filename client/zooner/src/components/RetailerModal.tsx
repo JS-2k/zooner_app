@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Store, CheckCircle, ArrowRight, ShieldCheck, Upload, MapPin, Loader2 } from 'lucide-react';
-import { createShop, registerUser, loginUser, fetchCategories } from '../services/api';
+import { createShop, registerUser, loginUser, fetchCategories, becomeVendor } from '../services/api';
 
 interface RetailerModalProps {
   isOpen: boolean;
@@ -27,7 +27,7 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
     setIsSubmitting(true);
 
     try {
-      // 1. Ensure authenticated user
+      // 1. Ensure authenticated user and activate vendor capability
       let token = localStorage.getItem('zooner_token');
       if (!token) {
         const cleanPhone = phone.replace(/[^0-9]/g, '') || '9842210987';
@@ -41,10 +41,13 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
             email: userEmail,
             password: userPass,
             phoneNumber: `+91 ${cleanPhone}`,
-            role: 'ShopOwner'
+            role: 'Both'
           });
         }
         token = auth?.accessToken || null;
+      } else {
+        // Upgrade current customer identity to have Vendor capability
+        await becomeVendor();
       }
 
       // 2. Fetch categories to get valid CategoryId

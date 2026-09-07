@@ -9,4 +9,5 @@ public interface IAuthService
     Task<ApiResponse<AuthResponse>> RefreshTokenAsync(string token, string? ipAddress = null);
     Task<ApiResponse> RevokeTokenAsync(string token, string? ipAddress = null);
     Task<ApiResponse<UserDto>> GetCurrentUserAsync(Guid userId);
+    Task<ApiResponse<AuthResponse>> BecomeVendorAsync(Guid userId, string? ipAddress = null);
 }

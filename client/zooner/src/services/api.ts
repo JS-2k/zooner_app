@@ -649,5 +649,28 @@ export async function fetchMyActiveHolds(): Promise<InventoryHoldDto[]> {
   }
 }
 
+export async function becomeVendor(): Promise<{ success: boolean; data?: AuthResponse; error?: string }> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/auth/become-vendor`, {
+      method: 'POST'
+    });
+    const json: ApiResponse<AuthResponse> = await res.json();
+    if (res.ok && json.success && json.data) {
+      localStorage.setItem('zooner_token', json.data.accessToken);
+      if (json.data.refreshToken) {
+        localStorage.setItem('zooner_refresh_token', json.data.refreshToken);
+      }
+      if (json.data.user) {
+        localStorage.setItem('zooner_user', JSON.stringify(json.data.user));
+      }
+      return { success: true, data: json.data };
+    }
+    return { success: false, error: json.message || 'Failed to activate vendor capability.' };
+  } catch (error) {
+    console.error('becomeVendor error:', error);
+    return { success: false, error: 'Network error activating vendor capability.' };
+  }
+}
+
 
 

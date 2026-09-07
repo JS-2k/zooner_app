@@ -33,9 +33,29 @@ public class TokenService : ITokenService
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.FullName),
-            new(ClaimTypes.Email, user.Email),
-            new(ClaimTypes.Role, user.Role)
+            new(ClaimTypes.Email, user.Email)
         };
+
+        if (user.HasCustomerCapability)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, UserRoles.Customer));
+        }
+
+        if (user.HasVendorCapability)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, UserRoles.Vendor));
+            claims.Add(new Claim(ClaimTypes.Role, "ShopOwner"));
+        }
+
+        if (user.IsAdmin)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, UserRoles.Admin));
+        }
+
+        if (!claims.Any(c => c.Type == ClaimTypes.Role && c.Value.Equals(user.Role, StringComparison.OrdinalIgnoreCase)))
+        {
+            claims.Add(new Claim(ClaimTypes.Role, user.Role));
+        }
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {

@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Zooner.Api.Models;
 using Zooner.Api.Models.DTOs;
 using Zooner.Api.Services;
+using Zooner.Api.Services.Background;
 
 namespace Zooner.Tests;
 
@@ -268,5 +270,149 @@ public class ProductionReadinessTests
         var myShops = await shopService.GetMyShopsAsync(user.Id);
         Assert.Single(myShops.Data!);
         Assert.Equal("MultiRole Stationery", myShops.Data![0].Name);
+    }
+
+    [Fact]
+    public async Task BecomeVendor_Upgrades_Role_To_Both_And_Emits_Vendor_And_Customer_Claims()
+    {
+        using var context = TestDbContextFactory.Create(nameof(BecomeVendor_Upgrades_Role_To_Both_And_Emits_Vendor_And_Customer_Claims));
+        var inMemorySettings = new Dictionary<string, string?> {
+            {"Jwt:Key", "SuperSecretKeyForTestingProductionReadinessZooner2026!"},
+            {"Jwt:Issuer", "TestIssuer"},
+            {"Jwt:Audience", "TestAudience"}
+        };
+        var config = new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings).Build();
+        var tokenService = new TokenService(config);
+        var authService = new AuthService(context, tokenService, NullLogger<AuthService>.Instance);
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            FullName = "John Shopper",
+            Email = "shopper@test.com",
+            PasswordHash = "hash",
+            Role = UserRoles.Customer
+        };
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+
+        Assert.True(user.HasCustomerCapability);
+        Assert.False(user.HasVendorCapability);
+
+        var response = await authService.BecomeVendorAsync(user.Id);
+        Assert.True(response.Success);
+        Assert.Equal(UserRoles.Both, response.Data!.User.Role);
+
+        // Verify updated entity in db
+        var updated = await context.Users.FindAsync(user.Id);
+        Assert.NotNull(updated);
+        Assert.Equal(UserRoles.Both, updated.Role);
+        Assert.True(updated.HasCustomerCapability);
+        Assert.True(updated.HasVendorCapability);
+
+        // Verify generated token contains Customer, Vendor, and ShopOwner role claims
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(response.Data.AccessToken);
+        var roleClaims = jwt.Claims
+            .Where(c => c.Type == "role" || c.Type == System.Security.Claims.ClaimTypes.Role)
+            .Select(c => c.Value)
+            .ToList();
+        Assert.Contains("Customer", roleClaims);
+        Assert.Contains("Vendor", roleClaims);
+        Assert.Contains("ShopOwner", roleClaims);
+    }
+
+    [Fact]
+    public async Task InventoryHold_Concurrency_Rejects_Simultaneous_OverAllocation()
+    {
+        using var context = TestDbContextFactory.Create(nameof(InventoryHold_Concurrency_Rejects_Simultaneous_OverAllocation));
+        var invService = new InventoryService(context, NullLogger<InventoryService>.Instance);
+
+        var shop = new Shop { Id = Guid.NewGuid(), Name = "Shop", OwnerId = Guid.NewGuid(), Phone = "1", Address = "A", VerificationStatus = ShopVerificationStatus.Approved, IsActive = true };
+        var product = new Product { Id = Guid.NewGuid(), Name = "Phone", CategoryId = Guid.NewGuid(), BrandId = Guid.NewGuid() };
+        var variant = new ProductVariant { Id = Guid.NewGuid(), ProductId = product.Id, VariantName = "V1", IsActive = true };
+        var inventory = new StoreInventory
+        {
+            Id = Guid.NewGuid(),
+            StoreId = shop.Id,
+            ProductVariantId = variant.Id,
+            Quantity = 1,
+            AvailableQuantity = 1,
+            Price = 100,
+            IsActive = true
+        };
+        var customer1 = new User { Id = Guid.NewGuid(), FullName = "C1", Email = "c1@t.com", PasswordHash = "h" };
+        var customer2 = new User { Id = Guid.NewGuid(), FullName = "C2", Email = "c2@t.com", PasswordHash = "h" };
+
+        context.Shops.Add(shop);
+        context.Products.Add(product);
+        context.ProductVariants.Add(variant);
+        context.StoreInventories.Add(inventory);
+        context.Users.AddRange(customer1, customer2);
+        await context.SaveChangesAsync();
+
+        // First hold claims the 1 available unit
+        var hold1 = await invService.ReserveInventoryHoldAsync(shop.Id, inventory.Id, customer1.Id, 1);
+        Assert.True(hold1.Success);
+
+        // Second hold immediately fails because AvailableQuantity is now 0
+        var hold2 = await invService.ReserveInventoryHoldAsync(shop.Id, inventory.Id, customer2.Id, 1);
+        Assert.False(hold2.Success);
+        Assert.Contains("Insufficient stock", hold2.Message);
+    }
+
+    [Fact]
+    public async Task HoldExpirationWorker_Scans_And_Restores_Expired_Inventory_Stock()
+    {
+        var dbName = nameof(HoldExpirationWorker_Scans_And_Restores_Expired_Inventory_Stock);
+        using var context = TestDbContextFactory.Create(dbName);
+
+        var shop = new Shop { Id = Guid.NewGuid(), Name = "Shop", OwnerId = Guid.NewGuid(), Phone = "1", Address = "A", IsActive = true };
+        var inventory = new StoreInventory
+        {
+            Id = Guid.NewGuid(),
+            StoreId = shop.Id,
+            ProductVariantId = Guid.NewGuid(),
+            Quantity = 5,
+            AvailableQuantity = 3, // 2 items held
+            Price = 50,
+            IsActive = true
+        };
+        var expiredHold = new InventoryHold
+        {
+            Id = Guid.NewGuid(),
+            StoreId = shop.Id,
+            StoreInventoryId = inventory.Id,
+            CustomerId = Guid.NewGuid(),
+            Quantity = 2,
+            HoldCode = "H-9999",
+            Status = InventoryHoldStatus.Active,
+            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(-5),
+            CreatedAtUtc = DateTime.UtcNow.AddMinutes(-35)
+        };
+
+        context.Shops.Add(shop);
+        context.StoreInventories.Add(inventory);
+        context.InventoryHolds.Add(expiredHold);
+        await context.SaveChangesAsync();
+
+        var services = new ServiceCollection();
+        services.AddScoped(_ => TestDbContextFactory.Create(dbName));
+        var serviceProvider = services.BuildServiceProvider();
+
+        var worker = new HoldExpirationWorker(serviceProvider, NullLogger<HoldExpirationWorker>.Instance);
+        var expiredCount = await worker.ExpireOutdatedHoldsAsync(CancellationToken.None);
+
+        Assert.Equal(1, expiredCount);
+
+        using var verifyContext = TestDbContextFactory.Create(dbName);
+        var updatedHold = await verifyContext.InventoryHolds.FindAsync(expiredHold.Id);
+        Assert.NotNull(updatedHold);
+        Assert.Equal(InventoryHoldStatus.Expired, updatedHold.Status);
+
+        var updatedInventory = await verifyContext.StoreInventories.FindAsync(inventory.Id);
+        Assert.NotNull(updatedInventory);
+        // Stock restored from 3 back to 5
+        Assert.Equal(5, updatedInventory.AvailableQuantity);
     }
 }

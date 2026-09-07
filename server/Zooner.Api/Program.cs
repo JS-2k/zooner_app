@@ -77,6 +77,7 @@ builder.Services.AddScoped<IRealtimeNotifier, SignalRRealtimeNotifier>();
 
 // 3. Register Background Services
 builder.Services.AddHostedService<RequestExpirationWorker>();
+builder.Services.AddHostedService<HoldExpirationWorker>();
 
 // 4. Configure SignalR for Realtime Communication
 builder.Services.AddSignalR();
@@ -127,7 +128,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("ShopOwnerOnly", policy => policy.RequireRole("ShopOwner", "Admin"));
+    options.AddPolicy("ShopOwnerOnly", policy => policy.RequireRole("Vendor", "ShopOwner", "Retailer", "Both", "Admin"));
 });
 
 // 6. Configure CORS

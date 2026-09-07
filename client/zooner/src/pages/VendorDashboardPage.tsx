@@ -69,7 +69,12 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const [storePhone, setStorePhone] = useState('');
   const [storeHours, setStoreHours] = useState('10:00 AM – 9:30 PM (Mon–Sun)');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [settingsNotice, setSettingsNotice] = useState('');
+  const [actionNotice, setActionNotice] = useState<{ message: string; isError: boolean } | null>(null);
+
+  const showToast = (message: string, isError: boolean = false) => {
+    setActionNotice({ message, isError });
+    setTimeout(() => setActionNotice(null), 4000);
+  };
 
   // Store ID
   const [currentStoreId, setCurrentStoreId] = useState<string>('');
@@ -219,7 +224,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   // Save Store Settings
   const handleSaveStoreSettings = async () => {
     if (!currentStoreId) {
-      alert('No active store found to update.');
+      showToast('No active store found to update.', true);
       return;
     }
     setIsSavingSettings(true);
@@ -230,10 +235,9 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     });
     setIsSavingSettings(false);
     if (updated) {
-      setSettingsNotice('✓ Store profile updated successfully in database!');
-      setTimeout(() => setSettingsNotice(''), 3000);
+      showToast('Store profile updated successfully in database!', false);
     } else {
-      alert('Failed to update store settings.');
+      showToast('Failed to update store settings.', true);
     }
   };
 
@@ -241,7 +245,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const handleSaveInventory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedVariantId || !itemPrice || !itemQuantity) {
-      alert('Please fill in price and quantity.');
+      showToast('Please fill in price and quantity.', true);
       return;
     }
 
@@ -255,9 +259,10 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     if (newItem) {
       const refreshed = await getStoreInventory(currentStoreId);
       setInventory(refreshed);
+      showToast('Inventory item added successfully!', false);
       resetModalState();
     } else {
-      alert('Failed to add store inventory. Please ensure variant ID is valid.');
+      showToast('Failed to add store inventory. Please ensure variant ID is valid.', true);
     }
   };
 
@@ -306,8 +311,9 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
       setSelectedVariantId(created.variants[0].id.toString());
       setShowCreateProductForm(false);
       setDuplicateCheckWarning(null);
+      showToast('New product created in catalog!', false);
     } else {
-      alert('Could not create global product.');
+      showToast('Could not create global product.', true);
     }
   };
 
@@ -792,9 +798,9 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                 <p className="text-xs text-slate-400">Your verified storefront details on Zooner</p>
               </div>
 
-              {settingsNotice && (
+              {actionNotice && !actionNotice.isError && (
                 <div className="p-3.5 rounded-xl bg-emerald-950/60 border border-emerald-800 text-xs text-emerald-300 font-semibold">
-                  {settingsNotice}
+                  {actionNotice.message}
                 </div>
               )}
 
@@ -1201,6 +1207,16 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           </div>
         )}
       </AnimatePresence>
+
+      {actionNotice && (
+        <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl text-xs font-semibold shadow-2xl flex items-center gap-2 border ${
+          actionNotice.isError 
+            ? 'bg-rose-950/95 text-rose-200 border-rose-800 backdrop-blur-md' 
+            : 'bg-emerald-950/95 text-emerald-200 border-emerald-800 backdrop-blur-md'
+        }`}>
+          <span>{actionNotice.message}</span>
+        </div>
+      )}
 
     </div>
   );

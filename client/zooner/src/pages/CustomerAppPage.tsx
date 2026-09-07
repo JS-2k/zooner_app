@@ -224,6 +224,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   // Selected Store / Product Detail State
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [toastNotice, setToastNotice] = useState<{ message: string; isError: boolean } | null>(null);
+
+  const showToast = (message: string, isError: boolean = false) => {
+    setToastNotice({ message, isError });
+    setTimeout(() => setToastNotice(null), 4000);
+  };
 
   // Active Hold Passes (persisted in localStorage)
   const [holds, setHolds] = useState<HoldPass[]>(() => {
@@ -369,15 +375,17 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     const storeId = carryingStore ? carryingStore.storeId.toString() : '';
 
     if (!storeId) {
-      alert('Unable to identify store for this item.');
+      showToast('Unable to identify store for this item.', true);
       return;
     }
 
     const res = await reserveInventoryHold(storeId, storeInventoryId.toString(), 1);
     if (!res.success) {
-      alert(res.error || 'Failed to reserve hold pass. Insufficient stock or active hold already exists.');
+      showToast(res.error || 'Failed to reserve hold pass. Insufficient stock or active hold already exists.', true);
       return;
     }
+
+    showToast('Hold pass reserved for 30 minutes!', false);
 
     const timestamp = Date.now();
     const newPass: HoldPass = {
@@ -1909,6 +1917,16 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
         </div>
       </nav>
+
+      {toastNotice && (
+        <div className={`fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-xs font-semibold shadow-2xl flex items-center gap-2 border max-w-[90vw] text-center ${
+          toastNotice.isError 
+            ? 'bg-rose-950/95 text-rose-200 border-rose-800 backdrop-blur-md' 
+            : 'bg-emerald-950/95 text-emerald-200 border-emerald-800 backdrop-blur-md'
+        }`}>
+          <span>{toastNotice.message}</span>
+        </div>
+      )}
 
     </div>
   );

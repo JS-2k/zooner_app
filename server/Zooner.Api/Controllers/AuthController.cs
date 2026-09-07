@@ -161,6 +161,35 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>
+    /// Enable Vendor capability on the current authenticated user identity
+    /// </summary>
+    [Authorize]
+    [HttpPost("become-vendor")]
+    [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> BecomeVendor()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) 
+            ?? User.FindFirstValue("sub");
+
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(ApiResponse<AuthResponse>.Fail("User is not authenticated."));
+        }
+
+        var ipAddress = GetClientIpAddress();
+        var response = await _authService.BecomeVendorAsync(userId, ipAddress);
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        SetRefreshTokenCookie(response.Data!.RefreshToken);
+        return Ok(response);
+    }
+
     private void SetRefreshTokenCookie(string token)
     {
         var cookieOptions = new CookieOptions

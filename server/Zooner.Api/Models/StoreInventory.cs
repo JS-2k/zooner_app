@@ -26,6 +26,7 @@ public class StoreInventory
 
     public int Quantity { get; set; }
 
+    [ConcurrencyCheck]
     public int AvailableQuantity { get; set; }
 
     [MaxLength(100)]

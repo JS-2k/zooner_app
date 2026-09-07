@@ -181,6 +181,36 @@ public class AuthService : IAuthService
         return ApiResponse<UserDto>.Ok(MapToUserDto(user));
     }
 
+    public async Task<ApiResponse<AuthResponse>> BecomeVendorAsync(Guid userId, string? ipAddress = null)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            return ApiResponse<AuthResponse>.Fail("User not found.");
+        }
+
+        if (!user.HasVendorCapability)
+        {
+            user.Role = UserRoles.Both;
+            user.UpdatedAtUtc = DateTime.UtcNow;
+            _logger.LogInformation("User {UserId} activated Vendor capability. Role updated to Both.", userId);
+        }
+
+        var accessToken = _tokenService.GenerateAccessToken(user);
+        var refreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
+
+        _context.RefreshTokens.Add(refreshToken);
+        await _context.SaveChangesAsync();
+
+        return ApiResponse<AuthResponse>.Ok(new AuthResponse
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken.Token,
+            ExpiresInMinutes = _tokenService.GetAccessTokenExpiryMinutes(),
+            User = MapToUserDto(user)
+        }, "Vendor capability activated successfully.");
+    }
+
     private static UserDto MapToUserDto(User user) => new()
     {
         Id = user.Id,
