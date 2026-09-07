@@ -120,16 +120,18 @@ export const SignInModal: React.FC<SignInModalProps> = ({
     // Demo / quick Google sign in integration
     const dummyUser = {
       id: 'usr-google-1',
-      name: 'Surya',
-      email: email.trim() || 'lpycho3@gmail.com',
+      name: fullName.trim() || (email ? email.split('@')[0] : 'Shopper'),
+      email: email.trim() || 'shopper@example.com',
       role: 'Customer',
       isVendor: false
     };
     localStorage.setItem('zooner_user_profile', JSON.stringify(dummyUser));
-    localStorage.setItem('zooner_customer_profile', JSON.stringify({
-      name: dummyUser.name,
-      phone: phone || '+91 6381382644'
-    }));
+    if (phone.trim()) {
+      localStorage.setItem('zooner_customer_profile', JSON.stringify({
+        name: dummyUser.name,
+        phone: phone.trim()
+      }));
+    }
     window.dispatchEvent(new Event('storage'));
     setIsSuccess(true);
     setTimeout(() => {
@@ -325,7 +327,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="Surya"
+                    placeholder="Alex Morgan"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition-all"
@@ -342,7 +344,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                   <input
                     type="email"
                     required
-                    placeholder="lpycho3@gmail.com"
+                    placeholder="name@example.com"
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
@@ -368,7 +370,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                   <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="tel"
-                    placeholder="6381382644"
+                    placeholder="9876543210"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition-all"

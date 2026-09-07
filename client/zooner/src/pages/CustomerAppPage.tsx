@@ -178,16 +178,18 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   });
 
   // User Profile
-  const [userProfile, setUserProfile] = useState(() => {
+  const [userProfile, setUserProfile] = useState<{
+    id?: string;
+    name?: string;
+    email?: string;
+    role?: string;
+    isVendor?: boolean;
+  } | null>(() => {
     const saved = localStorage.getItem('zooner_user_profile');
     if (saved) {
       try { return JSON.parse(saved); } catch {}
     }
-    return {
-      name: 'Surya',
-      email: 'lpycho3@gmail.com',
-      role: 'Shopper'
-    };
+    return null;
   });
 
   // Numeric radius in kilometers
@@ -318,8 +320,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     const handleStorage = () => {
       const saved = localStorage.getItem('zooner_user_profile');
       if (saved) {
-        try { setUserProfile(JSON.parse(saved)); } catch {}
+        try {
+          setUserProfile(JSON.parse(saved));
+          return;
+        } catch {}
       }
+      setUserProfile(null);
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
@@ -1373,23 +1379,50 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             </div>
 
             {/* Profile Card */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 font-bold text-lg flex items-center justify-center shrink-0">
-                {userProfile.name ? userProfile.name.charAt(0) : 'S'}
-              </div>
+            {userProfile ? (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 font-bold text-lg flex items-center justify-center shrink-0">
+                  {userProfile.name ? userProfile.name.charAt(0).toUpperCase() : 'U'}
+                </div>
 
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-bold text-gray-900 truncate">
-                  {userProfile.name || 'Surya'}
-                </h3>
-                <p className="text-xs text-gray-500 truncate">
-                  {userProfile.email || 'lpycho3@gmail.com'}
-                </p>
-                <span className="inline-block mt-1 bg-purple-50 text-purple-600 font-medium text-[10px] px-2 py-0.5 rounded-full">
-                  {userProfile.role || 'Shopper'}
-                </span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-bold text-gray-900 truncate">
+                    {userProfile.name || 'Account'}
+                  </h3>
+                  {userProfile.email && (
+                    <p className="text-xs text-gray-500 truncate">
+                      {userProfile.email}
+                    </p>
+                  )}
+                  <span className="inline-block mt-1 bg-purple-50 text-purple-600 font-medium text-[10px] px-2 py-0.5 rounded-full">
+                    {userProfile.role || 'Shopper'}
+                  </span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs flex items-center justify-between gap-3.5">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 text-gray-400 font-bold text-lg flex items-center justify-center shrink-0">
+                    <User className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-bold text-gray-900 truncate">
+                      Guest User
+                    </h3>
+                    <p className="text-xs text-gray-500 truncate">
+                      Sign in to track holds & orders
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onOpenSignIn()}
+                  className="bg-[#00A859] hover:bg-[#008f4c] text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition cursor-pointer shrink-0 shadow-xs"
+                >
+                  Sign In
+                </button>
+              </div>
+            )}
 
             {/* Menu List */}
             <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100 overflow-hidden shadow-xs">
@@ -1400,7 +1433,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <User className="w-4 h-4 text-gray-500" />
-                  <span className="font-medium">Edit Profile</span>
+                  <span className="font-medium">{userProfile ? 'Edit Profile' : 'Sign In / Register'}</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </button>
@@ -1480,19 +1513,32 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </button>
             </div>
 
-            {/* Sign Out Button */}
-            <button
-              type="button"
-              onClick={() => {
-                localStorage.removeItem('zooner_token');
-                localStorage.removeItem('zooner_user_profile');
-                onOpenSignIn();
-              }}
-              className="w-full flex items-center gap-2.5 text-xs font-semibold text-red-500 hover:text-red-600 px-4 py-3 transition cursor-pointer"
-            >
-              <LogOut className="w-4 h-4 text-red-500" />
-              <span>Sign Out</span>
-            </button>
+            {/* Auth Action Button */}
+            {userProfile ? (
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem('zooner_token');
+                  localStorage.removeItem('zooner_user_profile');
+                  localStorage.removeItem('zooner_customer_profile');
+                  setUserProfile(null);
+                  window.dispatchEvent(new Event('storage'));
+                }}
+                className="w-full flex items-center gap-2.5 text-xs font-semibold text-red-500 hover:text-red-600 px-4 py-3 transition cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-red-500" />
+                <span>Sign Out</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onOpenSignIn()}
+                className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-[#00A859] hover:text-[#008f4c] px-4 py-3 transition cursor-pointer bg-white rounded-2xl border border-gray-100 shadow-xs"
+              >
+                <User className="w-4 h-4 text-[#00A859]" />
+                <span>Sign In to Your Account</span>
+              </button>
+            )}
           </div>
         )}
       </div>
