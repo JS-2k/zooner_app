@@ -42,6 +42,11 @@ export const SignInModal: React.FC<SignInModalProps> = ({
   const [isSuccess, setIsSuccess] = useState(false);
   const [signedInRole, setSignedInRole] = useState<'Customer' | 'Merchant' | 'Customer & Merchant'>('Customer');
   const [signedInEmail, setSignedInEmail] = useState('');
+  const [showGooglePicker, setShowGooglePicker] = useState(false);
+  const [googleEmail, setGoogleEmail] = useState('');
+  const [googleName, setGoogleName] = useState('');
+  const [googleAuthError, setGoogleAuthError] = useState('');
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   if (!isOpen) return null;
 
@@ -199,25 +204,50 @@ export const SignInModal: React.FC<SignInModalProps> = ({
   };
 
   const handleGoogleAuth = () => {
-    let targetEmail = email.trim().toLowerCase();
-    if (!targetEmail || !targetEmail.includes('@')) {
-      const inputPrompt = window.prompt('Enter your Gmail address to sign in:');
-      if (!inputPrompt || !inputPrompt.trim().includes('@')) {
-        setAuthError('Please provide a valid Gmail address to sign in.');
-        return;
-      }
-      targetEmail = inputPrompt.trim().toLowerCase();
+    const targetEmail = email.trim().toLowerCase();
+    if (targetEmail && targetEmail.includes('@')) {
+      const profile = establishDynamicSession(targetEmail, fullName, selectedRole, phone);
+      setSignedInRole(profile.isVendor ? 'Merchant' : 'Customer');
+      setSignedInEmail(profile.email);
+      setIsSuccess(true);
+      setTimeout(() => {
+        setIsSuccess(false);
+        onClose();
+        if (onSuccessLogin) onSuccessLogin(selectedRole);
+      }, 1000);
+      return;
     }
 
-    const profile = establishDynamicSession(targetEmail, fullName, selectedRole, phone);
-    setSignedInRole(profile.isVendor ? 'Merchant' : 'Customer');
-    setSignedInEmail(profile.email);
-    setIsSuccess(true);
+    setGoogleEmail('');
+    setGoogleName(fullName.trim());
+    setGoogleAuthError('');
+    setShowGooglePicker(true);
+  };
+
+  const handleGoogleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setGoogleAuthError('');
+
+    const targetEmail = googleEmail.trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes('@')) {
+      setGoogleAuthError('Please enter a valid Gmail address (e.g. name@gmail.com).');
+      return;
+    }
+
+    setIsGoogleLoading(true);
     setTimeout(() => {
-      setIsSuccess(false);
-      onClose();
-      if (onSuccessLogin) onSuccessLogin(selectedRole);
-    }, 1000);
+      setIsGoogleLoading(false);
+      setShowGooglePicker(false);
+      const profile = establishDynamicSession(targetEmail, googleName, selectedRole, phone);
+      setSignedInRole(profile.isVendor ? 'Merchant' : 'Customer');
+      setSignedInEmail(profile.email);
+      setIsSuccess(true);
+      setTimeout(() => {
+        setIsSuccess(false);
+        onClose();
+        if (onSuccessLogin) onSuccessLogin(selectedRole);
+      }, 1000);
+    }, 600);
   };
 
   return (
@@ -259,6 +289,123 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 {signedInEmail}
               </p>
             )}
+          </div>
+        ) : showGooglePicker ? (
+          /* ── Google Sign-In Chooser Card ── */
+          <div className="space-y-4">
+            <div className="text-center space-y-2">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 border border-gray-100 shadow-xs">
+                <svg className="w-6 h-6" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z" />
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z" />
+                  <path fill="#FBBC05" d="M5.28 14.27a7.195 7.195 0 0 1 0-4.54V6.58H1.25a11.96 11.96 0 0 0 0 10.84l4.03-3.15z" />
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-950 tracking-tight">Sign in with Google</h3>
+              <p className="text-xs text-gray-500">
+                Continue to Zooner as a <span className="font-semibold text-[#00A859]">{selectedRole === 'Vendor' ? 'Store Owner' : 'Shopper'}</span>.
+              </p>
+            </div>
+
+            {/* Role selector for Google sign in */}
+            <div className="grid grid-cols-2 p-1 bg-gray-100 rounded-2xl text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setSelectedRole('Customer')}
+                className={`py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  selectedRole === 'Customer'
+                    ? 'bg-white text-gray-950 shadow-xs'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <UserIcon className="w-3.5 h-3.5" />
+                <span>Shopper</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedRole('Vendor')}
+                className={`py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  selectedRole === 'Vendor'
+                    ? 'bg-[#00A859] text-white shadow-xs'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>Store Owner</span>
+              </button>
+            </div>
+
+            {googleAuthError && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-medium text-red-600">
+                {googleAuthError}
+              </div>
+            )}
+
+            <form onSubmit={handleGoogleSubmit} className="space-y-3 pt-1">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Gmail address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="email"
+                    required
+                    autoFocus
+                    placeholder="yourname@gmail.com"
+                    value={googleEmail}
+                    onChange={(e) => {
+                      setGoogleEmail(e.target.value);
+                      if (googleAuthError) setGoogleAuthError('');
+                    }}
+                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#4285F4] focus:ring-1 focus:ring-[#4285F4] outline-hidden transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Display name (optional)
+                </label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Your Name"
+                    value={googleName}
+                    onChange={(e) => setGoogleName(e.target.value)}
+                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#4285F4] focus:ring-1 focus:ring-[#4285F4] outline-hidden transition-all"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isGoogleLoading}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#4285F4] hover:bg-[#3367D6] py-3 text-sm font-semibold text-white transition-all shadow-xs disabled:opacity-60 cursor-pointer mt-2"
+              >
+                {isGoogleLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    <span>Signing in with Google...</span>
+                  </>
+                ) : (
+                  <span>Continue with Google</span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGooglePicker(false);
+                  setGoogleAuthError('');
+                }}
+                className="w-full py-2 text-xs font-medium text-gray-500 hover:text-gray-800 transition cursor-pointer"
+              >
+                ← Back to email sign in
+              </button>
+            </form>
           </div>
         ) : activeTab === 'signin' ? (
           /* ── Screen 7: Sign In ── */
