@@ -24,7 +24,7 @@ import { fetchShops, fetchCategories, sendLiveRequest, searchProducts, reserveIn
 import { HoldPassSheet, type HoldPass } from '../components/HoldPassSheet';
 import { DirectChatDrawer } from '../components/DirectChatDrawer';
 import { MobileWelcomeModal } from '../components/MobileWelcomeModal';
-import type { Store, Product, LocationArea, RetailerResponse } from '../types';
+import type { Store, Product, LocationArea, RetailerResponse, ProductSearchResult, StoreInventoryItem } from '../types';
 
 interface CustomerAppPageProps {
   currentLocation: LocationArea;
@@ -32,9 +32,20 @@ interface CustomerAppPageProps {
   onNavigateToHome: () => void;
   onNavigateToVendor: () => void;
   onOpenSignIn: (roleHint?: 'C' | 'V' | 'VC') => void;
+  onOpenRetailerModal?: () => void;
 }
 
 type TabType = 'discover' | 'requests' | 'holds' | 'account';
+
+interface LocalUserProfile {
+  id?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  role?: string;
+  isVendor?: boolean;
+  shops?: { id: string; name: string }[];
+}
 
 export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   currentLocation,
@@ -42,10 +53,11 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   onNavigateToHome,
   onNavigateToVendor,
   onOpenSignIn,
+  onOpenRetailerModal,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('discover');
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(() => {
+  const [userProfile, setUserProfile] = useState<LocalUserProfile | null>(() => {
     const saved = localStorage.getItem('zooner_user_profile');
     if (saved) {
       try { return JSON.parse(saved); } catch {}
@@ -95,28 +107,28 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
         ]);
 
         if (shopsData && shopsData.length > 0) {
-          const formatted: Store[] = shopsData.map((s: any) => ({
+          const formatted: Store[] = shopsData.map((s) => ({
             id: s.id,
             name: s.name,
             category: s.categoryName || 'General Store',
-            area: s.address || s.city || 'Local Area',
-            address: s.address || s.city || '',
+            area: s.address || 'Local Area',
+            address: s.address || '',
             phone: s.phone || '',
             openStatus: s.isOpen ? 'Open Now' : 'Closed',
             verified: s.isVerified ?? true,
-            rating: s.rating || 4.9,
+            rating: 4.9,
             reviewCount: 24,
-            tags: s.tags ? s.tags.split(',') : ['verified', 'store'],
+            tags: ['verified', 'store'],
             latitude: s.latitude,
             longitude: s.longitude,
-            distance: s.distanceKm ? `${s.distanceKm.toFixed(1)} km` : '350m'
+            distance: '350m'
           }));
           setLiveStores(formatted);
 
           const prods: Product[] = [];
-          shopsData.forEach((s: any) => {
+          shopsData.forEach((s) => {
             if (Array.isArray(s.products)) {
-              s.products.forEach((p: any) => {
+              s.products.forEach((p) => {
                 prods.push({
                   id: p.id,
                   name: p.name,
@@ -124,8 +136,8 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   price: p.price,
                   originalPrice: p.originalPrice,
                   storeName: s.name,
-                  storeArea: s.address || s.city || 'Local Area',
-                  distance: s.distanceKm ? `${s.distanceKm.toFixed(1)} km` : '350m',
+                  storeArea: s.address || 'Local Area',
+                  distance: '350m',
                   inStock: p.inStock ?? true,
                   stockCount: p.stockCount || 5,
                   imageUrl: p.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80',
@@ -141,7 +153,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
         if (categoriesData && categoriesData.length > 0) {
           setCategoriesList([
             { id: 'all', label: 'All Categories' },
-            ...categoriesData.map((c: any) => ({
+            ...categoriesData.map((c) => ({
               id: c.name,
               label: c.name
             }))
@@ -163,12 +175,22 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   }, [searchQuery]);
 
   // Global Canonical Product Catalog State
-  const [canonicalProducts, setCanonicalProducts] = useState<any[]>([]);
+  const [canonicalProducts, setCanonicalProducts] = useState<ProductSearchResult[]>([]);
   const [isSearchingCanonical, setIsSearchingCanonical] = useState<boolean>(false);
-  const [selectedCanonicalProduct, setSelectedCanonicalProduct] = useState<any | null>(null);
+  const [selectedCanonicalProduct, setSelectedCanonicalProduct] = useState<ProductSearchResult | null>(null);
+
+  // Live Timer State for hold countdown purity
+  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Fetch Global Product Catalog results
-  const refreshCanonicalSearch = async () => {
+  const refreshCanonicalSearch = React.useCallback(async () => {
     setIsSearchingCanonical(true);
     try {
       const results = await searchProducts(
@@ -183,39 +205,11 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     } finally {
       setIsSearchingCanonical(false);
     }
-  };
+  }, [debouncedQuery, selectedCategory, currentLocation.lat, currentLocation.lng]);
 
   useEffect(() => {
     refreshCanonicalSearch();
-  }, [debouncedQuery, selectedCategory, currentLocation]);
-
-  // Hold reservation for a specific store inventory item
-  const handleHoldStoreInventory = async (
-    storeInventoryId: string,
-    productName: string,
-    storeName: string,
-    price: number,
-    storeAddress?: string,
-    storePhone?: string
-  ) => {
-    // 1. Call backend API to reserve hold (decrements AvailableQuantity)
-    // Find carrying store from canonical search results to get storeId
-    const carryingStore = selectedCanonicalProduct?.carryingStores?.find((s: any) => s.storeInventoryId.toString() === storeInventoryId.toString());
-    const storeId = carryingStore ? carryingStore.storeId.toString() : '1';
-
-    await reserveInventoryHold(storeId, storeInventoryId.toString(), 1);
-    
-    // 2. Generate local pass ticket sheet
-    handleHoldItem(productName, storeName, price, storeAddress, storePhone);
-
-    // 3. Refresh search data
-    refreshCanonicalSearch();
-
-    // 4. Close canonical product detail modal if open
-    if (selectedCanonicalProduct) {
-      setSelectedCanonicalProduct(null);
-    }
-  };
+  }, [refreshCanonicalSearch]);
 
   // Selected Store / Product Detail State
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
@@ -227,7 +221,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     if (saved) {
       try {
         return JSON.parse(saved);
-      } catch {}
+      } catch (e) {
+        console.debug('Failed parsing customer holds:', e);
+      }
     }
     return [];
   });
@@ -242,7 +238,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     if (saved) {
       try {
         return JSON.parse(saved);
-      } catch {}
+      } catch (e) {
+        console.debug('Failed parsing customer profile:', e);
+      }
     }
     return { name: '', phone: '' };
   });
@@ -254,7 +252,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     if (saved) {
       try {
         return JSON.parse(saved);
-      } catch {}
+      } catch (e) {
+        console.debug('Failed parsing saved stores:', e);
+      }
     }
     return [];
   });
@@ -274,21 +274,21 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     localStorage.setItem('zooner_customer_holds', JSON.stringify(updated));
   };
 
-  const handleHoldItem = (
+  const handleHoldItem = React.useCallback((
     prodName: string, 
     storeName: string, 
     price: number = 0,
     storeAddress?: string,
     storePhone?: string
   ) => {
+    const timestamp = Date.now();
     const codeNum = Math.floor(1000 + Math.random() * 9000);
-    const now = Date.now();
     const matchingStore = liveStores.find((s: Store) => 
       s.name.toLowerCase().includes(storeName.toLowerCase().split('·')[0].trim())
     );
 
     const newPass: HoldPass = {
-      id: `hold-${now}`,
+      id: `hold-${timestamp}`,
       passCode: `ZN-${codeNum}`,
       productName: prodName,
       storeName: storeName,
@@ -298,15 +298,43 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       price: price || 6499,
       customerName: customerProfile.name || 'Customer',
       customerPhone: customerProfile.phone || '+91 98422 12345',
-      createdAt: now,
-      expiresAt: now + 30 * 60 * 1000,
+      createdAt: timestamp,
+      expiresAt: timestamp + 30 * 60 * 1000,
       status: 'active'
     };
 
     const updated = [newPass, ...holds];
     saveHolds(updated);
     setSelectedPassForSheet(newPass);
+  }, [liveStores, customerProfile, holds]);
+
+  // Hold reservation for a specific store inventory item
+  const handleHoldStoreInventory = async (
+    storeInventoryId: string,
+    productName: string,
+    storeName: string,
+    price: number,
+    storeAddress?: string,
+    storePhone?: string
+  ) => {
+    // 1. Call backend API to reserve hold (decrements AvailableQuantity)
+    const carryingStore = selectedCanonicalProduct?.carryingStores?.find((s) => s.inventoryId.toString() === storeInventoryId.toString());
+    const storeId = carryingStore ? carryingStore.storeId.toString() : '1';
+
+    await reserveInventoryHold(storeId, storeInventoryId.toString(), 1);
+    
+    // 2. Generate local pass ticket sheet
+    handleHoldItem(productName, storeName, price, storeAddress, storePhone);
+
+    // 3. Refresh search data
+    refreshCanonicalSearch();
+
+    // 4. Close canonical product detail modal if open
+    if (selectedCanonicalProduct) {
+      setSelectedCanonicalProduct(null);
+    }
   };
+
 
   const handleCancelHold = (passId: string) => {
     const updated = holds.map(h => h.id === passId ? { ...h, status: 'cancelled' as const } : h);
@@ -353,18 +381,22 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     setBroadcastSent(true);
 
     if (result && Array.isArray(result.responses) && result.responses.length > 0) {
-      setLiveResponses(result.responses.map((response: any) => ({
-        id: response.id,
-        storeName: response.shopName,
-        storeArea: response.shopAddress,
-        distance: response.distanceKm ? `${response.distanceKm.toFixed(1)} km` : 'Nearby',
-        price: 0,
-        available: response.status === 'Available',
-        conditionNote: 'This shop has confirmed availability. Contact them to confirm price and variant.',
-        rating: 0,
-        verified: true,
-        avatar: ''
-      })));
+      setLiveResponses(result.responses.map((response) => {
+        const r = response as unknown as Record<string, unknown>;
+        const distNum = typeof r.distanceKm === 'number' ? r.distanceKm : undefined;
+        return {
+          id: String(r.id || Math.random()),
+          storeName: String(r.shopName || r.storeName || 'Nearby Merchant'),
+          storeArea: String(r.shopAddress || r.storeArea || 'Local Area'),
+          distance: distNum ? `${distNum.toFixed(1)} km` : 'Nearby',
+          price: typeof r.price === 'number' ? r.price : 0,
+          available: r.status === 'Available' || r.available === true,
+          conditionNote: String(r.message || 'This shop has confirmed availability. Contact them to confirm price and variant.'),
+          rating: 0,
+          verified: true,
+          avatar: ''
+        };
+      }));
     } else {
       setLiveResponses([]);
     }
@@ -425,7 +457,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   });
 
   // Active holds count
-  const activeHolds = holds.filter(h => h.status === 'active' && h.expiresAt > Date.now());
+  const activeHolds = holds.filter(h => h.status === 'active' && h.expiresAt > currentTime);
 
   return (
     <div className="zooner-app min-h-screen text-white flex flex-col selection:bg-white selection:text-black pb-28 md:pb-16 font-sans">
@@ -483,7 +515,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-xs font-semibold text-white transition-colors cursor-pointer"
             >
               <User className="h-3.5 w-3.5 text-emerald-400" />
-              <span>{userProfile ? (userProfile.name.split(' ')[0]) : 'Sign In'}</span>
+              <span>{userProfile?.name ? (userProfile.name.split(' ')[0]) : 'Sign In'}</span>
             </button>
           </div>
 
@@ -686,11 +718,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     canonicalProducts.map(cp => {
                       const carryingCount = cp.carryingStores ? cp.carryingStores.length : 0;
                       const lowestPrice = cp.carryingStores && cp.carryingStores.length > 0
-                        ? Math.min(...cp.carryingStores.map((s: any) => s.price))
+                        ? Math.min(...cp.carryingStores.map((s: StoreInventoryItem) => s.price))
                         : 0;
                       const nearestStore = cp.carryingStores && cp.carryingStores.length > 0 ? cp.carryingStores[0] : null;
-                      const distanceLabel = nearestStore
-                        ? (nearestStore.distanceKm < 1 ? `${(nearestStore.distanceKm * 1000).toFixed(0)}m` : `${nearestStore.distanceKm.toFixed(1)} km`)
+                      const distKm = nearestStore?.distanceKm;
+                      const distanceLabel = distKm != null
+                        ? (distKm < 1 ? `${(distKm * 1000).toFixed(0)}m` : `${distKm.toFixed(1)} km`)
                         : 'Nearby';
 
                       return (
@@ -1122,8 +1155,8 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 </div>
               ) : (
                 holds.map(hold => {
-                  const isHoldActive = hold.status === 'active' && hold.expiresAt > Date.now();
-                  const remainingSecs = Math.max(0, Math.floor((hold.expiresAt - Date.now()) / 1000));
+                  const isHoldActive = hold.status === 'active' && hold.expiresAt > currentTime;
+                  const remainingSecs = Math.max(0, Math.floor((hold.expiresAt - currentTime) / 1000));
                   const mins = Math.floor(remainingSecs / 60);
                   const secs = remainingSecs % 60;
                   const timeFormatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -1324,30 +1357,48 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             </div>
 
             {/* Store Owner & Vendor Passport Switcher */}
-            <div className="border border-amber-500/30 rounded-2xl p-6 bg-gradient-to-br from-amber-500/10 via-[#0B0C11] to-[#07080B] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="border border-emerald-500/30 rounded-2xl p-6 bg-gradient-to-br from-emerald-500/10 via-[#0B0C11] to-[#07080B] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono uppercase tracking-widest text-amber-400 font-bold block">
-                    {isVendor ? 'Vendor Passport (V / VC)' : 'Retailer Access'}
+                  <span className="text-xs font-mono uppercase tracking-widest text-emerald-400 font-bold block">
+                    {isVendor ? 'Merchant OS · Active' : 'Store Owner Capability'}
                   </span>
                 </div>
                 <div className="text-sm font-bold text-white">
-                  {isVendor ? 'Your Merchant OS Dashboard is Active' : 'Own a physical store in the city?'}
+                  {isVendor 
+                    ? `Manage ${userProfile?.shops?.[0]?.name || 'Your Store'}` 
+                    : 'Own a physical shop in your city?'}
                 </div>
                 <p className="text-xs text-slate-400">
                   {isVendor 
                     ? 'Manage incoming live requests, shelf inventory, and customer 30-min hold passes.' 
-                    : 'Manage in-store holds and receive live shopper requests from nearby.'}
+                    : 'Put your physical store on the discovery map under your existing account with zero setup.'}
                 </p>
               </div>
 
-              <button
-                onClick={onNavigateToVendor}
-                className="px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 text-xs font-mono font-bold hover:brightness-105 transition-all cursor-pointer shrink-0 shadow-lg shadow-amber-500/20 flex items-center gap-2"
-              >
-                <StoreIcon className="h-4 w-4" />
-                <span>{isVendor ? 'Open Vendor Dashboard →' : 'Store Portal →'}</span>
-              </button>
+              {isVendor ? (
+                <button
+                  onClick={onNavigateToVendor}
+                  className="px-6 py-3 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-mono font-bold transition-all cursor-pointer shrink-0 shadow-lg shadow-emerald-400/20 flex items-center gap-2"
+                >
+                  <StoreIcon className="h-4 w-4" />
+                  <span>Open Merchant OS →</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    if (onOpenRetailerModal) {
+                      onOpenRetailerModal();
+                    } else {
+                      onNavigateToVendor();
+                    }
+                  }}
+                  className="px-6 py-3 rounded-full bg-white hover:bg-slate-200 text-slate-950 text-xs font-mono font-bold transition-all cursor-pointer shrink-0 shadow-lg shadow-white/10 flex items-center gap-2"
+                >
+                  <StoreIcon className="h-4 w-4" />
+                  <span>Register Your Store →</span>
+                </button>
+              )}
             </div>
 
           </div>
@@ -1516,12 +1567,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     </div>
                   ) : (
                     <div className="divide-y divide-white/10">
-                      {selectedCanonicalProduct.carryingStores.map((st: any) => {
-                        const distText = st.distanceKm < 1 ? `${(st.distanceKm * 1000).toFixed(0)}m` : `${st.distanceKm.toFixed(1)} km`;
-                        const isAvailable = st.availableQuantity > 0 && st.isAvailable;
+                      {selectedCanonicalProduct.carryingStores.map((st: StoreInventoryItem) => {
+                        const distText = (st.distanceKm ?? 1) < 1 ? `${((st.distanceKm ?? 1) * 1000).toFixed(0)}m` : `${(st.distanceKm ?? 1).toFixed(1)} km`;
+                        const isAvailable = (st.availableQuantity ?? 0) > 0 && st.isAvailable !== false;
 
                         return (
-                          <div key={st.storeInventoryId} className="py-4 space-y-2">
+                          <div key={st.inventoryId || st.storeId || st.variantId} className="py-4 space-y-2">
                             <div className="flex items-start justify-between gap-3">
                               <div>
                                 <div className="flex items-center gap-2">
@@ -1552,7 +1603,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                               <button
                                 disabled={!isAvailable}
                                 onClick={() => handleHoldStoreInventory(
-                                  st.storeInventoryId,
+                                  st.inventoryId || st.storeId,
                                   selectedCanonicalProduct.name,
                                   st.storeName,
                                   st.price,

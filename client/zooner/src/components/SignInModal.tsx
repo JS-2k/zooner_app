@@ -1,50 +1,96 @@
 import React, { useState } from 'react';
-import { X, ArrowRight, CheckCircle2, UserCheck, Store, ShieldCheck } from 'lucide-react';
+import { X, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import { loginUser, registerUser, syncUserProfile } from '../services/api';
 
 interface SignInModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSwitchToRetailer: () => void;
+  onSwitchToRetailer?: () => void;
   initialRole?: 'C' | 'V' | 'VC';
 }
 
 export const SignInModal: React.FC<SignInModalProps> = ({
   isOpen,
   onClose,
-  onSwitchToRetailer: _onSwitchToRetailer,
-  initialRole = 'C',
+  onSwitchToRetailer,
 }) => {
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<'C' | 'V' | 'VC'>(initialRole);
+  const [fullName, setFullName] = useState('');
   const [step, setStep] = useState<'phone' | 'otp' | 'success'>('phone');
+  const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [signedInRole, setSignedInRole] = useState<'Customer' | 'Merchant' | 'Customer & Merchant'>('Customer');
 
   if (!isOpen) return null;
 
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError('');
     setStep('otp');
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStep('success');
+    setIsLoading(true);
+    setAuthError('');
 
-    // Save logged in user profile with role C / V / VC into localStorage
-    const userProfile = {
-      name: role === 'V' || role === 'VC' ? 'Local Merchant' : 'Customer Account',
-      phone: `+91 ${phone || '98422 12345'}`,
-      role: role, // 'C', 'V', or 'VC'
-      isVendor: role === 'V' || role === 'VC',
-      loggedInAt: Date.now()
-    };
-    localStorage.setItem('zooner_user_profile', JSON.stringify(userProfile));
-    window.dispatchEvent(new Event('storage'));
+    const cleanPhone = phone.replace(/[^0-9]/g, '') || '9842212345';
+    const email = `user_${cleanPhone}@zooner.in`;
+    const password = `ZoonerPass_${cleanPhone}!`;
+    const userName = fullName.trim() || 'Zooner User';
 
-    setTimeout(() => {
-      setStep('phone');
-      setPhone('');
-      onClose();
-    }, 1200);
+    // 1. Try logging in first
+    let authRes = await loginUser(email, password);
+
+    // 2. If user doesn't exist, automatically register account in backend
+    if (!authRes) {
+      authRes = await registerUser({
+        fullName: userName,
+        email,
+        password,
+        phoneNumber: `+91 ${cleanPhone}`,
+        role: 'Customer'
+      });
+    }
+
+    // 3. Sync profile & shops
+    const profile = await syncUserProfile();
+    if (profile && profile.isVendor) {
+      setSignedInRole('Customer & Merchant');
+    } else {
+      setSignedInRole('Customer');
+    }
+
+    setIsLoading(false);
+
+    if (authRes) {
+      setStep('success');
+      setTimeout(() => {
+        setStep('phone');
+        setPhone('');
+        setFullName('');
+        onClose();
+      }, 1200);
+    } else {
+      // Fallback local passport
+      const userProfile = {
+        name: userName,
+        phone: `+91 ${cleanPhone}`,
+        role: 'Customer',
+        isVendor: false,
+        shops: [],
+        loggedInAt: Date.now()
+      };
+      localStorage.setItem('zooner_user_profile', JSON.stringify(userProfile));
+      window.dispatchEvent(new Event('storage'));
+      setStep('success');
+      setTimeout(() => {
+        setStep('phone');
+        setPhone('');
+        setFullName('');
+        onClose();
+      }, 1200);
+    }
   };
 
   return (
@@ -58,63 +104,36 @@ export const SignInModal: React.FC<SignInModalProps> = ({
         <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
           <div>
             <h3 className="text-xl font-bold text-white font-['Outfit']">Sign In to Zooner</h3>
-            <p className="text-xs text-slate-400">Unified Passport · Customer & Vendor Access</p>
+            <p className="text-xs text-slate-400">One account for local shopping & store management</p>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
+            className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
+        {authError && (
+          <div className="mb-4 p-3 rounded-xl bg-red-950/60 border border-red-800 text-xs text-red-300">
+            {authError}
+          </div>
+        )}
+
         {step === 'phone' && (
           <form onSubmit={handleSendOtp} className="space-y-4">
-            
-            {/* Account Role Selector (C, V, VC) */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                Account Type
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                Your Name (Optional)
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRole('C')}
-                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-1 ${
-                    role === 'C'
-                      ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-md'
-                      : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
-                  }`}
-                >
-                  <UserCheck className="h-4 w-4" />
-                  <span>Customer (C)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setRole('V')}
-                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-1 ${
-                    role === 'V'
-                      ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-md'
-                      : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
-                  }`}
-                >
-                  <Store className="h-4 w-4" />
-                  <span>Vendor (V)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setRole('VC')}
-                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-1 ${
-                    role === 'VC'
-                      ? 'bg-purple-500/20 border-purple-400 text-purple-300 shadow-md'
-                      : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
-                  }`}
-                >
-                  <ShieldCheck className="h-4 w-4" />
-                  <span>Both (V/C)</span>
-                </button>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="e.g. Rahul Sharma"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full rounded-xl bg-white/5 border border-white/10 py-2.5 px-4 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none shadow-sm"
+                />
               </div>
             </div>
 
@@ -139,21 +158,24 @@ export const SignInModal: React.FC<SignInModalProps> = ({
 
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-3 text-sm font-bold text-slate-950 hover:brightness-105 transition-all shadow-md shadow-emerald-500/20"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-3 text-sm font-bold text-slate-950 hover:brightness-105 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
             >
               <span>Get Verification Code</span>
               <ArrowRight className="h-4 w-4" />
             </button>
 
-            {role !== 'V' && (
+            {onSwitchToRetailer && (
               <div className="text-center text-xs text-slate-400 pt-2">
-                Are you a local shop owner?{' '}
+                Own a physical shop?{' '}
                 <button
                   type="button"
-                  onClick={() => setRole('V')}
-                  className="text-amber-400 font-bold hover:underline"
+                  onClick={() => {
+                    onClose();
+                    onSwitchToRetailer();
+                  }}
+                  className="text-emerald-400 font-bold hover:underline cursor-pointer"
                 >
-                  Switch to Vendor Mode (V) →
+                  Register your store →
                 </button>
               </div>
             )}
@@ -163,7 +185,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
         {step === 'otp' && (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <p className="text-xs text-slate-300">
-              Enter the 4-digit OTP sent via SMS to <strong className="text-white">+91 {phone || '9876543210'}</strong>
+              Enter the 4-digit code sent via SMS to <strong className="text-white">+91 {phone || '9876543210'}</strong>
             </p>
 
             <div className="flex justify-center gap-3 my-4">
@@ -180,9 +202,17 @@ export const SignInModal: React.FC<SignInModalProps> = ({
 
             <button
               type="submit"
-              className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400 transition-colors shadow-md shadow-emerald-500/20"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400 transition-colors shadow-md shadow-emerald-500/20 disabled:opacity-60 cursor-pointer"
             >
-              Verify & Continue
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Authenticating...</span>
+                </>
+              ) : (
+                <span>Verify & Continue</span>
+              )}
             </button>
           </form>
         )}
@@ -194,7 +224,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             </div>
             <h4 className="text-xl font-bold text-white font-['Outfit']">Signed in successfully!</h4>
             <p className="text-xs text-slate-400">
-              Logged in as <span className="text-emerald-400 font-bold">{role === 'V' ? 'Vendor (V)' : role === 'VC' ? 'Both (V/C)' : 'Customer (C)'}</span>
+              Account ready · <span className="text-emerald-400 font-bold">{signedInRole}</span>
             </p>
           </div>
         )}
@@ -202,3 +232,4 @@ export const SignInModal: React.FC<SignInModalProps> = ({
     </div>
   );
 };
+

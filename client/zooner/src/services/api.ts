@@ -1,4 +1,12 @@
 import { Capacitor } from '@capacitor/core';
+import type {
+  CategoryDto,
+  StoreInventoryItem,
+  ProductSearchResult,
+  LiveRequestSummary,
+  AuthResponse,
+  UserDto
+} from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (Capacitor.isNativePlatform() ? 'http://10.0.2.2:5000/api' : 'http://localhost:5000/api');
 
@@ -20,52 +28,245 @@ async function responseData<T>(response: Response): Promise<T | null> {
   return body.data ?? null;
 }
 
-export async function getMyShops(): Promise<any[]> {
+// ── AUTHENTICATION API METHODS ──
+
+export async function syncUserProfile(): Promise<{
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  isVendor: boolean;
+  shops: ShopProfileDto[];
+  loggedInAt: number;
+} | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/Shops/my-shops`, { headers: authHeaders() });
-    return (await responseData<any[]>(response)) ?? [];
-  } catch { return []; }
+    const token = localStorage.getItem('zooner_token');
+    if (!token) return null;
+    const user = await getCurrentUser();
+    const myShops = await getMyShops();
+    const isVendor = (myShops && myShops.length > 0) || (user && (user.role === 'ShopOwner' || user.role === 'Admin' || user.role === 'VC' || user.role === 'Both'));
+    if (user) {
+      const profile = {
+        id: user.id,
+        name: user.fullName,
+        email: user.email,
+        phone: user.phoneNumber || '',
+        role: user.role,
+        isVendor: Boolean(isVendor),
+        shops: myShops || [],
+        loggedInAt: Date.now()
+      };
+      localStorage.setItem('zooner_user_profile', JSON.stringify(profile));
+      window.dispatchEvent(new Event('storage'));
+      return profile;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
-export async function updateShop(shopId: string, shop: any): Promise<any | null> {
+export async function loginUser(email: string, password: string): Promise<AuthResponse | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/Auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    if (!res.ok) return null;
+    const body: ApiResponse<AuthResponse> = await res.json();
+    if (body.success && body.data) {
+      localStorage.setItem('zooner_token', body.data.accessToken);
+      
+      // Save initial profile
+      localStorage.setItem('zooner_user_profile', JSON.stringify({
+        id: body.data.user.id,
+        name: body.data.user.fullName,
+        email: body.data.user.email,
+        phone: body.data.user.phoneNumber || '',
+        role: body.data.user.role,
+        isVendor: body.data.user.role === 'ShopOwner' || body.data.user.role === 'Admin',
+        shops: [],
+        loggedInAt: Date.now()
+      }));
+      window.dispatchEvent(new Event('storage'));
+
+      // Asynchronously enrich with user's shops
+      syncUserProfile();
+      return body.data;
+    }
+    return null;
+  } catch (error) {
+    console.error('Login error:', error);
+    return null;
+  }
+}
+
+export async function registerUser(userData: {
+  fullName: string;
+  email: string;
+  password: string;
+  phoneNumber?: string;
+  role?: string;
+}): Promise<AuthResponse | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/Auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    if (!res.ok) return null;
+    const body: ApiResponse<AuthResponse> = await res.json();
+    if (body.success && body.data) {
+      localStorage.setItem('zooner_token', body.data.accessToken);
+      localStorage.setItem('zooner_user_profile', JSON.stringify({
+        id: body.data.user.id,
+        name: body.data.user.fullName,
+        email: body.data.user.email,
+        phone: body.data.user.phoneNumber || '',
+        role: body.data.user.role,
+        isVendor: body.data.user.role === 'ShopOwner' || body.data.user.role === 'Admin',
+        shops: [],
+        loggedInAt: Date.now()
+      }));
+      window.dispatchEvent(new Event('storage'));
+
+      syncUserProfile();
+      return body.data;
+    }
+    return null;
+  } catch (error) {
+    console.error('Registration error:', error);
+    return null;
+  }
+}
+
+export async function getCurrentUser(): Promise<UserDto | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/Auth/me`, { headers: authHeaders() });
+    return responseData<UserDto>(res);
+  } catch {
+    return null;
+  }
+}
+
+export function logoutUser(): void {
+  localStorage.removeItem('zooner_token');
+  localStorage.removeItem('zooner_user_profile');
+  window.dispatchEvent(new Event('storage'));
+}
+
+// ── SHOPS & STORES API METHODS ──
+
+export interface ShopProfileDto {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  isLiveEnabled: boolean;
+  isOpen: boolean;
+  isVerified?: boolean;
+  categoryName?: string;
+  categories?: { id: string; name: string }[];
+  products?: { id: string; name: string; price: number; originalPrice?: number; inStock?: boolean; stockCount?: number; imageUrl?: string }[];
+}
+
+export async function createShop(shopData: {
+  name: string;
+  phone: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  categoryIds: string[];
+}): Promise<ShopProfileDto | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/Shops`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(shopData)
+    });
+    const result = await responseData<ShopProfileDto>(res);
+    if (result) {
+      await syncUserProfile();
+    }
+    return result;
+  } catch (error) {
+    console.error('Create shop error:', error);
+    return null;
+  }
+}
+
+export async function getMyShops(): Promise<ShopProfileDto[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/Shops/my-shops`, { headers: authHeaders() });
+    return (await responseData<ShopProfileDto[]>(response)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function updateShop(shopId: string, shop: {
+  name: string;
+  phone: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
+}): Promise<ShopProfileDto | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/Shops/${shopId}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(shop)
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(shop)
     });
-    return responseData<any>(response);
-  } catch { return null; }
+    return responseData<ShopProfileDto>(response);
+  } catch {
+    return null;
+  }
 }
 
 export async function setShopLiveStatus(shopId: string, isLiveEnabled: boolean): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE_URL}/Shops/${shopId}/live-status`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ isLiveEnabled })
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ isLiveEnabled })
     });
     return response.ok;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
-export async function getIncomingRequests(shopId: string): Promise<any[]> {
+export async function getIncomingRequests(shopId: string): Promise<LiveRequestSummary[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/Shops/${shopId}/incoming-requests`, { headers: authHeaders() });
-    return (await responseData<any[]>(response)) ?? [];
-  } catch { return []; }
+    return (await responseData<LiveRequestSummary[]>(response)) ?? [];
+  } catch {
+    return [];
+  }
 }
 
-export async function respondToLiveRequest(requestId: string, shopId: string): Promise<any | null> {
+export async function respondToLiveRequest(requestId: string, shopId: string): Promise<Record<string, unknown> | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/Requests/${requestId}/respond`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ shopId })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ shopId })
     });
-    return responseData<any>(response);
-  } catch { return null; }
+    return responseData<Record<string, unknown>>(response);
+  } catch {
+    return null;
+  }
 }
 
-export async function fetchCategories(): Promise<any[]> {
+export async function fetchCategories(): Promise<CategoryDto[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/Categories`);
     if (!res.ok) return [];
-    const json = await res.json();
+    const json: ApiResponse<CategoryDto[]> = await res.json();
     return json.data || [];
   } catch (error) {
     console.error('Failed to fetch categories from API:', error);
@@ -73,7 +274,7 @@ export async function fetchCategories(): Promise<any[]> {
   }
 }
 
-export async function fetchShops(lat?: number, lon?: number): Promise<any[]> {
+export async function fetchShops(lat?: number, lon?: number): Promise<ShopProfileDto[]> {
   try {
     const params = new URLSearchParams();
     if (lat) params.append('userLat', lat.toString());
@@ -82,7 +283,7 @@ export async function fetchShops(lat?: number, lon?: number): Promise<any[]> {
     const url = `${API_BASE_URL}/Shops${params.toString() ? '?' + params.toString() : ''}`;
     const res = await fetch(url);
     if (!res.ok) return [];
-    const json = await res.json();
+    const json: ApiResponse<ShopProfileDto[]> = await res.json();
     return json.data || [];
   } catch (error) {
     console.error('Failed to fetch shops from API:', error);
@@ -97,7 +298,7 @@ export async function sendLiveRequest(requestData: {
   searchRadiusKm: number;
   latitude: number;
   longitude: number;
-}): Promise<any | null> {
+}): Promise<LiveRequestSummary | null> {
   try {
     const res = await fetch(`${API_BASE_URL}/Requests`, {
       method: 'POST',
@@ -108,7 +309,7 @@ export async function sendLiveRequest(requestData: {
       body: JSON.stringify(requestData)
     });
     if (!res.ok) return null;
-    const json = await res.json();
+    const json: ApiResponse<LiveRequestSummary> = await res.json();
     return json.data || null;
   } catch (error) {
     console.error('Failed to send live request:', error);
@@ -116,7 +317,7 @@ export async function sendLiveRequest(requestData: {
   }
 }
 
-export async function fetchTargetedAds(lat = 11.0168, lon = 76.9558, category = 'all'): Promise<any[]> {
+export async function fetchTargetedAds(lat = 11.0168, lon = 76.9558, category = 'all'): Promise<Record<string, unknown>[]> {
   try {
     const params = new URLSearchParams({
       userLat: lat.toString(),
@@ -125,7 +326,7 @@ export async function fetchTargetedAds(lat = 11.0168, lon = 76.9558, category = 
     });
     const res = await fetch(`${API_BASE_URL}/Advertisements/targeted?${params.toString()}`);
     if (!res.ok) return [];
-    const json = await res.json();
+    const json: ApiResponse<Record<string, unknown>[]> = await res.json();
     return json.data || [];
   } catch (error) {
     console.error('Failed to fetch targeted ads:', error);
@@ -135,7 +336,7 @@ export async function fetchTargetedAds(lat = 11.0168, lon = 76.9558, category = 
 
 // ── GLOBAL PRODUCT CATALOG API METHODS ──
 
-export async function searchProducts(q?: string, category?: string, lat?: number, lon?: number): Promise<any[]> {
+export async function searchProducts(q?: string, category?: string, lat?: number, lon?: number): Promise<ProductSearchResult[]> {
   try {
     const params = new URLSearchParams();
     if (q) params.append('q', q);
@@ -145,7 +346,7 @@ export async function searchProducts(q?: string, category?: string, lat?: number
 
     const res = await fetch(`${API_BASE_URL}/Products/search?${params.toString()}`);
     if (!res.ok) return [];
-    const json = await res.json();
+    const json: ApiResponse<ProductSearchResult[]> = await res.json();
     return json.data || [];
   } catch (error) {
     console.error('Failed to search products:', error);
@@ -153,7 +354,7 @@ export async function searchProducts(q?: string, category?: string, lat?: number
   }
 }
 
-export async function getProductById(productId: string, lat?: number, lon?: number): Promise<any | null> {
+export async function getProductById(productId: string, lat?: number, lon?: number): Promise<ProductSearchResult | null> {
   try {
     const params = new URLSearchParams();
     if (lat) params.append('userLat', lat.toString());
@@ -161,7 +362,7 @@ export async function getProductById(productId: string, lat?: number, lon?: numb
 
     const res = await fetch(`${API_BASE_URL}/Products/${productId}?${params.toString()}`);
     if (!res.ok) return null;
-    const json = await res.json();
+    const json: ApiResponse<ProductSearchResult> = await res.json();
     return json.data || null;
   } catch (error) {
     console.error('Failed to fetch product details:', error);
@@ -169,7 +370,15 @@ export async function getProductById(productId: string, lat?: number, lon?: numb
   }
 }
 
-export async function checkDuplicateProduct(gtin?: string, brandName?: string, modelNumber?: string, name?: string): Promise<any | null> {
+export interface DuplicateCheckResult {
+  isDuplicate: boolean;
+  possibleDuplicateFound?: boolean;
+  reason?: string;
+  matchedProduct?: ProductSearchResult;
+  matchingProduct?: ProductSearchResult;
+}
+
+export async function checkDuplicateProduct(gtin?: string, brandName?: string, modelNumber?: string, name?: string): Promise<DuplicateCheckResult | null> {
   try {
     const params = new URLSearchParams();
     if (gtin) params.append('gtin', gtin);
@@ -179,7 +388,7 @@ export async function checkDuplicateProduct(gtin?: string, brandName?: string, m
 
     const res = await fetch(`${API_BASE_URL}/Products/check-duplicate?${params.toString()}`);
     if (!res.ok) return null;
-    const json = await res.json();
+    const json: ApiResponse<DuplicateCheckResult> = await res.json();
     return json.data || null;
   } catch (error) {
     console.error('Failed to check duplicate product:', error);
@@ -197,7 +406,7 @@ export async function createGlobalProduct(productData: {
   mpn?: string;
   imageUrl?: string;
   variantName?: string;
-}): Promise<any | null> {
+}): Promise<ProductSearchResult | null> {
   try {
     const token = localStorage.getItem('zooner_token');
     const res = await fetch(`${API_BASE_URL}/Products`, {
@@ -209,7 +418,7 @@ export async function createGlobalProduct(productData: {
       body: JSON.stringify(productData)
     });
     if (!res.ok) return null;
-    const json = await res.json();
+    const json: ApiResponse<ProductSearchResult> = await res.json();
     return json.data || null;
   } catch (error) {
     console.error('Failed to create global product:', error);
@@ -219,14 +428,14 @@ export async function createGlobalProduct(productData: {
 
 // ── STORE INVENTORY MANAGEMENT API METHODS ──
 
-export async function getStoreInventory(storeId: string, search?: string): Promise<any[]> {
+export async function getStoreInventory(storeId: string, search?: string): Promise<StoreInventoryItem[]> {
   try {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
 
     const res = await fetch(`${API_BASE_URL}/Stores/${storeId}/Inventory?${params.toString()}`);
     if (!res.ok) return [];
-    const json = await res.json();
+    const json: ApiResponse<StoreInventoryItem[]> = await res.json();
     return json.data || [];
   } catch (error) {
     console.error('Failed to fetch store inventory:', error);
@@ -240,7 +449,7 @@ export async function addStoreInventory(storeId: string, item: {
   quantity: number;
   shelfLocation?: string;
   sku?: string;
-}): Promise<any | null> {
+}): Promise<StoreInventoryItem | null> {
   try {
     const token = localStorage.getItem('zooner_token');
     const res = await fetch(`${API_BASE_URL}/Stores/${storeId}/Inventory`, {
@@ -252,7 +461,7 @@ export async function addStoreInventory(storeId: string, item: {
       body: JSON.stringify(item)
     });
     if (!res.ok) return null;
-    const json = await res.json();
+    const json: ApiResponse<StoreInventoryItem> = await res.json();
     return json.data || null;
   } catch (error) {
     console.error('Failed to add store inventory:', error);
@@ -265,7 +474,7 @@ export async function updateStoreInventory(storeId: string, inventoryId: string,
   quantity: number;
   shelfLocation?: string;
   isActive?: boolean;
-}): Promise<any | null> {
+}): Promise<StoreInventoryItem | null> {
   try {
     const token = localStorage.getItem('zooner_token');
     const res = await fetch(`${API_BASE_URL}/Stores/${storeId}/Inventory/${inventoryId}`, {
@@ -277,7 +486,7 @@ export async function updateStoreInventory(storeId: string, inventoryId: string,
       body: JSON.stringify(item)
     });
     if (!res.ok) return null;
-    const json = await res.json();
+    const json: ApiResponse<StoreInventoryItem> = await res.json();
     return json.data || null;
   } catch (error) {
     console.error('Failed to update store inventory:', error);
@@ -312,4 +521,5 @@ export async function reserveInventoryHold(storeId: string, inventoryId: string,
     return false;
   }
 }
+
 

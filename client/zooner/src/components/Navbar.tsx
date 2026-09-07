@@ -8,6 +8,7 @@ interface NavbarProps {
   onOpenLocationModal: () => void;
   onNavigateToVendor: () => void;
   onLaunchCustomerApp?: () => void;
+  onOpenSignIn?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -15,6 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLocationModal,
   onNavigateToVendor,
   onLaunchCustomerApp,
+  onOpenSignIn,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -27,12 +29,22 @@ export const Navbar: React.FC<NavbarProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleScrollToRetailers = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const el = document.getElementById('retailers') || document.getElementById('merchants');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      onNavigateToVendor();
+    }
+  };
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled 
-          ? 'bg-white/85 backdrop-blur-xl border-b border-slate-200/80 shadow-lg shadow-slate-900/5' 
-          : 'bg-white/55 backdrop-blur-md border-b border-transparent'
+          ? 'bg-white/90 backdrop-blur-xl border-b border-slate-200/80 shadow-lg shadow-slate-900/5' 
+          : 'bg-white/60 backdrop-blur-md border-b border-transparent'
       }`}
     >
       <div className="max-w-6xl mx-auto px-6 sm:px-8">
@@ -46,7 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </a>
 
-            {/* Location Selector (Apple-style luminous pill) */}
+            {/* Location Selector */}
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
@@ -61,16 +73,26 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right: Desktop Navigation Links & Actions */}
           <div className="hidden md:flex items-center gap-6">
             <nav className="flex items-center gap-6 text-sm tracking-wide text-slate-700 font-semibold">
-              <a href="#how-it-works" className="hover:text-slate-950 transition-colors">How it works</a>
-              <button 
-                onClick={onNavigateToVendor} 
+              <a href="#how-it-works" className="hover:text-slate-950 transition-colors">How It Works</a>
+              <a 
+                href="#retailers"
+                onClick={handleScrollToRetailers}
                 className="hover:text-slate-950 transition-colors cursor-pointer"
               >
                 For Retailers
-              </button>
+              </a>
             </nav>
 
             <div className="flex items-center gap-3">
+              {onOpenSignIn && (
+                <button
+                  onClick={onOpenSignIn}
+                  className="text-xs font-bold text-slate-700 hover:text-slate-950 px-3.5 py-2 transition-colors cursor-pointer"
+                >
+                  Sign In
+                </button>
+              )}
+
               <motion.button
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
@@ -78,20 +100,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="text-sm font-bold text-white bg-gradient-to-r from-[#4968f5] to-[#7944ed] hover:brightness-105 px-5 py-2.5 rounded-full transition-all cursor-pointer flex items-center gap-2 shadow-md shadow-[#7257ff]/20"
               >
                 <Download className="h-4 w-4" />
-                <span>Open Live App</span>
+                <span>Open Zooner</span>
               </motion.button>
             </div>
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="flex md:hidden items-center gap-3">
+          <div className="flex md:hidden items-center gap-2.5">
             <button
               onClick={onOpenLocationModal}
               className="flex items-center gap-1 text-xs text-slate-700 bg-white/80 border border-slate-200 rounded-full px-3 py-1 font-medium"
             >
               <MapPin className="h-3 w-3 text-emerald-400" />
-              <span className="truncate max-w-[100px]">{currentLocation.name.split(',')[0]}</span>
+              <span className="truncate max-w-[90px]">{currentLocation.name.split(',')[0]}</span>
             </button>
+
+            {onOpenSignIn && (
+              <button
+                onClick={onOpenSignIn}
+                className="text-xs font-bold text-slate-800 px-2 py-1"
+              >
+                Sign In
+              </button>
+            )}
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -123,18 +154,31 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 How It Works
               </a>
-              <button 
-                onClick={() => {
+              <a 
+                href="#retailers"
+                onClick={(e) => {
                   setMobileMenuOpen(false);
-                  onNavigateToVendor();
+                  handleScrollToRetailers(e);
                 }}
                 className="py-2 border-b border-slate-200 text-left font-medium"
               >
                 For Retailers
-              </button>
+              </a>
             </nav>
 
-            <div className="pt-2">
+            <div className="pt-2 flex flex-col gap-2">
+              {onOpenSignIn && (
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onOpenSignIn();
+                  }}
+                  className="w-full text-center py-2.5 text-xs font-bold text-slate-900 border border-slate-300 rounded-xl"
+                >
+                  Sign In
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
@@ -143,7 +187,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="w-full text-center py-3 text-xs font-bold text-white bg-gradient-to-r from-[#4968f5] to-[#7944ed] rounded-xl shadow-md flex items-center justify-center gap-1.5"
               >
                 <Download className="h-3.5 w-3.5" />
-                <span>Open Live Customer App</span>
+                <span>Open Zooner</span>
               </button>
             </div>
           </motion.div>

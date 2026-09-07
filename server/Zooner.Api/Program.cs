@@ -115,12 +115,28 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClientApp", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
+        policy.SetIsOriginAllowed(origin =>
+              {
+                  if (string.IsNullOrEmpty(origin)) return false;
+                  if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                  {
+                      if (uri.Host == "localhost" || 
+                          uri.Host == "127.0.0.1" || 
+                          uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) || 
+                          uri.Scheme == "capacitor" ||
+                          uri.Host == "capacitor")
+                      {
+                          return true;
+                      }
+                  }
+                  return allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase);
+              })
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
     });
 });
+
 
 // 7. Add Controllers & Swagger with Bearer Support
 builder.Services.AddControllers();

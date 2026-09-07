@@ -42,7 +42,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onSearchClick, onOpenRetaile
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-9 py-4 rounded-full bg-white text-slate-950 font-bold text-sm sm:text-base hover:bg-slate-200 transition-all shadow-xl shadow-white/5 cursor-pointer"
           >
             <Download className="h-4 w-4 stroke-[2.5]" />
-            <span>Download Zooner</span>
+            <span>Open Zooner</span>
             <ArrowRight className="h-4 w-4" />
           </motion.button>
 
@@ -50,10 +50,10 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onSearchClick, onOpenRetaile
             onClick={onOpenRetailerModal}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full border border-white/10 hover:border-white/20 text-sm font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full border border-white/20 hover:border-white/40 text-sm font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
-            <Store className="h-4 w-4 text-slate-400" />
-            <span>I'm a Store Owner</span>
+            <Store className="h-4 w-4 text-emerald-400" />
+            <span>Register Your Store</span>
           </motion.button>
         </div>
 

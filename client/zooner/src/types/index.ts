@@ -26,9 +26,12 @@ export interface Store {
   verified: boolean;
   openStatus: string;
   address: string;
+  phone?: string;
   featuredProductsCount?: number;
   tags: string[];
   avatarUrl?: string;
+  latitude?: number;
+  longitude?: number;
   lat?: number;
   lng?: number;
 }
@@ -62,3 +65,117 @@ export interface LocationArea {
   lat?: number;
   lng?: number;
 }
+
+export interface UserDto {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber?: string;
+  role: string;
+  isActive: boolean;
+  createdAtUtc: string;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
+  user: UserDto;
+}
+
+export interface CategoryDto {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  iconName?: string;
+  displayOrder: number;
+  isActive: boolean;
+  subCategories?: SubCategoryDto[];
+}
+
+export interface SubCategoryDto {
+  id: string;
+  categoryId: string;
+  name: string;
+  slug: string;
+  description?: string;
+  displayOrder: number;
+  isActive: boolean;
+}
+
+export interface StoreInventoryItem {
+  inventoryId: string;
+  storeId: string;
+  storeName: string;
+  storeAddress?: string;
+  storePhone?: string;
+  storeArea?: string;
+  latitude?: number;
+  longitude?: number;
+  isStoreOpen: boolean;
+  variantId: string;
+  variantName: string;
+  price: number;
+  quantity: number;
+  availableQuantity: number;
+  shelfLocation?: string;
+  sku?: string;
+  updatedAtUtc: string;
+  distanceKm?: number;
+  isAvailable?: boolean;
+}
+
+export interface ProductVariantDto {
+  id: string;
+  variantName: string;
+  sku?: string;
+  gtin?: string;
+  color?: string;
+}
+
+export interface ProductSearchResult {
+  id: string;
+  name: string;
+  brandName?: string;
+  categoryName?: string;
+  modelNumber?: string;
+  gtin?: string;
+  imageUrl?: string;
+  description?: string;
+  lowestPrice?: number;
+  highestPrice?: number;
+  carryingStoresCount: number;
+  carryingStores?: StoreInventoryItem[];
+  variants?: ProductVariantDto[];
+}
+
+export interface RequestResponseDto {
+  id: string;
+  requestId: string;
+  shopId: string;
+  shopName: string;
+  shopAddress?: string;
+  distanceKm?: number;
+  status: string;
+  price?: number;
+  message?: string;
+  createdAtUtc?: string;
+}
+
+export interface LiveRequestSummary {
+  id: string;
+  requestText: string;
+  categoryId: string;
+  categoryName: string;
+  subCategoryName?: string;
+  latitude: number;
+  longitude: number;
+  searchRadiusKm: number;
+  distanceToShopKm?: number;
+  status: string;
+  createdAtUtc: string;
+  expiresAtUtc: string;
+  responses?: (RetailerResponse | RequestResponseDto)[];
+}
+

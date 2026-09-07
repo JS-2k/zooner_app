@@ -39,7 +39,21 @@ export const ProductRequest: React.FC<ProductRequestProps> = ({ prefillProduct }
     setIsBroadcasting(false);
     setRequestSent(true);
     if (result && Array.isArray(result.responses)) {
-      setResponses(result.responses);
+      setResponses(result.responses.map((resp) => {
+        const r = resp as unknown as Record<string, unknown>;
+        return {
+          id: String(r.id || Math.random()),
+          storeName: String(r.shopName || r.storeName || 'Local Retailer'),
+          storeArea: String(r.shopAddress || r.storeArea || 'Nearby'),
+          distance: typeof r.distanceKm === 'number' ? `${r.distanceKm.toFixed(1)} km` : String(r.distance || '1.2 km'),
+          price: typeof r.price === 'number' ? r.price : 0,
+          available: r.status === 'Available' || r.available === true,
+          conditionNote: String(r.message || r.conditionNote || 'Ready for pickup'),
+          rating: typeof r.rating === 'number' ? r.rating : 4.8,
+          verified: r.verified !== false,
+          avatar: String(r.avatar || '')
+        };
+      }));
     } else {
       setResponses([]);
     }

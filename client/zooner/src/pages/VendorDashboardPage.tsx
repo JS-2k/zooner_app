@@ -16,7 +16,8 @@ import {
   Check, 
   Power,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
 import { 
   searchProducts, 
@@ -30,29 +31,45 @@ import {
   getMyShops,
   getIncomingRequests,
   respondToLiveRequest,
-  setShopLiveStatus
+  setShopLiveStatus,
+  updateShop,
+  type DuplicateCheckResult,
+  type ShopProfileDto
 } from '../services/api';
+import type { StoreInventoryItem, ProductSearchResult, CategoryDto, LiveRequestSummary, ProductVariantDto } from '../types';
 
 interface VendorDashboardPageProps {
   onSwitchToCustomer: () => void;
-  onNavigateToVendorLanding: () => void;
+  onNavigateToVendorLanding?: () => void;
 }
 
 type DashboardTab = 'requests' | 'inventory' | 'holds' | 'analytics' | 'settings';
 
+interface VendorRequestItem extends LiveRequestSummary {
+  product?: string;
+  distance?: string;
+  timeAgo?: string;
+  shopperName?: string;
+  size?: string;
+  budget?: string;
+}
+
 export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   onSwitchToCustomer,
-  onNavigateToVendorLanding,
+  onNavigateToVendorLanding: _onNavigateToVendorLanding,
 }) => {
   const [activeTab, setActiveTab] = useState<DashboardTab>('requests');
   const [isLiveOnline, setIsLiveOnline] = useState(false);
 
   // Store profile
+  const [userShops, setUserShops] = useState<ShopProfileDto[]>([]);
   const [storeName, setStoreName] = useState('');
   const [storeCategory, setStoreCategory] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [storePhone, setStorePhone] = useState('');
   const [storeHours, setStoreHours] = useState('10:00 AM – 9:30 PM (Mon–Sun)');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsNotice, setSettingsNotice] = useState('');
 
   // Store ID
   const [currentStoreId, setCurrentStoreId] = useState<string>('');
@@ -61,10 +78,10 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
 
   // Incoming Live Requests State
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<VendorRequestItem[]>([]);
 
   // Active Walk-In Holds State
-  const [holds, setHolds] = useState<any[]>([]);
+  const [holds, setHolds] = useState<{ id: string; customerName: string; phone: string; product: string; price: number; expiresIn: string; status: string }[]>([]);
 
   const handleAcceptRequest = async (id: string) => {
     if (!currentStoreId) return;
@@ -73,25 +90,6 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
       setRequests(previous => previous.filter(request => request.id !== id));
       return;
     }
-    return;
-    /* Legacy local demo path retained below temporarily. */
-    const quote = 0;
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'accepted', quotedPrice: quote } : r));
-    const targetReq = requests.find(r => r.id === id);
-    if (targetReq) {
-      setHolds(prev => [
-        {
-          id: `hld-${Date.now()}`,
-          customerName: targetReq.shopperName,
-          phone: '+91 98400 00000',
-          product: `${targetReq.product} (${targetReq.size})`,
-          price: quote,
-          expiresIn: '30 mins remaining',
-          status: 'active'
-        },
-        ...prev
-      ]);
-    }
   };
 
   const handleDeclineRequest = (id: string) => {
@@ -99,15 +97,15 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   };
 
   // Inventory State
-  const [inventory, setInventory] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<StoreInventoryItem[]>([]);
   const [inventoryLoading, setInventoryLoading] = useState<boolean>(false);
 
   // Catalog Search & Add Inventory State
   const [catalogSearchQuery, setCatalogSearchQuery] = useState('');
-  const [catalogResults, setCatalogResults] = useState<any[]>([]);
+  const [catalogResults, setCatalogResults] = useState<ProductSearchResult[]>([]);
   const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
 
-  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductSearchResult | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
   
   // Store-specific inventory input fields
@@ -124,11 +122,41 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const [newProdCategory, setNewProdCategory] = useState('Electronics');
   const [newProdDesc, setNewProdDesc] = useState('');
   const [newProdImage, setNewProdImage] = useState('');
-  const [duplicateCheckWarning, setDuplicateCheckWarning] = useState<any | null>(null);
+  const [duplicateCheckWarning, setDuplicateCheckWarning] = useState<DuplicateCheckResult | null>(null);
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
 
   // Categories list for product creation
-  const [dbCategories, setDbCategories] = useState<any[]>([]);
+  const [dbCategories, setDbCategories] = useState<CategoryDto[]>([]);
+
+  // Select a specific shop from user's multi-store portfolio
+  const handleSelectShop = async (shop: ShopProfileDto) => {
+    const storeId = shop.id.toString();
+    setCurrentStoreId(storeId);
+    setStoreName(shop.name || '');
+    setStoreAddress(shop.address || '');
+    setStorePhone(shop.phone || '');
+    setStoreCategory(shop.categories?.map((c) => c.name).join(', ') || shop.categoryName || '');
+    setIsLiveOnline(Boolean(shop.isLiveEnabled));
+    setInventoryLoading(true);
+    try {
+      const [incoming, inv] = await Promise.all([
+        getIncomingRequests(storeId),
+        getStoreInventory(storeId)
+      ]);
+      setRequests(incoming.map((request) => ({
+        ...request,
+        product: request.requestText,
+        status: request.status?.toLowerCase() || 'pending',
+        distance: request.distanceToShopKm ? `${request.distanceToShopKm.toFixed(1)} km away` : 'Nearby',
+        timeAgo: new Date(request.createdAtUtc).toLocaleString()
+      })));
+      setInventory(inv);
+    } catch (err) {
+      console.error('Failed switching store:', err);
+    } finally {
+      setInventoryLoading(false);
+    }
+  };
 
   // Initial Data Fetching
   useEffect(() => {
@@ -136,6 +164,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
       setInventoryLoading(true);
       try {
         const shops = await getMyShops();
+        setUserShops(shops);
         const storeId = shops[0]?.id?.toString() || '';
         setCurrentStoreId(storeId);
         
@@ -143,10 +172,10 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           setStoreName(shops[0].name || '');
           setStoreAddress(shops[0].address || '');
           setStorePhone(shops[0].phone || '');
-          setStoreCategory(shops[0].categories?.map((category: any) => category.name).join(', ') || '');
+          setStoreCategory(shops[0].categories?.map((c) => c.name).join(', ') || shops[0].categoryName || '');
           setIsLiveOnline(Boolean(shops[0].isLiveEnabled));
           const incoming = await getIncomingRequests(storeId);
-          setRequests(incoming.map((request: any) => ({ ...request, product: request.requestText, status: request.status?.toLowerCase() || 'pending', distance: request.distanceToShopKm ? `${request.distanceToShopKm.toFixed(1)} km away` : 'Nearby', timeAgo: new Date(request.createdAtUtc).toLocaleString() })));
+          setRequests(incoming.map((request) => ({ ...request, product: request.requestText, status: request.status?.toLowerCase() || 'pending', distance: request.distanceToShopKm ? `${request.distanceToShopKm.toFixed(1)} km away` : 'Nearby', timeAgo: new Date(request.createdAtUtc).toLocaleString() })));
           setHolds([]);
         }
 
@@ -165,13 +194,14 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
   // Debounced Catalog Search
   useEffect(() => {
-    if (!catalogSearchQuery.trim()) {
-      setCatalogResults([]);
-      return;
+    const query = catalogSearchQuery.trim();
+    if (!query) {
+      const resetTimer = setTimeout(() => setCatalogResults([]), 0);
+      return () => clearTimeout(resetTimer);
     }
     const timer = setTimeout(async () => {
       setIsSearchingCatalog(true);
-      const results = await searchProducts(catalogSearchQuery.trim());
+      const results = await searchProducts(query);
       setCatalogResults(results);
       setIsSearchingCatalog(false);
     }, 250);
@@ -179,10 +209,31 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   }, [catalogSearchQuery]);
 
   // Select a product from catalog search
-  const handleSelectCatalogProduct = (prod: any) => {
+  const handleSelectCatalogProduct = (prod: ProductSearchResult) => {
     setSelectedProduct(prod);
     if (prod.variants && prod.variants.length > 0) {
       setSelectedVariantId(prod.variants[0].id.toString());
+    }
+  };
+
+  // Save Store Settings
+  const handleSaveStoreSettings = async () => {
+    if (!currentStoreId) {
+      alert('No active store found to update.');
+      return;
+    }
+    setIsSavingSettings(true);
+    const updated = await updateShop(currentStoreId, {
+      name: storeName,
+      phone: storePhone,
+      address: storeAddress
+    });
+    setIsSavingSettings(false);
+    if (updated) {
+      setSettingsNotice('✓ Store profile updated successfully in database!');
+      setTimeout(() => setSettingsNotice(''), 3000);
+    } else {
+      alert('Failed to update store settings.');
     }
   };
 
@@ -228,8 +279,8 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     const matched = check?.matchedProduct || check?.matchingProduct;
 
     if (isDup && matched) {
-      setDuplicateCheckWarning({ matchedProduct: matched, reason: check.reason });
-      return; // Stop and let user confirm or pick existing
+      setDuplicateCheckWarning(check);
+      return;
     }
 
     // Proceed to create
@@ -238,7 +289,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
   const executeProductCreation = async () => {
     const matchedCategory = dbCategories.find(c => c.name.toLowerCase() === newProdCategory.toLowerCase());
-    const categoryId = matchedCategory ? matchedCategory.id.toString() : (dbCategories[0]?.id?.toString() || '1');
+    const categoryId = matchedCategory ? matchedCategory.id.toString() : (dbCategories[0]?.id?.toString() || '00000000-0000-0000-0000-000000000001');
 
     const created = await createGlobalProduct({
       name: newProdName,
@@ -274,9 +325,9 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   };
 
   // Toggle Inventory Stock via API
-  const handleToggleInventoryStock = async (item: any) => {
+  const handleToggleInventoryStock = async (item: StoreInventoryItem) => {
     const newQty = item.quantity > 0 ? 0 : 3;
-    await updateStoreInventory(currentStoreId, item.id.toString(), {
+    await updateStoreInventory(currentStoreId, item.inventoryId.toString(), {
       price: item.price,
       quantity: newQty,
       shelfLocation: item.shelfLocation,
@@ -293,6 +344,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     const refreshed = await getStoreInventory(currentStoreId);
     setInventory(refreshed);
   };
+
 
   const pendingRequestsCount = requests.filter(r => r.status === 'pending').length;
   const activeHoldsCount = holds.filter(h => h.status === 'active').length;
@@ -311,9 +363,26 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-white text-sm sm:text-base font-['Outfit']">{storeName}</span>
+                {userShops.length > 1 ? (
+                  <select
+                    value={currentStoreId}
+                    onChange={(e) => {
+                      const selected = userShops.find(s => s.id.toString() === e.target.value);
+                      if (selected) handleSelectShop(selected);
+                    }}
+                    className="bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+                  >
+                    {userShops.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="font-bold text-white text-sm sm:text-base font-['Outfit']">{storeName || 'Merchant Store'}</span>
+                )}
                 <span className="text-[10px] font-mono bg-indigo-950 text-indigo-300 border border-indigo-800 px-1.5 py-0.2 rounded">
-                  ZNR-8842
+                  Merchant OS
                 </span>
               </div>
               <div className="text-xs text-slate-400 flex items-center gap-1.5">
@@ -332,7 +401,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                 const nextStatus = !isLiveOnline;
                 if (await setShopLiveStatus(currentStoreId, nextStatus)) setIsLiveOnline(nextStatus);
               }}
-              className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+              className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                 isLiveOnline 
                   ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/80 hover:bg-emerald-900/60' 
                   : 'bg-slate-800 text-slate-400 border-slate-700'
@@ -342,20 +411,14 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               <span>{isLiveOnline ? 'Online' : 'Go Online'}</span>
             </button>
 
-            {/* Switch to Customer Site */}
+            {/* Switch to Customer Shopping */}
             <button
               onClick={onSwitchToCustomer}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-xs font-bold text-emerald-300 transition-colors cursor-pointer shadow-sm"
+              title="Switch back to Shopping on Zooner"
             >
-              <Compass className="h-3.5 w-3.5 text-indigo-400" />
-              <span>Customer View</span>
-            </button>
-
-            <button
-              onClick={onNavigateToVendorLanding}
-              className="text-xs font-semibold text-slate-400 hover:text-white px-2 py-1.5"
-            >
-              Portal Home
+              <Compass className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Switch to Shopping</span>
             </button>
           </div>
 
@@ -573,17 +636,15 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-800">
-                    {inventory.map((item: any) => {
-                      const prodName = item.productName || item.productVariantName || 'Product Item';
-                      const isAvailable = item.availableQuantity > 0 && item.quantity > 0 && item.isActive;
+                    {inventory.map((item: StoreInventoryItem) => {
+                      const prodName = item.variantName || 'Product Item';
+                      const isAvailable = item.availableQuantity > 0 && item.quantity > 0;
                       return (
-                        <div key={item.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-800/40 transition-colors">
+                        <div key={item.inventoryId} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-800/40 transition-colors">
                           <div className="flex items-center gap-3.5">
-                            <img 
-                              src={item.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=150&q=80'} 
-                              alt={prodName} 
-                              className="h-12 w-12 rounded-xl object-cover bg-slate-800 border border-slate-700 shrink-0" 
-                            />
+                            <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-slate-800 border border-slate-700 text-slate-400 font-bold text-xs shrink-0">
+                              <Package className="h-5 w-5" />
+                            </div>
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-white text-sm">{prodName}</span>
@@ -593,11 +654,12 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                                   </span>
                                 )}
                               </div>
-                              <div className="text-xs text-slate-400">
-                                {item.brandName ? `${item.brandName} · ` : ''}{item.categoryName || 'General'}
-                              </div>
-                              <div className="text-xs font-black text-indigo-400 font-['Outfit'] mt-0.5">
-                                ₹{item.price ? item.price.toLocaleString('en-IN') : '0'}
+                              <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-3">
+                                <span>Shelf Quantity: <strong>{item.quantity}</strong></span>
+                                <span>·</span>
+                                <span className="font-mono text-emerald-400 font-bold">
+                                  ₹{item.price ? item.price.toLocaleString('en-IN') : '0'}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -615,7 +677,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                             </button>
 
                             <button
-                              onClick={() => handleDeleteInventoryItem(item.id)}
+                              onClick={() => handleDeleteInventoryItem(item.inventoryId)}
                               className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
                               title="Delete from Inventory"
                             >
@@ -679,29 +741,43 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           {activeTab === 'analytics' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-white font-['Outfit']">Store Footfall Analytics</h2>
-                <p className="text-xs text-slate-400">Weekly performance summary for {storeName}</p>
+                <h2 className="text-xl font-bold text-white font-['Outfit']">Store Footfall & Inventory Analytics</h2>
+                <p className="text-xs text-slate-400">Live operational performance summary for {storeName || 'Your Storefront'}</p>
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                  <div className="text-xs text-slate-400">Shopper Impressions</div>
-                  <div className="text-2xl font-extrabold text-white font-['Outfit'] mt-1">1,420</div>
-                  <div className="text-[11px] text-emerald-400 font-semibold mt-1">↑ +38% this week</div>
+                  <div className="text-xs text-slate-400">Active Shelf Items</div>
+                  <div className="text-2xl font-extrabold text-white font-['Outfit'] mt-1">
+                    {inventory.length}
+                  </div>
+                  <div className="text-[11px] text-emerald-400 font-semibold mt-1">
+                    {inventory.filter(i => i.availableQuantity > 0).length} in stock right now
+                  </div>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                  <div className="text-xs text-slate-400">Directions Clicked</div>
-                  <div className="text-2xl font-extrabold text-white font-['Outfit'] mt-1">94</div>
-                  <div className="text-[11px] text-emerald-400 font-semibold mt-1">Direct store visits</div>
+                  <div className="text-xs text-slate-400">Live Requests</div>
+                  <div className="text-2xl font-extrabold text-white font-['Outfit'] mt-1">
+                    {requests.length}
+                  </div>
+                  <div className="text-[11px] text-emerald-400 font-semibold mt-1">
+                    {requests.filter(r => r.status === 'pending').length} pending response
+                  </div>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                  <div className="text-xs text-slate-400">30-Min Holds</div>
-                  <div className="text-2xl font-extrabold text-white font-['Outfit'] mt-1">36</div>
-                  <div className="text-[11px] text-indigo-400 font-semibold mt-1">89% conversion rate</div>
+                  <div className="text-xs text-slate-400">Total Stock Units</div>
+                  <div className="text-2xl font-extrabold text-white font-['Outfit'] mt-1">
+                    {inventory.reduce((acc, i) => acc + (i.quantity || 0), 0)}
+                  </div>
+                  <div className="text-[11px] text-indigo-400 font-semibold mt-1">
+                    {inventory.reduce((acc, i) => acc + (i.availableQuantity || 0), 0)} available for hold
+                  </div>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                  <div className="text-xs text-slate-400">Estimated Sales</div>
-                  <div className="text-2xl font-extrabold text-white font-['Outfit'] mt-1">₹2,84,500</div>
+                  <div className="text-xs text-slate-400">Total Inventory Value</div>
+                  <div className="text-2xl font-extrabold text-white font-['Outfit'] mt-1">
+                    ₹{inventory.reduce((acc, i) => acc + ((i.price || 0) * (i.quantity || 0)), 0).toLocaleString('en-IN')}
+                  </div>
                   <div className="text-[11px] text-emerald-400 font-semibold mt-1">0% commission taken</div>
                 </div>
               </div>
@@ -715,6 +791,12 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                 <h2 className="text-xl font-bold text-white font-['Outfit']">Store Profile & Location</h2>
                 <p className="text-xs text-slate-400">Your verified storefront details on Zooner</p>
               </div>
+
+              {settingsNotice && (
+                <div className="p-3.5 rounded-xl bg-emerald-950/60 border border-emerald-800 text-xs text-emerald-300 font-semibold">
+                  {settingsNotice}
+                </div>
+              )}
 
               <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
                 <div>
@@ -768,14 +850,23 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                 </div>
 
                 <button
-                  onClick={() => alert('✓ Store profile settings updated successfully!')}
-                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs text-white transition-colors cursor-pointer"
+                  onClick={handleSaveStoreSettings}
+                  disabled={isSavingSettings}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs text-white transition-colors disabled:opacity-60 cursor-pointer"
                 >
-                  Save Store Profile
+                  {isSavingSettings ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Saving Store Profile...</span>
+                    </>
+                  ) : (
+                    <span>Save Store Profile</span>
+                  )}
                 </button>
               </div>
             </div>
           )}
+
 
         </main>
 
@@ -828,7 +919,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                           No matching product found in catalog.
                         </div>
                       ) : (
-                        catalogResults.map((prod: any) => (
+                        catalogResults.map((prod: ProductSearchResult) => (
                           <div
                             key={prod.id}
                             onClick={() => handleSelectCatalogProduct(prod)}
@@ -883,7 +974,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                             onChange={(e) => setSelectedVariantId(e.target.value)}
                             className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                           >
-                            {selectedProduct.variants.map((v: any) => (
+                            {selectedProduct.variants.map((v: ProductVariantDto) => (
                               <option key={v.id} value={v.id}>
                                 {v.variantName} {v.color ? `(${v.color})` : ''} {v.sku ? `- SKU: ${v.sku}` : ''}
                               </option>
@@ -964,7 +1055,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                   </div>
 
                   {/* DUPLICATE WARNING ALERT */}
-                  {duplicateCheckWarning && (
+                  {duplicateCheckWarning && duplicateCheckWarning.matchingProduct && (
                     <div className="p-4 rounded-2xl bg-amber-950/70 border border-amber-700/80 space-y-3 text-left">
                       <div className="flex items-start gap-2.5">
                         <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
@@ -982,9 +1073,11 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            setSelectedProduct(duplicateCheckWarning.matchingProduct);
-                            if (duplicateCheckWarning.matchingProduct.variants && duplicateCheckWarning.matchingProduct.variants.length > 0) {
-                              setSelectedVariantId(duplicateCheckWarning.matchingProduct.variants[0].id.toString());
+                            if (duplicateCheckWarning.matchingProduct) {
+                              setSelectedProduct(duplicateCheckWarning.matchingProduct);
+                              if (duplicateCheckWarning.matchingProduct.variants && duplicateCheckWarning.matchingProduct.variants.length > 0) {
+                                setSelectedVariantId(duplicateCheckWarning.matchingProduct.variants[0].id.toString());
+                              }
                             }
                             setShowCreateProductForm(false);
                             setDuplicateCheckWarning(null);

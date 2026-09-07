@@ -3,7 +3,6 @@ import { ThemeProvider } from './context/ThemeContext';
 import { Navbar } from './components/Navbar';
 import { PublicLandingPage } from './pages/PublicLandingPage';
 import { CustomerAppPage } from './pages/CustomerAppPage';
-import { VendorLandingPage } from './pages/VendorLandingPage';
 import { VendorDashboardPage } from './pages/VendorDashboardPage';
 import { LocationModal } from './components/LocationModal';
 import { RetailerModal } from './components/RetailerModal';
@@ -21,15 +20,15 @@ const DEFAULT_LOCATION: LocationArea = {
   lng: 76.9558
 };
 
-type AppRoute = 'marketing' | 'customer' | 'vendor' | 'vendor-dashboard';
+export type AppRoute = 'marketing' | 'customer' | 'vendor';
 
 export function AppContent() {
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(() => {
-    const hash = window.location.hash.toLowerCase();
-    if (hash.includes('vendor/dashboard') || hash.includes('vendordashboard')) return 'vendor-dashboard';
-    if (hash.includes('vendor')) return 'vendor';
-    if (hash.includes('app') || hash.includes('customer')) return 'customer';
     if (Capacitor.isNativePlatform()) return 'customer';
+    const hash = window.location.hash.toLowerCase();
+    const path = window.location.pathname.toLowerCase();
+    if (hash.includes('vendor') || path.includes('/vendor')) return 'vendor';
+    if (hash.includes('app') || hash.includes('customer') || path.includes('/app')) return 'customer';
     return 'marketing';
   });
 
@@ -37,12 +36,6 @@ export function AppContent() {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isRetailerModalOpen, setIsRetailerModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  const [signInRoleHint, setSignInRoleHint] = useState<'C' | 'V' | 'VC'>('C');
-
-  const openSignInWithRole = (roleHint: 'C' | 'V' | 'VC' = 'C') => {
-    setSignInRoleHint(roleHint);
-    setIsSignInModalOpen(true);
-  };
 
   // Auto-detect real-time browser GPS location on startup
   useEffect(() => {
@@ -69,11 +62,14 @@ export function AppContent() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.toLowerCase();
-      if (hash.includes('vendor/dashboard') || hash.includes('vendordashboard')) {
-        setCurrentRoute('vendor-dashboard');
-      } else if (hash.includes('vendor')) {
+      const path = window.location.pathname.toLowerCase();
+      if (hash.includes('register-store') || hash.includes('registerstore')) {
+        setIsRetailerModalOpen(true);
+      } else if (hash.includes('login') || hash.includes('signin') || hash.includes('register')) {
+        setIsSignInModalOpen(true);
+      } else if (hash.includes('vendor') || path.includes('/vendor')) {
         setCurrentRoute('vendor');
-      } else if (hash.includes('app') || hash.includes('customer')) {
+      } else if (hash.includes('app') || hash.includes('customer') || path.includes('/app')) {
         setCurrentRoute('customer');
       } else {
         setCurrentRoute(Capacitor.isNativePlatform() ? 'customer' : 'marketing');
@@ -85,9 +81,7 @@ export function AppContent() {
 
   const navigateTo = (route: AppRoute) => {
     setCurrentRoute(route);
-    if (route === 'vendor-dashboard') {
-      window.location.hash = '#vendor/dashboard';
-    } else if (route === 'vendor') {
+    if (route === 'vendor') {
       window.location.hash = '#vendor';
     } else if (route === 'customer') {
       window.location.hash = '#app';
@@ -97,40 +91,28 @@ export function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ── EXPERIENCE 3B: VENDOR OPERATIONAL DASHBOARD (Merchant OS) ──
-  if (currentRoute === 'vendor-dashboard') {
-    return (
-      <VendorDashboardPage
-        onSwitchToCustomer={() => navigateTo('customer')}
-        onNavigateToVendorLanding={() => navigateTo('vendor')}
-      />
-    );
-  }
-
-  // ── EXPERIENCE 3A: VENDOR MARKETING / REGISTRATION ──
+  // ── EXPERIENCE 2: VENDOR DASHBOARD (Merchant OS) ──
   if (currentRoute === 'vendor') {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black">
-        <VendorLandingPage
+        <VendorDashboardPage
           onSwitchToCustomer={() => navigateTo('customer')}
-          onOpenSignIn={() => openSignInWithRole('V')}
-          onNavigateToDashboard={() => navigateTo('vendor-dashboard')}
         />
         <SignInModal
           isOpen={isSignInModalOpen}
           onClose={() => setIsSignInModalOpen(false)}
           onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
-          initialRole={signInRoleHint}
         />
         <RetailerModal
           isOpen={isRetailerModalOpen}
           onClose={() => setIsRetailerModalOpen(false)}
+          onSuccess={() => navigateTo('vendor')}
         />
       </div>
     );
   }
 
-  // ── EXPERIENCE 2: CUSTOMER MOBILE-FIRST APPLICATION (Discovery & Shopping) ──
+  // ── EXPERIENCE 1B: CUSTOMER APPLICATION (Discovery & Shopping) ──
   if (Capacitor.isNativePlatform() || currentRoute === 'customer') {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black">
@@ -138,8 +120,9 @@ export function AppContent() {
           currentLocation={currentLocation}
           onOpenLocationModal={() => setIsLocationModalOpen(true)}
           onNavigateToHome={() => navigateTo('marketing')}
-          onNavigateToVendor={() => navigateTo('vendor-dashboard')}
-          onOpenSignIn={(roleHint) => openSignInWithRole(roleHint || 'C')}
+          onNavigateToVendor={() => navigateTo('vendor')}
+          onOpenSignIn={() => setIsSignInModalOpen(true)}
+          onOpenRetailerModal={() => setIsRetailerModalOpen(true)}
         />
         <LocationModal
           isOpen={isLocationModalOpen}
@@ -150,21 +133,26 @@ export function AppContent() {
         <SignInModal
           isOpen={isSignInModalOpen}
           onClose={() => setIsSignInModalOpen(false)}
-          onSwitchToRetailer={() => navigateTo('vendor-dashboard')}
-          initialRole={signInRoleHint}
+          onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
+        />
+        <RetailerModal
+          isOpen={isRetailerModalOpen}
+          onClose={() => setIsRetailerModalOpen(false)}
+          onSuccess={() => navigateTo('vendor')}
         />
       </div>
     );
   }
 
-  // ── EXPERIENCE 1: PUBLIC MARKETING WEBSITE (App Promotion & Trust - Desktop Web Only) ──
+  // ── EXPERIENCE 1A: ONE PUBLIC MARKETING LANDING PAGE (Customer & Merchant Unified) ──
   return (
     <div className="min-h-screen bg-[#070A11] text-white flex flex-col selection:bg-white selection:text-black relative">
       <Navbar
         currentLocation={currentLocation}
         onOpenLocationModal={() => setIsLocationModalOpen(true)}
-        onNavigateToVendor={() => navigateTo('vendor')}
+        onNavigateToVendor={() => setIsRetailerModalOpen(true)}
         onLaunchCustomerApp={() => navigateTo('customer')}
+        onOpenSignIn={() => setIsSignInModalOpen(true)}
       />
 
       <main className="flex-1">
@@ -172,7 +160,7 @@ export function AppContent() {
           currentLocation={currentLocation}
           onOpenLocationModal={() => setIsLocationModalOpen(true)}
           onLaunchCustomerApp={() => navigateTo('customer')}
-          onNavigateToVendor={() => navigateTo('vendor')}
+          onNavigateToVendor={() => setIsRetailerModalOpen(true)}
         />
       </main>
 
@@ -183,9 +171,16 @@ export function AppContent() {
         onSelectLocation={(loc) => setCurrentLocation(loc)}
       />
 
+      <SignInModal
+        isOpen={isSignInModalOpen}
+        onClose={() => setIsSignInModalOpen(false)}
+        onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
+      />
+
       <RetailerModal
         isOpen={isRetailerModalOpen}
         onClose={() => setIsRetailerModalOpen(false)}
+        onSuccess={() => navigateTo('vendor')}
       />
     </div>
   );

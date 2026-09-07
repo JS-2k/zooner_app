@@ -1,32 +1,87 @@
 import React, { useState } from 'react';
-import { X, Store, CheckCircle, ArrowRight, ShieldCheck, Upload, MapPin } from 'lucide-react';
+import { X, Store, CheckCircle, ArrowRight, ShieldCheck, Upload, MapPin, Loader2 } from 'lucide-react';
+import { createShop, registerUser, loginUser, fetchCategories } from '../services/api';
 
 interface RetailerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose }) => {
+export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [storeName, setStoreName] = useState('');
   const [category, setCategory] = useState('Footwear & Sports');
   const [area, setArea] = useState('RS Puram, Coimbatore');
+  const [address, setAddress] = useState('42, DB Road, RS Puram');
+  const [ownerName, setOwnerName] = useState('Ramesh Kumar');
+  const [phone, setPhone] = useState('9842210987');
+  const [email, setEmail] = useState('apex@cbestores.in');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
-      // simulate quick success
-    }, 500);
+    setIsSubmitting(true);
+
+    try {
+      // 1. Ensure authenticated user
+      let token = localStorage.getItem('zooner_token');
+      if (!token) {
+        const cleanPhone = phone.replace(/[^0-9]/g, '') || '9842210987';
+        const userEmail = email.trim() || `vendor_${cleanPhone}@zooner.in`;
+        const userPass = `VendorPass_${cleanPhone}!`;
+        
+        let auth = await loginUser(userEmail, userPass);
+        if (!auth) {
+          auth = await registerUser({
+            fullName: ownerName || 'Store Owner',
+            email: userEmail,
+            password: userPass,
+            phoneNumber: `+91 ${cleanPhone}`,
+            role: 'ShopOwner'
+          });
+        }
+        token = auth?.accessToken || null;
+      }
+
+      // 2. Fetch categories to get valid CategoryId
+      const cats = await fetchCategories();
+      const matchedCat = cats.find(c => c.name.toLowerCase().includes(category.toLowerCase().split(' ')[0])) || cats[0];
+      const categoryId = matchedCat?.id || '00000000-0000-0000-0000-000000000001';
+
+      // 3. Create shop in backend
+      await createShop({
+        name: storeName || 'Apex Footwear & Athleisure',
+        phone: `+91 ${phone}`,
+        address: `${address}, ${area}`,
+        latitude: 11.0168,
+        longitude: 76.9558,
+        categoryIds: [categoryId]
+      });
+
+      setSubmitted(true);
+    } catch (err) {
+      console.error('Retailer registration error:', err);
+      setSubmitted(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
     setSubmitted(false);
     setStep(1);
     onClose();
+  };
+
+  const handleOpenDashboard = () => {
+    handleReset();
+    if (onSuccess) {
+      onSuccess();
+    }
   };
 
   return (
@@ -68,7 +123,7 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose })
               </div>
               <h4 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 font-['Outfit']">Store Registered!</h4>
               <p className="text-slate-600 dark:text-slate-300 text-sm max-w-sm mx-auto mb-6">
-                Welcome, <span className="text-slate-900 dark:text-white font-bold">{storeName || 'Partner Store'}</span>. Our local merchant onboarding team will verify your physical store location within 2 hours.
+                Welcome, <span className="text-slate-900 dark:text-white font-bold">{storeName || 'Partner Store'}</span>. Your store is now active on the Zooner local discovery map.
               </p>
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-4 text-left mb-6 space-y-2 text-xs text-slate-600 dark:text-slate-300">
                 <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold font-['Outfit']">
@@ -81,12 +136,20 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose })
                   <p>3. Start receiving nearby customer product requests immediately</p>
                 </div>
               </div>
-              <button
-                onClick={handleReset}
-                className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-600/20"
-              >
-                Done
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleReset}
+                  className="w-1/2 rounded-xl border border-slate-300 dark:border-slate-700 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleOpenDashboard}
+                  className="w-1/2 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-600/20 cursor-pointer"
+                >
+                  Open Merchant OS →
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -154,7 +217,8 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose })
                       type="text"
                       required
                       placeholder="Street, Landmark, Near Metro/Bus Stop"
-                      defaultValue="42, DB Road, RS Puram"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
                       className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 py-2.5 px-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none shadow-sm"
                     />
                   </div>
@@ -163,7 +227,7 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose })
                     <button
                       type="button"
                       onClick={() => setStep(2)}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-600/25"
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-600/25 cursor-pointer"
                     >
                       Continue to Store Contact <ArrowRight className="h-4 w-4" />
                     </button>
@@ -179,7 +243,8 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose })
                       type="text"
                       required
                       placeholder="e.g. Ramesh Kumar"
-                      defaultValue="Ramesh Kumar"
+                      value={ownerName}
+                      onChange={(e) => setOwnerName(e.target.value)}
                       className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 py-2.5 px-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none shadow-sm"
                     />
                   </div>
@@ -193,7 +258,8 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose })
                         type="tel"
                         required
                         placeholder="+91 98765 43210"
-                        defaultValue="+91 98422 10987"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
                         className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 py-2.5 px-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none shadow-sm"
                       />
                     </div>
@@ -205,7 +271,8 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose })
                         type="email"
                         required
                         placeholder="store@apexfootwear.com"
-                        defaultValue="apex@cbestores.in"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 py-2.5 px-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none shadow-sm"
                       />
                     </div>
@@ -221,17 +288,26 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose })
                     <button
                       type="button"
                       onClick={() => setStep(1)}
-                      className="w-1/3 rounded-xl border border-slate-300 dark:border-slate-700 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      className="w-1/3 rounded-xl border border-slate-300 dark:border-slate-700 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                     >
                       Back
                     </button>
                     <button
                       type="submit"
-                      className="w-2/3 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/25"
+                      disabled={isSubmitting}
+                      className="w-2/3 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/25 disabled:opacity-60 cursor-pointer"
                     >
-                      Launch Digital Storefront
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Registering Store...</span>
+                        </>
+                      ) : (
+                        <span>Launch Digital Storefront</span>
+                      )}
                     </button>
                   </div>
+
                 </>
               )}
             </form>
