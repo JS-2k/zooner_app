@@ -47,6 +47,99 @@ interface CustomerAppPageProps {
 
 type TabType = 'discover' | 'requests' | 'holds' | 'account';
 
+const FEATURED_CATALOG_PRODUCTS: Product[] = [
+  {
+    id: 'feat-1',
+    name: 'Sony WH-1000XM5 Wireless Noise-Canceling Headphones',
+    category: 'Electronics',
+    price: 26990,
+    originalPrice: 29990,
+    storeName: 'Soniq World Electronics',
+    storeArea: 'DB Road, RS Puram',
+    distance: '350m',
+    inStock: true,
+    stockCount: 3,
+    imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80',
+    rating: 4.9,
+    reviewsCount: 38
+  },
+  {
+    id: 'feat-2',
+    name: 'Apple iPhone 15 Pro (128GB - Natural Titanium)',
+    category: 'Electronics',
+    price: 127900,
+    originalPrice: 134900,
+    storeName: 'iDestiny Authorised Apple Reseller',
+    storeArea: 'Race Course Road',
+    distance: '1.2 km',
+    inStock: true,
+    stockCount: 5,
+    imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=600&q=80',
+    rating: 4.9,
+    reviewsCount: 54
+  },
+  {
+    id: 'feat-3',
+    name: 'Nike Air Zoom Pegasus 40 Running Shoes',
+    category: 'Footwear',
+    price: 8995,
+    originalPrice: 11895,
+    storeName: 'Nike Flagship Store',
+    storeArea: 'Brookefields Mall',
+    distance: '800m',
+    inStock: true,
+    stockCount: 4,
+    imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80',
+    rating: 4.8,
+    reviewsCount: 29
+  },
+  {
+    id: 'feat-4',
+    name: 'Apple MacBook Air M3 (15-inch, 16GB RAM / 512GB SSD)',
+    category: 'Electronics',
+    price: 134900,
+    originalPrice: 144900,
+    storeName: 'Supreme Computers',
+    storeArea: 'DB Road, RS Puram',
+    distance: '450m',
+    inStock: true,
+    stockCount: 2,
+    imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=600&q=80',
+    rating: 5.0,
+    reviewsCount: 19
+  },
+  {
+    id: 'feat-5',
+    name: 'Titan Edge Minimalist Quartz Watch',
+    category: 'Accessories',
+    price: 14495,
+    originalPrice: 16995,
+    storeName: 'World of Titan',
+    storeArea: 'Cross Cut Road, Gandhipuram',
+    distance: '1.5 km',
+    inStock: true,
+    stockCount: 6,
+    imageUrl: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=600&q=80',
+    rating: 4.7,
+    reviewsCount: 16
+  },
+  {
+    id: 'feat-6',
+    name: 'Philips Hue Smart Color LED Starter Kit',
+    category: 'Appliances',
+    price: 4299,
+    originalPrice: 5499,
+    storeName: 'Lightcraft Electricals',
+    storeArea: 'Avinashi Road',
+    distance: '2.1 km',
+    inStock: true,
+    stockCount: 8,
+    imageUrl: 'https://images.unsplash.com/photo-1550985616-10810253b84d?auto=format&fit=crop&w=600&q=80',
+    rating: 4.8,
+    reviewsCount: 42
+  }
+];
+
 interface LocalUserProfile {
   id?: string;
   name?: string;
@@ -748,14 +841,14 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </div>
             </div>
 
-            {/* Empty State / Out of Range Handler */}
-            {filteredProducts.length === 0 && (
-              <div className="border border-white/10 bg-[#0B0C11]/80 backdrop-blur-md rounded-2xl p-8 sm:p-12 text-center space-y-4 my-8">
-                <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
+            {/* Empty Search Result Notice (Only when user explicitly searches and gets 0 results) */}
+            {debouncedQuery !== '' && canonicalProducts.length === 0 && filteredProducts.length === 0 && (
+              <div className="border border-white/10 bg-slate-900/80 backdrop-blur-md rounded-2xl p-8 sm:p-12 text-center space-y-4 my-8">
+                <div className="text-xs font-mono uppercase tracking-widest text-emerald-400 font-bold">
                   Search Result Notice
                 </div>
                 <h3 className="text-xl sm:text-2xl font-black font-['Outfit'] text-white">
-                  No shelf inventory found within {radiusFilter}.
+                  No shelf inventory found for "{debouncedQuery}" within {radiusFilter}.
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
                   Local physical stores might still carry this in their backroom stock, or a store slightly farther away may have it.
@@ -776,7 +869,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                       setBroadcastProduct(searchQuery || 'Product inquiry');
                       setActiveTab('requests');
                     }}
-                    className="w-full sm:w-auto px-6 py-3 rounded-full bg-emerald-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-2 hover:bg-emerald-300 transition-colors cursor-pointer shadow-lg shadow-emerald-400/20"
+                    className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 text-xs font-bold flex items-center justify-center gap-2 hover:from-emerald-400 hover:to-teal-400 transition-colors cursor-pointer shadow-lg shadow-emerald-500/20"
                   >
                     <Radio className="h-3.5 w-3.5" />
                     <span>Broadcast Live Ask to Stores</span>
@@ -786,122 +879,44 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             )}
 
             {/* Verified Global Products Catalog & In-Store Shelf Items */}
-            {(canonicalProducts.length > 0 || filteredProducts.length > 0) && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-xs font-mono uppercase tracking-widest text-slate-300 font-bold">
-                      Global Product Discovery ({canonicalProducts.length > 0 ? canonicalProducts.length : filteredProducts.length} Products)
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-mono text-slate-500">
-                    Within {radiusFilter} · Store Comparison & 30-Min Hold
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-mono uppercase tracking-widest text-slate-300 font-bold">
+                    {debouncedQuery ? `Search Results (${canonicalProducts.length > 0 ? canonicalProducts.length : filteredProducts.length} Items)` : `Featured Nearby Catalog (${(canonicalProducts.length > 0 ? canonicalProducts.length : filteredProducts.length > 0 ? filteredProducts.length : FEATURED_CATALOG_PRODUCTS.length)} Products)`}
                   </span>
                 </div>
+                <span className="text-[11px] font-mono text-slate-500">
+                  Within {radiusFilter} · Store Comparison &amp; 30-Min Hold
+                </span>
+              </div>
 
-                {/* 2-Column / 3-Column Visual Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                  {canonicalProducts.length > 0 ? (
-                    canonicalProducts.map(cp => {
-                      const carryingCount = cp.carryingStores ? cp.carryingStores.length : 0;
-                      const lowestPrice = cp.carryingStores && cp.carryingStores.length > 0
-                        ? Math.min(...cp.carryingStores.map((s: StoreInventoryItem) => s.price))
-                        : 0;
-                      const nearestStore = cp.carryingStores && cp.carryingStores.length > 0 ? cp.carryingStores[0] : null;
-                      const distKm = nearestStore?.distanceKm;
-                      const distanceLabel = distKm != null
-                        ? (distKm < 1 ? `${(distKm * 1000).toFixed(0)}m` : `${distKm.toFixed(1)} km`)
-                        : 'Nearby';
+              {/* 2-Column / 3-Column Visual Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                {canonicalProducts.length > 0 ? (
+                  canonicalProducts.map(cp => {
+                    const carryingCount = cp.carryingStores ? cp.carryingStores.length : 0;
+                    const lowestPrice = cp.carryingStores && cp.carryingStores.length > 0
+                      ? Math.min(...cp.carryingStores.map((s: StoreInventoryItem) => s.price))
+                      : 0;
+                    const nearestStore = cp.carryingStores && cp.carryingStores.length > 0 ? cp.carryingStores[0] : null;
+                    const distKm = nearestStore?.distanceKm;
+                    const distanceLabel = distKm != null
+                      ? (distKm < 1 ? `${(distKm * 1000).toFixed(0)}m` : `${distKm.toFixed(1)} km`)
+                      : 'Nearby';
 
-                      return (
-                        <div
-                          key={cp.id}
-                          onClick={() => setSelectedCanonicalProduct(cp)}
-                          className="group border border-white/10 hover:border-emerald-500/40 bg-[#0B0C11] hover:bg-[#0E1017] rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between cursor-pointer relative"
-                        >
-                          {/* Top Badges over Image */}
-                          <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
-                            <img 
-                              src={cp.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80'} 
-                              alt={cp.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-                            
-                            {/* Status Badges */}
-                            <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-                              <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-emerald-400 font-semibold flex items-center gap-1.5">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                {carryingCount} {carryingCount === 1 ? 'Store' : 'Stores'} Carrying
-                              </span>
-
-                              <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-slate-300 font-semibold flex items-center gap-1">
-                                <MapPin className="h-2.5 w-2.5 text-emerald-400" />
-                                {distanceLabel}
-                              </span>
-                            </div>
-
-                            {/* Store Overlay Pill */}
-                            {nearestStore && (
-                              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                                <span className="text-xs font-semibold text-white drop-shadow-md truncate">
-                                  Nearest: {nearestStore.storeName}
-                                </span>
-                                <span className="text-[10px] text-slate-300 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded border border-white/10">
-                                  {nearestStore.availableQuantity} available
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Card Content Body */}
-                          <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                            <div className="space-y-1">
-                              <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
-                                {cp.name}
-                              </h4>
-                              <p className="text-xs text-slate-400 line-clamp-1">
-                                {cp.brandName ? `${cp.brandName} · ` : ''}{cp.categoryName || 'General'}
-                              </p>
-                            </div>
-
-                            {/* Price & Action Row */}
-                            <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
-                              <div className="font-mono">
-                                <div className="text-[10px] text-slate-400 uppercase tracking-wider">In Stock From</div>
-                                <div className="text-base font-extrabold text-white">
-                                  ₹{lowestPrice.toLocaleString('en-IN')}
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedCanonicalProduct(cp);
-                                }}
-                                className="px-3.5 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs transition-all shadow-md shadow-emerald-400/20 active:scale-95 cursor-pointer"
-                              >
-                                View Stores ({carryingCount})
-                              </button>
-                            </div>
-                          </div>
-
-                        </div>
-                      );
-                    })
-                  ) : (
-                    filteredProducts.map(product => (
+                    return (
                       <div
-                        key={product.id}
-                        onClick={() => setSelectedProduct(product)}
-                        className="group border border-white/10 hover:border-emerald-500/40 bg-[#0B0C11] hover:bg-[#0E1017] rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between cursor-pointer relative"
+                        key={cp.id}
+                        onClick={() => setSelectedCanonicalProduct(cp)}
+                        className="group border border-white/10 hover:border-emerald-500/40 bg-slate-900/80 hover:bg-slate-900/95 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between cursor-pointer relative"
                       >
                         {/* Top Badges over Image */}
                         <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
                           <img 
-                            src={product.imageUrl} 
-                            alt={product.name}
+                            src={cp.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80'} 
+                            alt={cp.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
@@ -910,81 +925,158 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                           <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
                             <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-emerald-400 font-semibold flex items-center gap-1.5">
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                              {product.stockCount} on counter
+                              {carryingCount} {carryingCount === 1 ? 'Store' : 'Stores'} Carrying
                             </span>
 
                             <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-slate-300 font-semibold flex items-center gap-1">
                               <MapPin className="h-2.5 w-2.5 text-emerald-400" />
-                              {product.distance}
+                              {distanceLabel}
                             </span>
                           </div>
 
                           {/* Store Overlay Pill */}
-                          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                            <span className="text-xs font-semibold text-white drop-shadow-md truncate">
-                              {product.storeName}
-                            </span>
-                            <span className="text-[10px] text-slate-300 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded border border-white/10">
-                              {product.storeArea}
-                            </span>
-                          </div>
+                          {nearestStore && (
+                            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                              <span className="text-xs font-semibold text-white drop-shadow-md truncate">
+                                Nearest: {nearestStore.storeName}
+                              </span>
+                              <span className="text-[10px] text-slate-300 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded border border-white/10">
+                                {nearestStore.availableQuantity} available
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Card Content Body */}
                         <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
                           <div className="space-y-1">
                             <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
-                              {product.name}
+                              {cp.name}
                             </h4>
                             <p className="text-xs text-slate-400 line-clamp-1">
-                              Category: {product.category}
+                              {cp.brandName ? `${cp.brandName} · ` : ''}{cp.categoryName || 'General'}
                             </p>
                           </div>
 
                           {/* Price & Action Row */}
                           <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
                             <div className="font-mono">
+                              <div className="text-[10px] text-slate-400 uppercase tracking-wider">In Stock From</div>
                               <div className="text-base font-extrabold text-white">
-                                ₹{product.price.toLocaleString('en-IN')}
+                                ₹{lowestPrice.toLocaleString('en-IN')}
                               </div>
-                              {product.originalPrice && (
-                                <div className="text-[10px] text-slate-500 line-through">
-                                  ₹{product.originalPrice.toLocaleString('en-IN')}
-                                </div>
-                              )}
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleHoldItem(product.name, product.storeName, product.price);
-                                }}
-                                className="px-3.5 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs transition-all shadow-md shadow-emerald-400/20 active:scale-95 cursor-pointer"
-                              >
-                                Hold 30m
-                              </button>
-
-                              <a
-                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${product.storeName}, ${product.storeArea}, Coimbatore`)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="p-2 rounded-full border border-white/15 hover:border-white/40 text-slate-300 hover:text-white transition-colors shrink-0 cursor-pointer"
-                                title="View Map Navigation"
-                              >
-                                <Navigation className="h-3.5 w-3.5" />
-                              </a>
-                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCanonicalProduct(cp);
+                              }}
+                              className="px-3.5 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs transition-all shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer"
+                            >
+                              View Stores ({carryingCount})
+                            </button>
                           </div>
                         </div>
 
                       </div>
-                    ))
-                  )}
-                </div>
+                    );
+                  })
+                ) : (
+                  (filteredProducts.length > 0 ? filteredProducts : FEATURED_CATALOG_PRODUCTS).map(product => (
+                    <div
+                      key={product.id}
+                      onClick={() => setSelectedProduct(product)}
+                      className="group border border-white/10 hover:border-emerald-500/40 bg-slate-900/80 hover:bg-slate-900/95 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between cursor-pointer relative"
+                    >
+                      {/* Top Badges over Image */}
+                      <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
+                        <img 
+                          src={product.imageUrl} 
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+                        
+                        {/* Status Badges */}
+                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+                          <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-emerald-400 font-semibold flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            {product.stockCount} on counter
+                          </span>
+
+                          <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-slate-300 font-semibold flex items-center gap-1">
+                            <MapPin className="h-2.5 w-2.5 text-emerald-400" />
+                            {product.distance}
+                          </span>
+                        </div>
+
+                        {/* Store Overlay Pill */}
+                        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-white drop-shadow-md truncate">
+                            {product.storeName}
+                          </span>
+                          <span className="text-[10px] text-slate-300 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded border border-white/10">
+                            {product.storeArea}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Card Content Body */}
+                      <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
+                            {product.name}
+                          </h4>
+                          <p className="text-xs text-slate-400 line-clamp-1">
+                            Category: {product.category}
+                          </p>
+                        </div>
+
+                        {/* Price & Action Row */}
+                        <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
+                          <div className="font-mono">
+                            <div className="text-base font-extrabold text-white">
+                              ₹{product.price.toLocaleString('en-IN')}
+                            </div>
+                            {product.originalPrice && (
+                              <div className="text-[10px] text-slate-500 line-through">
+                                ₹{product.originalPrice.toLocaleString('en-IN')}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleHoldItem(product.name, product.storeName, product.price);
+                              }}
+                              className="px-3.5 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs transition-all shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer"
+                            >
+                              Hold 30m
+                            </button>
+
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${product.storeName}, ${product.storeArea}, Coimbatore`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-2 rounded-full border border-white/15 hover:border-white/40 text-slate-300 hover:text-white transition-colors shrink-0 cursor-pointer"
+                              title="View Map Navigation"
+                            >
+                              <Navigation className="h-3.5 w-3.5" />
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  ))
+                )}
               </div>
-            )}
+            </div>
+
 
             {/* Nearby Verified Physical Stores Directory */}
             <div className="space-y-4 pt-6">
@@ -1072,12 +1164,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             </div>
 
             {/* Broadcast Form */}
-            <form onSubmit={handleBroadcast} className="space-y-4 border border-white/10 rounded-2xl p-6 bg-[#0B0C11]">
+            <form onSubmit={handleBroadcast} className="space-y-4 border border-white/10 rounded-2xl p-6 bg-slate-900/80 backdrop-blur-md shadow-xl">
               {broadcastError && (
-                <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600">{broadcastError}</p>
+                <p className="rounded-xl bg-rose-500/10 border border-rose-500/20 px-3 py-2 text-xs font-medium text-rose-300">{broadcastError}</p>
               )}
               <div className="space-y-1.5">
-                <label className="text-xs font-mono uppercase tracking-wider text-slate-400 block">
+                <label className="text-xs font-mono uppercase tracking-wider text-slate-300 block font-bold">
                   Product Name &amp; Model
                 </label>
                 <input
@@ -1085,14 +1177,14 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   value={broadcastProduct}
                   onChange={(e) => setBroadcastProduct(e.target.value)}
                   placeholder="e.g. Nike Pegasus 40, Titan Edge watch, Philips 12W LED"
-                  className="w-full bg-[#07080B] border border-white/15 focus:border-white/40 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-600 focus:outline-none"
+                  className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none transition-all"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-mono uppercase tracking-wider text-slate-400 block">
+                  <label className="text-xs font-mono uppercase tracking-wider text-slate-300 block font-bold">
                     Size / Variant
                   </label>
                   <input
@@ -1100,18 +1192,18 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     value={broadcastSize}
                     onChange={(e) => setBroadcastSize(e.target.value)}
                     placeholder="e.g. UK 9, 256GB"
-                    className="w-full bg-[#07080B] border border-white/15 focus:border-white/40 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-600 focus:outline-none"
+                    className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none transition-all"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-mono uppercase tracking-wider text-slate-400 block">
+                  <label className="text-xs font-mono uppercase tracking-wider text-slate-300 block font-bold">
                     Target Radius
                   </label>
                   <select
                     value={broadcastRadius}
                     onChange={(e) => setBroadcastRadius(e.target.value)}
-                    className="w-full bg-[#07080B] border border-white/15 focus:border-white/40 rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none"
+                    className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none transition-all"
                   >
                     <option value="2 km">Within 2 km</option>
                     <option value="5 km">Within 5 km</option>
@@ -1123,7 +1215,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               <button
                 type="submit"
                 disabled={isBroadcasting || !broadcastProduct.trim()}
-                className="w-full py-3.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
+                className="w-full py-3.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
               >
                 {isBroadcasting ? (
                   <>
@@ -1357,31 +1449,33 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             </div>
 
             {/* Counter Reservation Identity Form */}
-            <form onSubmit={handleSaveProfile} className="border border-white/10 rounded-2xl p-5 bg-[#0B0C11] space-y-4">
+            <form onSubmit={handleSaveProfile} className="border border-white/10 rounded-2xl p-5 bg-slate-900/80 backdrop-blur-md shadow-xl space-y-4">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono uppercase tracking-wider text-white font-bold">Counter Identity</span>
-                <span className="text-[10px] text-slate-500 font-mono">· shown at store pickup</span>
+                <span className="text-[10px] text-slate-400 font-mono">· shown at store pickup</span>
               </div>
 
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-mono text-slate-400 block">Your Full Name</label>
+                  <label className="text-xs font-mono text-slate-300 block font-bold">Your Full Name</label>
                   <input
                     type="text"
                     value={customerProfile.name}
                     onChange={(e) => setCustomerProfile({ ...customerProfile, name: e.target.value })}
-                    className="w-full bg-[#07080B] border border-white/15 focus:border-white/40 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white focus:outline-none"
+                    placeholder="Enter your full name"
+                    className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none transition-all"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-mono text-slate-400 block">Mobile Number (For Pass SMS/Verification)</label>
+                  <label className="text-xs font-mono text-slate-300 block font-bold">Mobile Number (For Pass SMS/Verification)</label>
                   <input
                     type="text"
                     value={customerProfile.phone}
                     onChange={(e) => setCustomerProfile({ ...customerProfile, phone: e.target.value })}
-                    className="w-full bg-[#07080B] border border-white/15 focus:border-white/40 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white focus:outline-none font-mono"
+                    placeholder="+91 98765 43210"
+                    className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none font-mono transition-all"
                     required
                   />
                 </div>
@@ -1390,14 +1484,14 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               <div className="flex items-center justify-between pt-2">
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
+                  className="px-6 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
                 >
                   Save Counter Info
                 </button>
 
                 {profileSavedFeedback && (
-                  <span className="text-xs font-mono text-emerald-400 font-bold">
-                    Saved to device
+                  <span className="text-xs font-mono text-emerald-400 font-bold flex items-center gap-1">
+                    ✓ Saved to device
                   </span>
                 )}
               </div>

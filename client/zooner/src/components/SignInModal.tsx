@@ -120,15 +120,18 @@ export const SignInModal: React.FC<SignInModalProps> = ({
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white text-slate-900 border border-slate-200 shadow-2xl p-6 sm:p-8">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-slate-950/95 backdrop-blur-xl text-white border border-white/10 shadow-2xl shadow-emerald-500/10 p-6 sm:p-8">
+        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
           <div>
-            <h3 className="text-xl font-bold text-slate-900 font-['Outfit']">Zooner Account</h3>
-            <p className="text-xs text-slate-500 font-medium">One account for local shopping & store management</p>
+            <h3 className="text-xl font-bold text-white font-['Outfit'] flex items-center gap-2">
+              <span>Zooner Account</span>
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            </h3>
+            <p className="text-xs text-slate-400 font-medium">One account for local shopping & store management</p>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -136,7 +139,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
 
         {/* Tab Selector */}
         {!isSuccess && (
-          <div className="flex rounded-2xl bg-slate-100 p-1 mb-5 border border-slate-200/80">
+          <div className="flex rounded-2xl bg-slate-900/80 p-1 mb-5 border border-white/10">
             <button
               type="button"
               onClick={() => {
@@ -145,8 +148,8 @@ export const SignInModal: React.FC<SignInModalProps> = ({
               }}
               className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
                 activeTab === 'signin'
-                  ? 'bg-white text-slate-950 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               Sign In
@@ -159,8 +162,8 @@ export const SignInModal: React.FC<SignInModalProps> = ({
               }}
               className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
                 activeTab === 'register'
-                  ? 'bg-white text-slate-950 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               Create Account
@@ -169,27 +172,27 @@ export const SignInModal: React.FC<SignInModalProps> = ({
         )}
 
         {authError && (
-          <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-medium text-rose-700">
+          <div className="mb-4 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs font-medium text-rose-300">
             {authError}
           </div>
         )}
 
         {isSuccess ? (
           <div className="py-8 text-center space-y-3">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
               <CheckCircle2 className="h-8 w-8" />
             </div>
-            <h4 className="text-xl font-bold text-slate-900 font-['Outfit']">
+            <h4 className="text-xl font-bold text-white font-['Outfit']">
               {activeTab === 'signin' ? 'Signed in successfully!' : 'Account created successfully!'}
             </h4>
-            <p className="text-xs text-slate-500">
-              Authenticated · <span className="text-emerald-600 font-bold">{signedInRole}</span>
+            <p className="text-xs text-slate-400">
+              Authenticated · <span className="text-emerald-400 font-bold">{signedInRole}</span>
             </p>
           </div>
         ) : activeTab === 'signin' ? (
           <form onSubmit={handleSignIn} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Email Address
               </label>
               <div className="relative">
@@ -200,13 +203,13 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-50 border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none shadow-sm transition-all"
+                  className="w-full rounded-2xl bg-slate-900/90 border border-slate-700/80 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -217,7 +220,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-50 border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none shadow-sm transition-all"
+                  className="w-full rounded-2xl bg-slate-900/90 border border-slate-700/80 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
                 />
               </div>
             </div>
@@ -225,11 +228,11 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20 disabled:opacity-60 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3.5 text-sm font-bold text-slate-950 hover:from-emerald-400 hover:to-teal-400 transition-all shadow-lg shadow-emerald-500/25 disabled:opacity-60 cursor-pointer"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
                   <span>Authenticating...</span>
                 </>
               ) : (
@@ -241,7 +244,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             </button>
 
             {onSwitchToRetailer && (
-              <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-100 font-medium">
+              <div className="text-center text-xs text-slate-400 pt-3 border-t border-white/10 font-medium">
                 Own a physical store?{' '}
                 <button
                   type="button"
@@ -249,7 +252,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     onClose();
                     onSwitchToRetailer();
                   }}
-                  className="text-emerald-600 font-bold hover:underline cursor-pointer"
+                  className="text-emerald-400 font-bold hover:underline cursor-pointer"
                 >
                   Register your store →
                 </button>
@@ -259,7 +262,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
         ) : (
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Full Name
               </label>
               <div className="relative">
@@ -270,13 +273,13 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                   placeholder="e.g. Rahul Sharma"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-50 border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none shadow-sm transition-all"
+                  className="w-full rounded-2xl bg-slate-900/90 border border-slate-700/80 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Email Address
               </label>
               <div className="relative">
@@ -287,13 +290,13 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-50 border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none shadow-sm transition-all"
+                  className="w-full rounded-2xl bg-slate-900/90 border border-slate-700/80 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Mobile Number (Optional)
               </label>
               <div className="relative">
@@ -303,13 +306,13 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                   placeholder="98765 43210"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-50 border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none shadow-sm transition-all"
+                  className="w-full rounded-2xl bg-slate-900/90 border border-slate-700/80 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -320,7 +323,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                   placeholder="At least 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-50 border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none shadow-sm transition-all"
+                  className="w-full rounded-2xl bg-slate-900/90 border border-slate-700/80 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
                 />
               </div>
             </div>
@@ -328,11 +331,11 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20 disabled:opacity-60 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3.5 text-sm font-bold text-slate-950 hover:from-emerald-400 hover:to-teal-400 transition-all shadow-lg shadow-emerald-500/25 disabled:opacity-60 cursor-pointer"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
                   <span>Creating Account...</span>
                 </>
               ) : (
