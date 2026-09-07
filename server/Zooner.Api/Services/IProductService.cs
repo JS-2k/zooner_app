@@ -9,6 +9,7 @@ public interface IProductService
         string? categorySlug,
         double? userLat,
         double? userLon,
+        double? radiusKm = null,
         int page = 1,
         int pageSize = 20
     );

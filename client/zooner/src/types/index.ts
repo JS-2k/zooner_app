@@ -141,11 +141,16 @@ export interface ProductSearchResult {
   categoryName?: string;
   modelNumber?: string;
   gtin?: string;
+  mpn?: string;
   imageUrl?: string;
   description?: string;
+  minPrice?: number;
+  maxPrice?: number;
   lowestPrice?: number;
   highestPrice?: number;
-  carryingStoresCount: number;
+  totalAvailableQuantity?: number;
+  nearbyStoresCount?: number;
+  carryingStoresCount?: number;
   carryingStores?: StoreInventoryItem[];
   variants?: ProductVariantDto[];
 }

@@ -27,10 +27,11 @@ public class ProductsController : ControllerBase
         [FromQuery] string? category,
         [FromQuery] double? userLat,
         [FromQuery] double? userLon,
+        [FromQuery] double? radiusKm = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var response = await _productService.SearchProductsAsync(q, category, userLat, userLon, page, pageSize);
+        var response = await _productService.SearchProductsAsync(q, category, userLat, userLon, radiusKm, page, pageSize);
         return Ok(response);
     }
 

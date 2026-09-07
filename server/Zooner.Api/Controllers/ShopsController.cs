@@ -35,6 +35,21 @@ public class ShopsController : ControllerBase
     }
 
     /// <summary>
+    /// Retrieve nearby public approved & active shops within distance radius
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<List<ShopDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetNearbyShops(
+        [FromQuery] double? userLat = null,
+        [FromQuery] double? userLon = null,
+        [FromQuery] double? radiusKm = null,
+        [FromQuery] string? category = null)
+    {
+        var response = await _shopService.GetNearbyShopsAsync(userLat, userLon, radiusKm, category);
+        return Ok(response);
+    }
+
+    /// <summary>
     /// Retrieve shop details by ID (Public only if Approved, Active & Live; Owners/Admin can view pending/offline)
     /// </summary>
     [HttpGet("{id:guid}")]

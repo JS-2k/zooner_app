@@ -23,6 +23,7 @@ public class ProductService : IProductService
         string? categorySlug,
         double? userLat,
         double? userLon,
+        double? radiusKm = null,
         int page = 1,
         int pageSize = 20)
     {
@@ -79,9 +80,9 @@ public class ProductService : IProductService
                          si.ProductVariant != null && 
                          productIds.Contains(si.ProductVariant.ProductId) && 
                          si.Store != null && 
-                         si.Store.IsActive &&
+                         si.Store.IsActive && 
+                         si.Store.IsLiveEnabled &&
                          si.Store.VerificationStatus == ShopVerificationStatus.Approved)
-
             .AsNoTracking()
             .ToListAsync();
 
@@ -103,6 +104,11 @@ public class ProductService : IProductService
                 if (userLat.HasValue && userLon.HasValue)
                 {
                     dist = GeoLocationHelper.CalculateDistanceKm(userLat.Value, userLon.Value, inv.Store.Latitude, inv.Store.Longitude);
+                }
+
+                if (radiusKm.HasValue && dist.HasValue && dist.Value > radiusKm.Value)
+                {
+                    continue; // Skip stores outside the user's selected radius
                 }
 
                 carryingStores.Add(new StoreInventoryDetailDto
@@ -234,7 +240,8 @@ public class ProductService : IProductService
                          si.ProductVariant != null && 
                          si.ProductVariant.ProductId == productId && 
                          si.Store != null && 
-                         si.Store.IsActive &&
+                         si.Store.IsActive && 
+                         si.Store.IsLiveEnabled &&
                          si.Store.VerificationStatus == ShopVerificationStatus.Approved)
 
             .AsNoTracking()

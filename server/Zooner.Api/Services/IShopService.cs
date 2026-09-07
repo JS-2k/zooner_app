@@ -15,4 +15,5 @@ public interface IShopService
     Task<ApiResponse<List<ShopOperatingHourDto>>> GetOperatingHoursAsync(Guid shopId, Guid? requestingUserId = null, bool isAdmin = false);
     Task<ApiResponse> UpdateOperatingHoursAsync(Guid ownerId, Guid shopId, List<ShopOperatingHourDto> hours);
     Task<List<Shop>> FindNearbyEligibleShopsAsync(double latitude, double longitude, double radiusKm, Guid categoryId);
+    Task<ApiResponse<List<ShopDto>>> GetNearbyShopsAsync(double? userLat = null, double? userLon = null, double? radiusKm = null, string? category = null);
 }

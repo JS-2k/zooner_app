@@ -91,4 +91,68 @@ public class ShopServiceTests
         Assert.NotNull(fetched.Data);
         Assert.False(fetched.Data.IsLiveEnabled);
     }
+
+    [Fact]
+    public async Task GetNearbyShops_Enforces_Approved_Active_And_LiveEnabled()
+    {
+        using var context = TestDbContextFactory.Create(nameof(GetNearbyShops_Enforces_Approved_Active_And_LiveEnabled));
+        var shopService = new ShopService(context, _config, NullLogger<ShopService>.Instance);
+
+        var owner = new User { Id = Guid.NewGuid(), FullName = "Owner", Email = "owner@test.com", PasswordHash = "h" };
+        context.Users.Add(owner);
+
+        // Shop 1: Approved, Active, LiveEnabled = true -> Visible
+        var shop1 = new Shop
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = owner.Id,
+            Name = "Active Live Store",
+            Phone = "123",
+            Address = "DB Road, Coimbatore",
+            Latitude = 11.0168,
+            Longitude = 76.9558,
+            VerificationStatus = ShopVerificationStatus.Approved,
+            IsActive = true,
+            IsLiveEnabled = true
+        };
+
+        // Shop 2: Pending -> Hidden
+        var shop2 = new Shop
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = owner.Id,
+            Name = "Pending Store",
+            Phone = "123",
+            Address = "DB Road, Coimbatore",
+            Latitude = 11.0168,
+            Longitude = 76.9558,
+            VerificationStatus = ShopVerificationStatus.Pending,
+            IsActive = true,
+            IsLiveEnabled = true
+        };
+
+        // Shop 3: Offline (IsLiveEnabled = false) -> Hidden
+        var shop3 = new Shop
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = owner.Id,
+            Name = "Offline Store",
+            Phone = "123",
+            Address = "DB Road, Coimbatore",
+            Latitude = 11.0168,
+            Longitude = 76.9558,
+            VerificationStatus = ShopVerificationStatus.Approved,
+            IsActive = true,
+            IsLiveEnabled = false
+        };
+
+        context.Shops.AddRange(shop1, shop2, shop3);
+        await context.SaveChangesAsync();
+
+        var res = await shopService.GetNearbyShopsAsync(11.0168, 76.9558, 5);
+        Assert.True(res.Success);
+        Assert.NotNull(res.Data);
+        Assert.Single(res.Data);
+        Assert.Equal("Active Live Store", res.Data[0].Name);
+    }
 }

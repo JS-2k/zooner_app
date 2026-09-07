@@ -312,7 +312,9 @@ export interface ShopProfileDto {
   longitude: number;
   isLiveEnabled: boolean;
   isOpen: boolean;
+  isCurrentlyOpen?: boolean;
   isVerified?: boolean;
+  distanceKm?: number;
   categoryName?: string;
   categories?: { id: string; name: string }[];
   products?: { id: string; name: string; price: number; originalPrice?: number; inStock?: boolean; stockCount?: number; imageUrl?: string }[];
@@ -418,11 +420,13 @@ export async function fetchCategories(): Promise<CategoryDto[]> {
   }
 }
 
-export async function fetchShops(lat?: number, lon?: number): Promise<ShopProfileDto[]> {
+export async function fetchShops(lat?: number, lon?: number, radiusKm?: number, category?: string): Promise<ShopProfileDto[]> {
   try {
     const params = new URLSearchParams();
     if (lat) params.append('userLat', lat.toString());
     if (lon) params.append('userLon', lon.toString());
+    if (radiusKm) params.append('radiusKm', radiusKm.toString());
+    if (category && category !== 'all') params.append('category', category);
 
     const url = `${API_BASE_URL}/Shops${params.toString() ? '?' + params.toString() : ''}`;
     const res = await fetch(url);
@@ -480,13 +484,14 @@ export async function fetchTargetedAds(lat = 11.0168, lon = 76.9558, category = 
 
 // ── GLOBAL PRODUCT CATALOG API METHODS ──
 
-export async function searchProducts(q?: string, category?: string, lat?: number, lon?: number): Promise<ProductSearchResult[]> {
+export async function searchProducts(q?: string, category?: string, lat?: number, lon?: number, radiusKm?: number): Promise<ProductSearchResult[]> {
   try {
     const params = new URLSearchParams();
     if (q) params.append('q', q);
     if (category && category !== 'all') params.append('category', category);
     if (lat) params.append('userLat', lat.toString());
     if (lon) params.append('userLon', lon.toString());
+    if (radiusKm) params.append('radiusKm', radiusKm.toString());
 
     const res = await fetch(`${API_BASE_URL}/Products/search?${params.toString()}`);
     if (!res.ok) return [];

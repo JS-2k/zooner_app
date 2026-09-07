@@ -336,6 +336,49 @@ public class ShopService : IShopService
         return eligibleShops;
     }
 
+    public async Task<ApiResponse<List<ShopDto>>> GetNearbyShopsAsync(double? userLat = null, double? userLon = null, double? radiusKm = null, string? category = null)
+    {
+        var query = _context.Shops
+            .Where(s => s.IsActive 
+                     && s.IsLiveEnabled 
+                     && s.VerificationStatus == ShopVerificationStatus.Approved)
+            .Include(s => s.ShopCategories).ThenInclude(sc => sc.Category)
+            .Include(s => s.OperatingHours)
+            .AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(category) && !category.Equals("all", StringComparison.OrdinalIgnoreCase))
+        {
+            var catNorm = category.Trim().ToLower();
+            query = query.Where(s => s.ShopCategories.Any(sc => 
+                sc.Category != null && 
+                (sc.Category.Slug.ToLower() == catNorm || sc.Category.Name.ToLower().Contains(catNorm))));
+        }
+
+        var shops = await query.ToListAsync();
+
+        var result = new List<ShopDto>();
+        foreach (var s in shops)
+        {
+            var dto = MapToShopDto(s, false, userLat, userLon);
+            if (radiusKm.HasValue && dto.DistanceKm.HasValue && dto.DistanceKm.Value > radiusKm.Value)
+            {
+                continue; // Outside requested radius
+            }
+            result.Add(dto);
+        }
+
+        if (userLat.HasValue && userLon.HasValue)
+        {
+            result = result.OrderBy(s => s.DistanceKm ?? 9999).ToList();
+        }
+        else
+        {
+            result = result.OrderByDescending(s => s.CreatedAtUtc).ToList();
+        }
+
+        return ApiResponse<List<ShopDto>>.Ok(result);
+    }
+
     private async Task<ShopDto?> LoadShopDtoAsync(Guid shopId, bool includeOwnerDetails = false, double? userLat = null, double? userLon = null)
     {
         var shop = await _context.Shops

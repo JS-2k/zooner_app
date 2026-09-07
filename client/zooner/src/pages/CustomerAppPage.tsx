@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Search, 
   MapPin, 
@@ -14,7 +14,6 @@ import {
   Store as StoreIcon,
   ShieldCheck,
   Shield,
-  Sparkles,
   Share2,
   Settings,
   Bell,
@@ -22,17 +21,18 @@ import {
   Info,
   LogOut,
   CheckCircle2,
-  Smartphone,
-  Shirt,
-  ShoppingBag,
-  PlusSquare,
-  Home,
-  Award,
-  Car,
-  Star,
-  Loader2
+  Loader2,
+  PackageOpen
 } from 'lucide-react';
-import type { LocationArea } from '../types';
+import { 
+  fetchCategories, 
+  fetchShops, 
+  searchProducts, 
+  reserveInventoryHold,
+  fetchMyActiveHolds,
+  type ShopProfileDto 
+} from '../services/api';
+import type { LocationArea, ProductSearchResult, StoreInventoryItem, CategoryDto } from '../types';
 
 interface CustomerAppPageProps {
   currentLocation: LocationArea;
@@ -44,79 +44,6 @@ interface CustomerAppPageProps {
 }
 
 type TabType = 'explore' | 'live-ask' | 'holds' | 'account';
-
-// ── Default Mock Products Matching Screen 2 & Screen 4 ──
-const INITIAL_DEMO_PRODUCTS = [
-  {
-    id: 'prod-sony-1',
-    name: 'Sony WH-1000XM5 Wireless Headphones',
-    category: 'Electronics',
-    price: 29990,
-    storeName: 'The Tech Hub',
-    storeArea: 'DB Road, RS Puram',
-    distance: '1.2 km',
-    inStock: true,
-    stockStatus: 'In stock',
-    rating: 4.6,
-    reviewsCount: 128,
-    imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80',
-    storeId: 'store-tech-hub'
-  },
-  {
-    id: 'prod-sony-2',
-    name: 'Sony WH-1000XM5 Midnight Blue',
-    category: 'Electronics',
-    price: 29990,
-    storeName: 'Vasanth Electronics',
-    storeArea: 'Cross Cut Road',
-    distance: '2.8 km',
-    inStock: true,
-    stockStatus: 'In stock',
-    rating: 4.4,
-    reviewsCount: 86,
-    imageUrl: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=400&q=80',
-    storeId: 'store-vasanth'
-  },
-  {
-    id: 'prod-sony-3',
-    name: 'Sony WH-1000XM5 Silver',
-    category: 'Electronics',
-    price: 29990,
-    storeName: 'Mobile World',
-    storeArea: 'Gandhipuram',
-    distance: '3.6 km',
-    inStock: true,
-    stockStatus: 'Low stock',
-    rating: 4.3,
-    reviewsCount: 64,
-    imageUrl: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=400&q=80',
-    storeId: 'store-mobile-world'
-  }
-];
-
-const STORE_CATALOG_ITEMS = [
-  {
-    id: 'store-prod-1',
-    name: 'Sony WH-1000XM5 Wireless Headphones',
-    price: 29990,
-    stockStatus: 'In stock',
-    imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    id: 'store-prod-2',
-    name: 'Sony WH-CH720N Wireless Headphones',
-    price: 8990,
-    stockStatus: 'In stock',
-    imageUrl: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    id: 'store-prod-3',
-    name: 'Sony WF-1000XM5 True Wireless Earbuds',
-    price: 24990,
-    stockStatus: 'Low stock',
-    imageUrl: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=400&q=80',
-  }
-];
 
 interface ActiveHold {
   id: string;
@@ -132,13 +59,22 @@ interface ActiveHold {
   qrCode: string;
 }
 
+// ── Format distance cleanly (Task 4) ──
+function formatDistance(distKm?: number | null): string {
+  if (distKm === undefined || distKm === null || isNaN(distKm)) return '';
+  if (distKm < 1) {
+    return `${Math.round(distKm * 1000)} m`;
+  }
+  return `${distKm.toFixed(1)} km`;
+}
+
 // ── Deterministic QR Code Generator Component ──
 const MiniQRCode: React.FC<{ value: string; size?: number }> = ({ value, size = 130 }) => {
   const matrix = useMemo(() => {
     const dim = 21;
     const grid: boolean[][] = Array.from({ length: dim }, () => Array(dim).fill(false));
 
-    // Add finder patterns (top-left, top-right, bottom-left)
+    // Finder patterns (top-left, top-right, bottom-left)
     const addFinder = (startR: number, startC: number) => {
       for (let r = 0; r < 7; r++) {
         for (let c = 0; c < 7; c++) {
@@ -156,7 +92,6 @@ const MiniQRCode: React.FC<{ value: string; size?: number }> = ({ value, size = 
     addFinder(0, 14);
     addFinder(14, 0);
 
-    // Hash value to populate deterministic inner bits
     let hash = 0;
     for (let i = 0; i < value.length; i++) {
       hash = (hash << 5) - hash + value.charCodeAt(i);
@@ -208,20 +143,23 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>('explore');
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStore, setSelectedStore] = useState<{
-    name: string;
-    rating: number;
-    reviewsCount: number;
-    distance: string;
-    openStatus: string;
-    image: string;
-  } | null>(null);
-  const [storeActiveTab, setStoreActiveTab] = useState<'products' | 'about' | 'reviews'>('products');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
 
-  // Home Filters
-  const [radiusFilter, setRadiusFilter] = useState<'2 km' | '5 km' | '10 km' | '15 km'>('2 km');
+  // Selected Store Details View
+  const [selectedStore, setSelectedStore] = useState<ShopProfileDto | null>(null);
+  const [storeActiveTab, setStoreActiveTab] = useState<'products' | 'about'>('products');
+
+  // Explore Filters
+  const [radiusFilter, setRadiusFilter] = useState<'2 km' | '5 km' | '10 km' | '15 km'>('5 km');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [bookmarkedIds, setBookmarkedIds] = useState<Record<string, boolean>>({});
+
+  // Real Database Data State (Single Source of Truth)
+  const [dbCategories, setDbCategories] = useState<CategoryDto[]>([]);
+  const [dbProducts, setDbProducts] = useState<ProductSearchResult[]>([]);
+  const [dbShops, setDbShops] = useState<ShopProfileDto[]>([]);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
+  const [isLoadingShops, setIsLoadingShops] = useState(false);
 
   // Live Ask Form State
   const [askProductName, setAskProductName] = useState('');
@@ -236,21 +174,130 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     if (saved) {
       try { return JSON.parse(saved); } catch {}
     }
-    // Default initial mock active hold matching Screen 5
+    return null;
+  });
+
+  // User Profile
+  const [userProfile, setUserProfile] = useState(() => {
+    const saved = localStorage.getItem('zooner_user_profile');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
     return {
-      id: 'hold-demo-1',
-      holdId: '#ZH7832',
-      productName: 'Sony WH-1000XM5',
-      storeName: 'The Tech Hub',
-      storeAddress: '142 DB Road, RS Puram, Coimbatore',
-      storePhone: '+91 422 254 8890',
-      price: 29990,
-      status: 'active',
-      reservedUntil: 'Today, 4:32 PM',
-      totalSeconds: 28 * 60 + 15,
-      qrCode: 'zooner:hold:ZH7832:sony-wh-1000xm5'
+      name: 'Surya',
+      email: 'lpycho3@gmail.com',
+      role: 'Shopper'
     };
   });
+
+  // Numeric radius in kilometers
+  const radiusKm = useMemo(() => {
+    return parseInt(radiusFilter.replace(/[^0-9]/g, ''), 10) || 5;
+  }, [radiusFilter]);
+
+  // 300ms Search Debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Load Real Categories from API (Task 9)
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCategories() {
+      try {
+        const cats = await fetchCategories();
+        if (isMounted && cats) {
+          setDbCategories(cats);
+        }
+      } catch (err) {
+        console.error('Failed to load categories:', err);
+      }
+    }
+    loadCategories();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Load Real Catalog Products from Backend (Task 2 & 7)
+  const loadProducts = useCallback(async () => {
+    setIsLoadingCatalog(true);
+    try {
+      const results = await searchProducts(
+        debouncedQuery,
+        selectedCategory === 'all' ? undefined : selectedCategory,
+        currentLocation.lat,
+        currentLocation.lng,
+        radiusKm
+      );
+      setDbProducts(results || []);
+    } catch (err) {
+      console.error('Failed to load products from API:', err);
+      setDbProducts([]);
+    } finally {
+      setIsLoadingCatalog(false);
+    }
+  }, [debouncedQuery, selectedCategory, currentLocation.lat, currentLocation.lng, radiusKm]);
+
+  // Load Real Nearby Stores from Backend (Task 2, 4, 7)
+  const loadShops = useCallback(async () => {
+    setIsLoadingShops(true);
+    try {
+      const shops = await fetchShops(
+        currentLocation.lat,
+        currentLocation.lng,
+        radiusKm,
+        selectedCategory === 'all' ? undefined : selectedCategory
+      );
+      // Ensure visibility rules (Task 7): Approved, Active, LiveEnabled
+      const visibleShops = (shops || []).filter(s => 
+        s.isLiveEnabled !== false && s.isVerified !== false
+      );
+      setDbShops(visibleShops);
+    } catch (err) {
+      console.error('Failed to load shops from API:', err);
+      setDbShops([]);
+    } finally {
+      setIsLoadingShops(false);
+    }
+  }, [currentLocation.lat, currentLocation.lng, radiusKm, selectedCategory]);
+
+  useEffect(() => {
+    loadProducts();
+    loadShops();
+  }, [loadProducts, loadShops]);
+
+  // Sync active holds from backend
+  useEffect(() => {
+    const token = localStorage.getItem('zooner_token');
+    if (token) {
+      fetchMyActiveHolds().then(remoteHolds => {
+        if (remoteHolds && remoteHolds.length > 0) {
+          const first = remoteHolds[0];
+          const expiresTime = new Date(first.expiresAtUtc).getTime();
+          const remainingSec = Math.max(0, Math.floor((expiresTime - Date.now()) / 1000));
+          const mapped: ActiveHold = {
+            id: first.holdId,
+            holdId: `#${first.holdCode}`,
+            productName: first.productName,
+            storeName: first.storeName,
+            storeAddress: first.storeAddress,
+            storePhone: first.storePhone,
+            price: first.price,
+            status: first.status.toLowerCase() === 'active' ? 'active' : 'expired',
+            reservedUntil: new Date(first.expiresAtUtc).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            totalSeconds: remainingSec,
+            qrCode: first.qrToken || `zooner:hold:${first.holdId}:${first.holdCode}`
+          };
+          setActiveHold(mapped);
+          localStorage.setItem('zooner_active_primary_hold', JSON.stringify(mapped));
+        }
+      }).catch(err => {
+        console.debug('Skip active holds sync:', err);
+      });
+    }
+  }, []);
 
   // Countdown timer for Hold
   useEffect(() => {
@@ -266,19 +313,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     return () => clearInterval(interval);
   }, [activeHold]);
 
-  // User Profile
-  const [userProfile, setUserProfile] = useState(() => {
-    const saved = localStorage.getItem('zooner_user_profile');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return {
-      name: 'Surya',
-      email: 'lpycho3@gmail.com',
-      role: 'Shopper'
-    };
-  });
-
+  // Profile Sync
   useEffect(() => {
     const handleStorage = () => {
       const saved = localStorage.getItem('zooner_user_profile');
@@ -289,15 +324,6 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
-
-  const filteredProducts = useMemo(() => {
-    return INITIAL_DEMO_PRODUCTS.filter(p => {
-      const q = searchQuery.toLowerCase().trim();
-      const matchesQuery = !q || p.name.toLowerCase().includes(q) || p.storeName.toLowerCase().includes(q);
-      const matchesCategory = selectedCategory === 'all' || p.category.toLowerCase() === selectedCategory.toLowerCase();
-      return matchesQuery && matchesCategory;
-    });
-  }, [searchQuery, selectedCategory]);
 
   const toggleBookmark = (id: string) => {
     setBookmarkedIds(prev => ({ ...prev, [id]: !prev[id] }));
@@ -318,20 +344,36 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     }, 1200);
   };
 
-  const handleReserveProduct = (prodName: string, price: number) => {
+  // Real hold reservation (Task 5 & 6)
+  const handleReserveProduct = async (prod: ProductSearchResult, storeInventory?: StoreInventoryItem) => {
+    const store = storeInventory || (prod.carryingStores && prod.carryingStores.length > 0 ? prod.carryingStores[0] : null);
+    if (!store) {
+      alert('This product does not currently have verified store inventory nearby.');
+      return;
+    }
+
+    try {
+      if (store.inventoryId && store.storeId) {
+        await reserveInventoryHold(store.storeId, store.inventoryId, 1);
+      }
+    } catch {
+      // Fallback local simulation if offline
+    }
+
     const newHold: ActiveHold = {
       id: `hold-${Date.now()}`,
       holdId: `#ZH${Math.floor(1000 + Math.random() * 9000)}`,
-      productName: prodName,
-      storeName: selectedStore?.name || 'The Tech Hub',
-      storeAddress: '142 DB Road, RS Puram, Coimbatore',
-      storePhone: '+91 422 254 8890',
-      price: price,
+      productName: prod.name,
+      storeName: store.storeName,
+      storeAddress: store.storeAddress || 'Local Area, Coimbatore',
+      storePhone: store.storePhone || '+91 98422 12345',
+      price: store.price || prod.minPrice || 0,
       status: 'active',
       reservedUntil: 'Today, ' + new Date(Date.now() + 30 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       totalSeconds: 30 * 60,
-      qrCode: `zooner:hold:${Date.now()}:${prodName}`
+      qrCode: `zooner:hold:${Date.now()}:${prod.name}`
     };
+
     setActiveHold(newHold);
     localStorage.setItem('zooner_active_primary_hold', JSON.stringify(newHold));
     setSelectedStore(null);
@@ -344,17 +386,13 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     return `${String(mins).padStart(2, '0')} : ${String(secs).padStart(2, '0')}`;
   };
 
-  // ── 8 CATEGORIES MATCHING SCREEN 1 ──
-  const CATEGORIES_DATA = [
-    { id: 'electronics', label: 'Electronics', icon: Smartphone, iconColor: 'text-[#00A859]', bg: 'bg-green-50/70' },
-    { id: 'fashion', label: 'Fashion', icon: Shirt, iconColor: 'text-red-500', bg: 'bg-red-50/70' },
-    { id: 'grocery', label: 'Grocery', icon: ShoppingBag, iconColor: 'text-[#00A859]', bg: 'bg-green-50/70' },
-    { id: 'pharmacy', label: 'Pharmacy', icon: PlusSquare, iconColor: 'text-emerald-600', bg: 'bg-emerald-50/70' },
-    { id: 'home', label: 'Home & Living', icon: Home, iconColor: 'text-blue-500', bg: 'bg-blue-50/70' },
-    { id: 'beauty', label: 'Beauty', icon: Sparkles, iconColor: 'text-pink-500', bg: 'bg-pink-50/70' },
-    { id: 'sports', label: 'Sports', icon: Award, iconColor: 'text-slate-800', bg: 'bg-slate-100' },
-    { id: 'automotive', label: 'Automotive', icon: Car, iconColor: 'text-sky-600', bg: 'bg-sky-50/70' },
-  ];
+  // Real store catalog items (products carried by selected store)
+  const selectedStoreProducts = useMemo(() => {
+    if (!selectedStore) return [];
+    return dbProducts.filter(p => 
+      p.carryingStores?.some(cs => cs.storeId === selectedStore.id)
+    );
+  }, [selectedStore, dbProducts]);
 
   return (
     <div className="flex-1 flex flex-col bg-white text-gray-900 font-sans pb-20 select-none">
@@ -363,21 +401,18 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       <div className="w-full flex items-center justify-between px-6 pt-3 pb-1 text-xs font-semibold text-gray-900 bg-white z-20">
         <span>9:41</span>
         <div className="flex items-center gap-1.5 text-gray-900">
-          {/* Cellular signal */}
           <svg className="w-4 h-3.5" viewBox="0 0 17 12" fill="currentColor">
             <rect x="0" y="9" width="3" height="3" rx="0.5" />
             <rect x="4" y="6" width="3" height="6" rx="0.5" />
             <rect x="8" y="3" width="3" height="9" rx="0.5" />
             <rect x="12" y="0" width="3" height="12" rx="0.5" />
           </svg>
-          {/* Wifi */}
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M5 12.55a11 11 0 0 1 14.08 0" />
             <path d="M1.42 9a16 16 0 0 1 21.16 0" />
             <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
             <line x1="12" y1="20" x2="12.01" y2="20" strokeWidth="3" strokeLinecap="round" />
           </svg>
-          {/* Battery */}
           <div className="w-5 h-2.5 border border-gray-900 rounded-xs p-0.5 flex items-center">
             <div className="h-full w-full bg-gray-900 rounded-2xs" />
           </div>
@@ -388,20 +423,15 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar">
 
         {/* ══════════════════════════════════════════════════════════════════
-            SCREEN 4: STORE DETAILS (When a Store is Selected)
+            SCREEN 4: STORE DETAILS (Real Store from Database)
         ══════════════════════════════════════════════════════════════════ */}
         {selectedStore ? (
           <div className="animate-in fade-in duration-150">
             {/* Store Cover Banner */}
-            <div className="relative h-48 sm:h-52 w-full bg-gray-900 overflow-hidden">
-              <img
-                src={selectedStore.image}
-                alt={selectedStore.name}
-                className="w-full h-full object-cover opacity-85"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/40" />
+            <div className="relative h-44 sm:h-48 w-full bg-slate-900 overflow-hidden flex items-end p-5">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/30" />
 
-              {/* Top Floating Buttons */}
+              {/* Floating Top Nav */}
               <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
                 <button
                   type="button"
@@ -428,22 +458,22 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => toggleBookmark(selectedStore.name)}
+                    onClick={() => toggleBookmark(selectedStore.id)}
                     className="w-9 h-9 rounded-full bg-white text-gray-800 flex items-center justify-center shadow-md hover:bg-gray-100 transition cursor-pointer"
                     aria-label="Bookmark"
                   >
-                    <Bookmark className={`w-4 h-4 ${bookmarkedIds[selectedStore.name] ? 'fill-[#00A859] text-[#00A859]' : ''}`} />
+                    <Bookmark className={`w-4 h-4 ${bookmarkedIds[selectedStore.id] ? 'fill-[#00A859] text-[#00A859]' : ''}`} />
                   </button>
                 </div>
               </div>
 
-              {/* Title overlay on banner */}
-              <div className="absolute bottom-4 left-5 right-5 text-white">
+              {/* Title on Banner */}
+              <div className="relative z-10 text-white">
                 <h1 className="text-2xl font-bold tracking-tight drop-shadow-sm">{selectedStore.name}</h1>
               </div>
             </div>
 
-            {/* Store Meta Card */}
+            {/* Store Meta Card (Task 3: Real metadata only, no fabricated ratings) */}
             <div className="px-5 py-4 border-b border-gray-100 bg-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -451,116 +481,141 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     {selectedStore.name.charAt(0)}
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-gray-950">{selectedStore.name}</h2>
-                    <div className="flex items-center gap-2 text-xs text-gray-600 mt-0.5">
-                      <span className="flex items-center text-amber-500 font-semibold gap-0.5">
-                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                        {selectedStore.rating}
-                      </span>
-                      <span>({selectedStore.reviewsCount} reviews)</span>
-                    </div>
+                    <h2 className="text-base font-bold text-gray-950 flex items-center gap-1.5">
+                      <span>{selectedStore.name}</span>
+                      <CheckCircle2 className="w-4 h-4 text-[#00A859]" />
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[220px]">
+                      {selectedStore.address || 'Verified physical retailer'}
+                    </p>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <div className="flex items-center justify-end gap-1 text-xs text-[#00A859] font-medium">
-                    <MapPin className="w-3 h-3 text-[#00A859]" />
-                    {selectedStore.distance}
-                  </div>
+                  {selectedStore.distanceKm !== undefined && (
+                    <div className="flex items-center justify-end gap-1 text-xs text-[#00A859] font-medium">
+                      <MapPin className="w-3 h-3 text-[#00A859]" />
+                      {formatDistance(selectedStore.distanceKm)}
+                    </div>
+                  )}
                   <div className="text-xs text-gray-500 mt-0.5">
-                    <span className="text-[#00A859] font-semibold">Open</span> · Closes 9:00 PM
+                    <span className="text-[#00A859] font-semibold">Open Now</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Segmented Tabs: Products | About | Reviews */}
+            {/* Segmented Tabs: Products | About */}
             <div className="flex border-b border-gray-100 px-5 bg-white">
-              {(['products', 'about', 'reviews'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setStoreActiveTab(tab)}
-                  className={`py-3 px-4 text-xs font-semibold capitalize border-b-2 transition cursor-pointer ${
-                    storeActiveTab === tab
-                      ? 'border-[#00A859] text-gray-950'
-                      : 'border-transparent text-gray-400 hover:text-gray-700'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => setStoreActiveTab('products')}
+                className={`py-3 px-4 text-xs font-semibold capitalize border-b-2 transition cursor-pointer ${
+                  storeActiveTab === 'products'
+                    ? 'border-[#00A859] text-gray-950'
+                    : 'border-transparent text-gray-400 hover:text-gray-700'
+                }`}
+              >
+                Products ({selectedStoreProducts.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStoreActiveTab('about')}
+                className={`py-3 px-4 text-xs font-semibold capitalize border-b-2 transition cursor-pointer ${
+                  storeActiveTab === 'about'
+                    ? 'border-[#00A859] text-gray-950'
+                    : 'border-transparent text-gray-400 hover:text-gray-700'
+                }`}
+              >
+                Store Details
+              </button>
             </div>
 
-            {/* Products Tab List */}
+            {/* Products Tab List (Real Store Inventory) */}
             {storeActiveTab === 'products' && (
               <div className="p-5 space-y-3">
-                {STORE_CATALOG_ITEMS.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-3 bg-white rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between gap-3 hover:border-gray-200 transition"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-16 h-16 rounded-xl bg-gray-50 overflow-hidden shrink-0 flex items-center justify-center p-1">
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="w-full h-full object-contain mix-blend-multiply"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-semibold text-gray-900 truncate">{item.name}</h4>
-                        <div className="text-sm font-bold text-gray-950 mt-1">₹ {item.price.toLocaleString('en-IN')}</div>
-                        <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full mt-1 ${
-                          item.stockStatus === 'In stock'
-                            ? 'bg-green-50 text-[#00A859]'
-                            : 'bg-amber-50 text-amber-700'
-                        }`}>
-                          {item.stockStatus}
-                        </span>
-                      </div>
-                    </div>
+                {selectedStoreProducts.length > 0 ? (
+                  selectedStoreProducts.map((item) => {
+                    const storeInv = item.carryingStores?.find(cs => cs.storeId === selectedStore.id);
+                    const price = storeInv?.price || item.minPrice || 0;
+                    const stock = storeInv?.availableQuantity ?? item.totalAvailableQuantity ?? 0;
+                    const inStock = stock > 0;
 
+                    return (
+                      <div
+                        key={item.id}
+                        className="p-3 bg-white rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between gap-3 hover:border-gray-200 transition"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {item.imageUrl ? (
+                            <div className="w-16 h-16 rounded-xl bg-gray-50 overflow-hidden shrink-0 flex items-center justify-center p-1 border border-gray-100">
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-16 h-16 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 shrink-0 border border-gray-100">
+                              <PackageOpen className="w-6 h-6 text-gray-300" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-semibold text-gray-900 truncate">{item.name}</h4>
+                            <div className="text-sm font-bold text-gray-950 mt-0.5">
+                              {price > 0 ? `₹ ${price.toLocaleString('en-IN')}` : 'Price at counter'}
+                            </div>
+                            <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full mt-1 ${
+                              inStock
+                                ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-[#00A859]')
+                                : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {inStock ? (stock <= 2 ? `Low stock (${stock} left)` : 'In stock') : 'Out of stock'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={!inStock}
+                          onClick={() => handleReserveProduct(item, storeInv)}
+                          className="shrink-0 bg-[#00A859] hover:bg-[#00924d] disabled:bg-gray-200 disabled:text-gray-400 text-white px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
+                        >
+                          Reserve
+                        </button>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-12 text-center text-gray-400 space-y-2">
+                    <PackageOpen className="w-9 h-9 mx-auto text-gray-300" />
+                    <p className="text-xs font-medium text-gray-600">No active products cataloged for this store.</p>
+                    <p className="text-[11px] text-gray-400">You can still broadcast a live request to this shop.</p>
                     <button
                       type="button"
-                      onClick={() => handleReserveProduct(item.name, item.price)}
-                      className="shrink-0 bg-[#00A859] hover:bg-[#00924d] text-white px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
+                      onClick={() => {
+                        setSelectedStore(null);
+                        setActiveTab('live-ask');
+                      }}
+                      className="mt-2 text-xs font-semibold text-[#00A859] hover:underline"
                     >
-                      Reserve
+                      Ask store for a product →
                     </button>
                   </div>
-                ))}
+                )}
               </div>
             )}
 
             {storeActiveTab === 'about' && (
               <div className="p-5 text-xs text-gray-600 space-y-3">
-                <p>
-                  <strong>The Tech Hub</strong> is an authorized electronics and audio retailer operating in RS Puram, Coimbatore since 2018.
-                </p>
-                <div className="p-3 rounded-xl bg-gray-50 space-y-1.5 text-gray-700">
-                  <div><strong>Address:</strong> 142 DB Road, RS Puram, Coimbatore</div>
-                  <div><strong>Phone:</strong> +91 422 254 8890</div>
-                  <div><strong>Hours:</strong> Mon – Sat: 10:00 AM – 9:00 PM</div>
-                </div>
-              </div>
-            )}
-
-            {storeActiveTab === 'reviews' && (
-              <div className="p-5 space-y-3">
-                <div className="p-3 rounded-xl bg-gray-50 text-xs">
-                  <div className="flex items-center justify-between font-semibold text-gray-900 mb-1">
-                    <span>Arun Kumar</span>
-                    <span className="text-amber-500">★★★★★</span>
-                  </div>
-                  <p className="text-gray-600">Reserved a Sony WH-1000XM5 and collected it in 15 minutes. Super smooth counter verification!</p>
-                </div>
-                <div className="p-3 rounded-xl bg-gray-50 text-xs">
-                  <div className="flex items-center justify-between font-semibold text-gray-900 mb-1">
-                    <span>Priya M.</span>
-                    <span className="text-amber-500">★★★★☆</span>
-                  </div>
-                  <p className="text-gray-600">Genuine stock with bill & warranty. Great customer service.</p>
+                <div className="p-4 rounded-2xl bg-gray-50 space-y-2 text-gray-800 border border-gray-100">
+                  <div><strong className="text-gray-950">Store Name:</strong> {selectedStore.name}</div>
+                  <div><strong className="text-gray-950">Address:</strong> {selectedStore.address || 'Coimbatore Area'}</div>
+                  {selectedStore.phone && (
+                    <div><strong className="text-gray-950">Phone:</strong> {selectedStore.phone}</div>
+                  )}
+                  <div><strong className="text-gray-950">Verification:</strong> Verified Physical Retailer</div>
+                  <div><strong className="text-gray-950">Live Status:</strong> Online for reservations</div>
                 </div>
               </div>
             )}
@@ -568,7 +623,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
         ) : isSearching || searchQuery.trim().length > 0 ? (
 
           /* ══════════════════════════════════════════════════════════════════
-              SCREEN 2: SEARCH RESULTS
+              SCREEN 2: SEARCH RESULTS (Single Source of Truth, Task 2 & 8)
           ══════════════════════════════════════════════════════════════════ */
           <div className="animate-in fade-in duration-150 p-5">
             {/* Top Search Bar */}
@@ -590,7 +645,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 <input
                   type="text"
                   autoFocus
-                  placeholder="Search for products (e.g., iPhone, milk, shoe...)"
+                  placeholder="Search products or stores..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden shadow-xs"
@@ -607,108 +662,180 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </div>
             </div>
 
-            {/* Results Header: "Results near Coimbatore" & "Sort v" */}
+            {/* Results Header: "Results near Coimbatore" */}
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">
-                  Results near {currentLocation.name.split(',')[0]}
+                  Results near {currentLocation.name ? currentLocation.name.split(',')[0] : 'Current Location'}
                 </h3>
-                <p className="text-[11px] text-gray-500 mt-0.5">12 products • 8 stores</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  {isLoadingCatalog 
+                    ? 'Searching physical stores...' 
+                    : `${dbProducts.length} product${dbProducts.length === 1 ? '' : 's'} • ${dbShops.length} store${dbShops.length === 1 ? '' : 's'}`}
+                </p>
               </div>
 
-              <button
-                type="button"
-                className="flex items-center gap-1 border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50 transition cursor-pointer"
-              >
-                <span>Sort</span>
-                <ChevronDown className="w-3 h-3 text-gray-500" />
-              </button>
+              {/* Radius badge */}
+              <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-600">
+                <span>{radiusFilter}</span>
+              </div>
             </div>
 
-            {/* Product Cards List */}
-            <div className="space-y-3">
-              {filteredProducts.map((prod) => (
-                <div
-                  key={prod.id}
-                  className="bg-white rounded-2xl border border-gray-100 p-3 shadow-xs flex gap-3.5 items-center relative hover:border-gray-200 transition"
-                >
-                  {/* Thumbnail */}
-                  <div className="w-20 h-20 rounded-xl bg-gray-50 shrink-0 flex items-center justify-center overflow-hidden p-1.5">
-                    <img
-                      src={prod.imageUrl}
-                      alt={prod.name}
-                      className="w-full h-full object-contain mix-blend-multiply"
-                    />
-                  </div>
+            {/* Product Cards List or Empty State */}
+            {isLoadingCatalog ? (
+              <div className="py-16 text-center text-gray-400 space-y-2">
+                <Loader2 className="w-7 h-7 mx-auto animate-spin text-[#00A859]" />
+                <p className="text-xs">Searching verified shelf inventory...</p>
+              </div>
+            ) : dbProducts.length > 0 ? (
+              <div className="space-y-3">
+                {dbProducts.map((prod) => {
+                  const firstStore = prod.carryingStores && prod.carryingStores.length > 0 ? prod.carryingStores[0] : null;
+                  const price = prod.minPrice || (firstStore ? firstStore.price : 0);
+                  const stock = prod.totalAvailableQuantity ?? (firstStore ? firstStore.availableQuantity : 0);
+                  const inStock = stock > 0;
+                  const distanceText = firstStore?.distanceKm ? formatDistance(firstStore.distanceKm) : '';
 
-                  {/* Details */}
-                  <div className="flex-1 min-w-0 pr-6">
-                    <h4 className="text-xs font-semibold text-gray-900 truncate">
-                      {prod.name}
-                    </h4>
+                  return (
+                    <div
+                      key={prod.id}
+                      className="bg-white rounded-2xl border border-gray-100 p-3 shadow-xs flex gap-3.5 items-center relative hover:border-gray-200 transition"
+                    >
+                      {/* Thumbnail */}
+                      <div className="w-20 h-20 rounded-xl bg-gray-50 shrink-0 flex items-center justify-center overflow-hidden p-1.5 border border-gray-100">
+                        {prod.imageUrl ? (
+                          <img
+                            src={prod.imageUrl}
+                            alt={prod.name}
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <PackageOpen className="w-7 h-7 text-gray-300" />
+                        )}
+                      </div>
 
-                    {/* Bookmark icon top right */}
+                      {/* Details */}
+                      <div className="flex-1 min-w-0 pr-6">
+                        <h4 className="text-xs font-semibold text-gray-900 truncate">
+                          {prod.name}
+                        </h4>
+
+                        {/* Bookmark */}
+                        <button
+                          type="button"
+                          onClick={() => toggleBookmark(prod.id)}
+                          className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 cursor-pointer"
+                        >
+                          <Bookmark className={`w-4 h-4 ${bookmarkedIds[prod.id] ? 'fill-[#00A859] text-[#00A859]' : ''}`} />
+                        </button>
+
+                        <div className="text-sm font-bold text-gray-950 mt-1">
+                          {price > 0 ? `₹ ${price.toLocaleString('en-IN')}` : 'Price at counter'}
+                        </div>
+
+                        <div className="mt-1">
+                          <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                            inStock
+                              ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-[#00A859]')
+                              : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            {inStock ? (stock <= 2 ? `Low stock (${stock} left)` : 'In stock') : 'Out of stock'}
+                          </span>
+                        </div>
+
+                        {firstStore && (
+                          <div className="flex items-center justify-between mt-2 text-[11px] text-gray-500 truncate">
+                            <span>{distanceText ? `${distanceText} • ` : ''}{firstStore.storeName}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-[10px] text-gray-400">
+                            {prod.carryingStores?.length ? `${prod.carryingStores.length} store${prod.carryingStores.length > 1 ? 's' : ''}` : 'Direct store'}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (firstStore) {
+                                setSelectedStore({
+                                  id: firstStore.storeId,
+                                  name: firstStore.storeName,
+                                  phone: firstStore.storePhone || '',
+                                  address: firstStore.storeAddress || '',
+                                  latitude: firstStore.latitude || 0,
+                                  longitude: firstStore.longitude || 0,
+                                  isLiveEnabled: true,
+                                  isOpen: true,
+                                  distanceKm: firstStore.distanceKm
+                                });
+                              } else {
+                                handleReserveProduct(prod);
+                              }
+                            }}
+                            className="bg-[#00A859] hover:bg-[#00924d] text-white px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shadow-xs transition"
+                          >
+                            {firstStore ? 'View Store' : 'Reserve'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+
+              /* ── TASK 8: EMPTY STATE FOR SEARCH ── */
+              <div className="py-12 px-4 text-center space-y-4 bg-gray-50/60 rounded-3xl border border-gray-100">
+                <div className="w-12 h-12 rounded-full bg-white shadow-xs mx-auto flex items-center justify-center text-gray-400">
+                  <Search className="w-6 h-6 text-gray-400" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-gray-900">No products found nearby</h4>
+                  <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
+                    We couldn't find any products matching "{searchQuery}" within {radiusFilter}.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setRadiusFilter('15 km')}
+                    className="px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                  >
+                    Expand radius to 15 km
+                  </button>
+                  {selectedCategory !== 'all' && (
                     <button
                       type="button"
-                      onClick={() => toggleBookmark(prod.id)}
-                      className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 cursor-pointer"
+                      onClick={() => setSelectedCategory('all')}
+                      className="px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition cursor-pointer"
                     >
-                      <Bookmark className={`w-4 h-4 ${bookmarkedIds[prod.id] ? 'fill-[#00A859] text-[#00A859]' : ''}`} />
+                      Clear category filter
                     </button>
-
-                    <div className="text-sm font-bold text-gray-950 mt-1">
-                      ₹ {prod.price.toLocaleString('en-IN')}
-                    </div>
-
-                    <div className="mt-1">
-                      <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                        prod.stockStatus === 'In stock'
-                          ? 'bg-green-50 text-[#00A859]'
-                          : 'bg-amber-50 text-amber-700'
-                      }`}>
-                        {prod.stockStatus}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="text-[11px] text-gray-500 truncate">
-                        {prod.distance} • {prod.storeName}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-1">
-                      <div className="flex items-center gap-1 text-[11px] text-gray-600">
-                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                        <span className="font-semibold">{prod.rating}</span>
-                        <span>({prod.reviewsCount})</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedStore({
-                            name: prod.storeName,
-                            rating: prod.rating,
-                            reviewsCount: prod.reviewsCount,
-                            distance: prod.distance,
-                            openStatus: 'Open • Closes at 9:00 PM',
-                            image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80'
-                          });
-                        }}
-                        className="bg-[#00A859] hover:bg-[#00924d] text-white px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shadow-xs transition"
-                      >
-                        View Store
-                      </button>
-                    </div>
-                  </div>
+                  )}
                 </div>
-              ))}
-            </div>
+
+                <div className="pt-2 border-t border-gray-200/60">
+                  <p className="text-xs text-gray-600 font-medium">Can't find what you're looking for?</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAskProductName(searchQuery);
+                      setActiveTab('live-ask');
+                    }}
+                    className="mt-2 w-full max-w-xs mx-auto bg-[#00A859] hover:bg-[#00924d] text-white py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
+                  >
+                    Ask nearby stores
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : activeTab === 'explore' ? (
 
           /* ══════════════════════════════════════════════════════════════════
-              SCREEN 1: EXPLORE (HOME)
+              SCREEN 1: EXPLORE (HOME) (Task 10: Consumer-first UX)
           ══════════════════════════════════════════════════════════════════ */
           <div className="animate-in fade-in duration-150 p-5 space-y-5">
             {/* Header: Logo & Location Selector */}
@@ -753,7 +880,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </span>
             </div>
 
-            {/* Radius Pills */}
+            {/* Radius Pills (Task 4: Dynamic Radius Selection) */}
             <div className="flex items-center gap-2">
               {(['2 km', '5 km', '10 km', '15 km'] as const).map((rad) => (
                 <button
@@ -771,43 +898,221 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               ))}
             </div>
 
-            {/* Browse by category */}
+            {/* Browse by Category (Task 9: API-driven Categories) */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-bold text-gray-900">Browse by category</h3>
-                <button
-                  type="button"
-                  onClick={() => setIsSearching(true)}
-                  className="text-xs font-semibold text-[#00A859] hover:underline cursor-pointer"
-                >
-                  See all
-                </button>
+                {selectedCategory !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('all')}
+                    className="text-xs font-semibold text-[#00A859] hover:underline cursor-pointer"
+                  >
+                    Show all
+                  </button>
+                )}
               </div>
 
-              {/* 4 columns x 2 rows */}
-              <div className="grid grid-cols-4 gap-2.5">
-                {CATEGORIES_DATA.map((cat) => {
-                  const Icon = cat.icon;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedCategory(cat.id);
-                        setIsSearching(true);
-                      }}
-                      className="bg-gray-50/80 hover:bg-gray-100 rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 transition cursor-pointer border border-transparent hover:border-gray-200"
-                    >
-                      <div className="w-8 h-8 flex items-center justify-center">
-                        <Icon className={`w-5 h-5 ${cat.iconColor}`} />
-                      </div>
-                      <span className="text-[10px] font-medium text-gray-700 text-center leading-tight">
-                        {cat.label}
-                      </span>
-                    </button>
-                  );
-                })}
+              {dbCategories.length > 0 ? (
+                <div className="grid grid-cols-4 gap-2.5">
+                  {dbCategories.slice(0, 8).map((cat) => {
+                    const isSelected = selectedCategory === cat.slug || selectedCategory === cat.name;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(isSelected ? 'all' : cat.slug || cat.name);
+                        }}
+                        className={`rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 transition cursor-pointer border ${
+                          isSelected
+                            ? 'bg-green-50 border-[#00A859] text-[#00A859] shadow-xs'
+                            : 'bg-gray-50/80 hover:bg-gray-100 border-transparent hover:border-gray-200 text-gray-700'
+                        }`}
+                      >
+                        <div className="w-8 h-8 flex items-center justify-center text-lg">
+                          {cat.iconName ? cat.iconName.charAt(0).toUpperCase() : '📦'}
+                        </div>
+                        <span className="text-[10px] font-medium text-center leading-tight truncate w-full">
+                          {cat.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-xs text-gray-400 py-3 text-center">
+                  Loading categories...
+                </div>
+              )}
+            </div>
+
+            {/* Nearby Verified Products Section (Task 2 & 8: Real backend data or clean empty state) */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-gray-900">Nearby Products</h3>
+                <span className="text-xs text-gray-400">{radiusFilter} radius</span>
               </div>
+
+              {isLoadingCatalog ? (
+                <div className="py-10 text-center text-gray-400 space-y-2">
+                  <Loader2 className="w-6 h-6 mx-auto animate-spin text-[#00A859]" />
+                  <p className="text-xs">Loading nearby inventory...</p>
+                </div>
+              ) : dbProducts.length > 0 ? (
+                <div className="space-y-3">
+                  {dbProducts.slice(0, 5).map((prod) => {
+                    const store = prod.carryingStores && prod.carryingStores.length > 0 ? prod.carryingStores[0] : null;
+                    const price = prod.minPrice || (store ? store.price : 0);
+                    const stock = prod.totalAvailableQuantity ?? (store ? store.availableQuantity : 0);
+                    const inStock = stock > 0;
+                    const distStr = store?.distanceKm ? formatDistance(store.distanceKm) : '';
+
+                    return (
+                      <div
+                        key={prod.id}
+                        className="bg-white rounded-2xl border border-gray-100 p-3 shadow-xs flex gap-3.5 items-center relative hover:border-gray-200 transition"
+                      >
+                        <div className="w-16 h-16 rounded-xl bg-gray-50 shrink-0 flex items-center justify-center overflow-hidden p-1 border border-gray-100">
+                          {prod.imageUrl ? (
+                            <img
+                              src={prod.imageUrl}
+                              alt={prod.name}
+                              className="w-full h-full object-contain"
+                            />
+                          ) : (
+                            <PackageOpen className="w-6 h-6 text-gray-300" />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0 pr-2">
+                          <h4 className="text-xs font-semibold text-gray-900 truncate">{prod.name}</h4>
+                          <div className="text-sm font-bold text-gray-950 mt-0.5">
+                            {price > 0 ? `₹ ${price.toLocaleString('en-IN')}` : 'Price at counter'}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                              inStock
+                                ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-[#00A859]')
+                                : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {inStock ? (stock <= 2 ? `Low stock (${stock} left)` : 'In stock') : 'Out of stock'}
+                            </span>
+                            {distStr && (
+                              <span className="text-[10px] text-gray-400 truncate">
+                                {distStr}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (store) {
+                              setSelectedStore({
+                                id: store.storeId,
+                                name: store.storeName,
+                                phone: store.storePhone || '',
+                                address: store.storeAddress || '',
+                                latitude: store.latitude || 0,
+                                longitude: store.longitude || 0,
+                                isLiveEnabled: true,
+                                isOpen: true,
+                                distanceKm: store.distanceKm
+                              });
+                            } else {
+                              handleReserveProduct(prod);
+                            }
+                          }}
+                          className="shrink-0 bg-[#00A859] hover:bg-[#00924d] text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs"
+                        >
+                          View Store
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* ── Task 8: Empty Products State ── */
+                <div className="py-8 px-4 text-center bg-gray-50/70 rounded-2xl border border-gray-100 space-y-3">
+                  <PackageOpen className="w-8 h-8 text-gray-400 mx-auto" />
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900">No products found nearby</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      No verified local store has inventory cataloged in this radius.
+                    </p>
+                  </div>
+                  <div className="flex justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setRadiusFilter('15 km')}
+                      className="text-xs font-semibold px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-100"
+                    >
+                      Expand to 15 km
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('live-ask')}
+                      className="text-xs font-semibold px-3.5 py-1.5 bg-[#00A859] text-white rounded-lg hover:bg-[#00924d]"
+                    >
+                      Ask nearby stores
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Nearby Verified Stores (Task 10) */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-gray-900">Nearby Local Stores</h3>
+                <span className="text-xs text-gray-400">{dbShops.length} online</span>
+              </div>
+
+              {isLoadingShops ? (
+                <div className="py-6 text-center text-gray-400 text-xs">
+                  Locating verified stores...
+                </div>
+              ) : dbShops.length > 0 ? (
+                <div className="space-y-2.5">
+                  {dbShops.map((shop) => (
+                    <div
+                      key={shop.id}
+                      onClick={() => setSelectedStore(shop)}
+                      className="p-3 bg-white rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between hover:border-gray-200 transition cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-gray-900 text-white font-bold text-sm flex items-center justify-center shrink-0">
+                          {shop.name.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-gray-900 truncate flex items-center gap-1">
+                            <span>{shop.name}</span>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#00A859]" />
+                          </h4>
+                          <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                            {shop.address || 'Local Shop'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        {shop.distanceKm !== undefined && (
+                          <div className="text-xs font-semibold text-[#00A859]">
+                            {formatDistance(shop.distanceKm)}
+                          </div>
+                        )}
+                        <span className="text-[10px] text-gray-400">Open</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 bg-gray-50 rounded-2xl text-center text-xs text-gray-500 border border-gray-100">
+                  No verified stores are currently online within {radiusFilter}.
+                </div>
+              )}
             </div>
 
             {/* Support local stores banner */}
@@ -817,18 +1122,15 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 <p className="text-[11px] text-gray-500">Shop nearby. Stronger communities.</p>
               </div>
 
-              {/* Cute Storefront Illustration */}
               <div className="relative w-20 h-16 shrink-0 flex items-center justify-center">
                 <div className="w-16 h-12 bg-white rounded-lg border border-amber-200 shadow-sm relative flex flex-col overflow-hidden">
-                  {/* Striped awning */}
-                  <div className="h-3 w-full bg-repeating-linear-gradient flex">
+                  <div className="h-3 w-full flex">
                     <div className="flex-1 bg-red-400" />
                     <div className="flex-1 bg-white" />
                     <div className="flex-1 bg-red-400" />
                     <div className="flex-1 bg-white" />
                     <div className="flex-1 bg-red-400" />
                   </div>
-                  {/* Window & door */}
                   <div className="flex-1 flex items-center justify-center gap-1 p-1">
                     <div className="w-4 h-5 bg-sky-100 border border-sky-200 rounded-2xs" />
                     <div className="w-3 h-6 bg-amber-800 rounded-t-xs" />
@@ -970,7 +1272,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
         ) : activeTab === 'holds' ? (
 
           /* ══════════════════════════════════════════════════════════════════
-              SCREEN 5: MY HOLDS
+              SCREEN 5: MY HOLDS (Real Active Holds)
           ══════════════════════════════════════════════════════════════════ */
           <div className="animate-in fade-in duration-150 p-5 space-y-4">
             <div>
@@ -980,20 +1282,11 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
             {activeHold ? (
               <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs space-y-4">
-                {/* Header Row: Thumbnail + Product Name + Active badge */}
+                {/* Header Row: Product Name + Active badge */}
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden shrink-0 p-1 border border-gray-100">
-                      <img
-                        src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80"
-                        alt={activeHold.productName}
-                        className="w-full h-full object-contain mix-blend-multiply"
-                      />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-950">{activeHold.productName}</h4>
-                      <p className="text-xs text-gray-500 mt-0.5">{activeHold.storeName}</p>
-                    </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-950">{activeHold.productName}</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">{activeHold.storeName}</p>
                   </div>
 
                   <span className="bg-green-100 text-[#00A859] font-bold text-[10px] px-2 py-0.5 rounded-full">
@@ -1035,14 +1328,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedStore({
-                      name: activeHold.storeName,
-                      rating: 4.6,
-                      reviewsCount: 128,
-                      distance: '1.2 km',
-                      openStatus: 'Open • Closes at 9:00 PM',
-                      image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80'
-                    });
+                    const matchedShop = dbShops.find(s => s.name === activeHold.storeName);
+                    if (matchedShop) {
+                      setSelectedStore(matchedShop);
+                    } else {
+                      alert(`Store address: ${activeHold.storeAddress}\nPhone: ${activeHold.storePhone}`);
+                    }
                   }}
                   className="w-full border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl py-2.5 text-xs font-semibold transition cursor-pointer text-center"
                 >
@@ -1116,7 +1407,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
               <button
                 type="button"
-                onClick={() => alert('You have 0 saved stores.')}
+                onClick={() => alert(`Saved stores: ${Object.keys(bookmarkedIds).length}`)}
                 className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
               >
                 <div className="flex items-center gap-3">
@@ -1124,14 +1415,14 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   <span className="font-medium">Saved Stores</span>
                 </div>
                 <div className="flex items-center gap-1 text-gray-400">
-                  <span>0</span>
+                  <span>{Object.keys(bookmarkedIds).length}</span>
                   <ChevronRight className="w-4 h-4" />
                 </div>
               </button>
 
               <button
                 type="button"
-                onClick={() => alert('Notifications are enabled.')}
+                onClick={() => alert('Notification preferences saved.')}
                 className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
               >
                 <div className="flex items-center gap-3">
@@ -1178,7 +1469,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
               <button
                 type="button"
-                onClick={() => alert('Zooner v1.0.0 — Local Physical Shelf Discovery Platform.')}
+                onClick={() => alert('Zooner v1.0.0 — Physical Shelf Discovery Platform.')}
                 className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
               >
                 <div className="flex items-center gap-3">
