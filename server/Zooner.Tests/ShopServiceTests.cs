@@ -36,7 +36,8 @@ public class ShopServiceTests
 
         Assert.True(shopRes.Success);
         Assert.NotNull(shopRes.Data);
-        Assert.True(shopRes.Data.IsLiveEnabled);
+        Assert.Equal(ShopVerificationStatus.Pending.ToString(), shopRes.Data.VerificationStatus);
+        Assert.False(shopRes.Data.IsLiveEnabled);
         Assert.Single(shopRes.Data.Categories);
         Assert.Equal(7, shopRes.Data.OperatingHours.Count); // Default 7 days
     }

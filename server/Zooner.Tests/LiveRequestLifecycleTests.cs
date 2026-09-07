@@ -115,13 +115,19 @@ public class LiveRequestLifecycleTests
 
         var shop = await shopService.CreateShopAsync(owner.Id, new CreateShopRequest
         {
-            Name = "S",
+            Name = "Live Shop",
             Phone = "1",
-            Address = "A",
+            Address = "St",
             Latitude = 11.0,
-            Longitude = 76.0,
+            Longitude = 77.0,
             CategoryIds = [category.Id]
         });
+
+        // Approve and set live manually since defaults changed
+        var shopInDb = await context.Shops.FindAsync(shop.Data!.Id);
+        shopInDb!.VerificationStatus = ShopVerificationStatus.Approved;
+        shopInDb.IsLiveEnabled = true;
+        await context.SaveChangesAsync();
 
         var expiredRequest = new LiveRequest
         {
