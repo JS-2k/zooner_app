@@ -3,6 +3,10 @@
   "outputDirectory": "client/zooner/dist",
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://zooner-app.onrender.com/api/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -12,7 +12,7 @@ import type {
 const isNative = Capacitor.isNativePlatform();
 const isProd = import.meta.env.PROD;
 const API_BASE_URL = import.meta.env.VITE_API_URL || (
-  isProd ? (isNative ? 'https://api.zooner.app/api' : '/api') : (isNative ? 'http://10.0.2.2:5000/api' : 'http://localhost:5000/api')
+  isProd ? (isNative ? 'https://zooner-app.onrender.com/api' : '/api') : (isNative ? 'http://10.0.2.2:5000/api' : 'http://localhost:5000/api')
 );
 
 export interface ApiResponse<T> {
@@ -183,7 +183,7 @@ async function parseApiResponse<T>(res: Response, defaultErrorMessage: string): 
     if (res.status === 404 || res.ok) {
       return {
         success: false,
-        message: 'Unable to reach backend API (received HTML instead of JSON). Please verify backend server and API URL configuration.',
+        message: 'Backend API endpoint not found (HTTP 404). Please ensure the backend service has deployed the latest endpoints.',
         data: null as any
       };
     }
@@ -194,9 +194,10 @@ async function parseApiResponse<T>(res: Response, defaultErrorMessage: string): 
     };
   }
 
+  const statusLabel = res.status ? `HTTP ${res.status}${res.statusText ? ` (${res.statusText})` : ''}` : '';
   return {
     success: false,
-    message: rawText.trim() || (res.statusText ? `HTTP ${res.status}: ${res.statusText}` : defaultErrorMessage),
+    message: rawText.trim() || (statusLabel ? `Server returned ${statusLabel}.` : defaultErrorMessage),
     data: null as any
   };
 }
