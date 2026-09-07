@@ -51,31 +51,39 @@ public class HoldExpirationWorker : BackgroundService
 
         var now = DateTime.UtcNow;
 
-        var expiredHolds = await context.InventoryHolds
-            .Include(h => h.StoreInventory)
-            .Where(h => h.Status == InventoryHoldStatus.Active && h.ExpiresAtUtc <= now)
-            .ToListAsync(cancellationToken);
-
-        if (!expiredHolds.Any())
+        try
         {
+            var expiredHolds = await context.InventoryHolds
+                .Include(h => h.StoreInventory)
+                .Where(h => h.Status == InventoryHoldStatus.Active && h.ExpiresAtUtc <= now)
+                .ToListAsync(cancellationToken);
+
+            if (!expiredHolds.Any())
+            {
+                return 0;
+            }
+
+            foreach (var hold in expiredHolds)
+            {
+                hold.Status = InventoryHoldStatus.Expired;
+                if (hold.StoreInventory != null)
+                {
+                    hold.StoreInventory.AvailableQuantity = Math.Min(
+                        hold.StoreInventory.Quantity,
+                        hold.StoreInventory.AvailableQuantity + hold.Quantity
+                    );
+                    hold.StoreInventory.UpdatedAtUtc = now;
+                }
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("HoldExpirationWorker expired {Count} outdated hold(s) and restored available inventory.", expiredHolds.Count);
+            return expiredHolds.Count;
+        }
+        catch (Exception ex) when (ex.Message.Contains("no such table", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("relation does not exist", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("InventoryHolds table not yet initialized or pending migration; skipping check for this cycle.");
             return 0;
         }
-
-        foreach (var hold in expiredHolds)
-        {
-            hold.Status = InventoryHoldStatus.Expired;
-            if (hold.StoreInventory != null)
-            {
-                hold.StoreInventory.AvailableQuantity = Math.Min(
-                    hold.StoreInventory.Quantity,
-                    hold.StoreInventory.AvailableQuantity + hold.Quantity
-                );
-                hold.StoreInventory.UpdatedAtUtc = now;
-            }
-        }
-
-        await context.SaveChangesAsync(cancellationToken);
-        _logger.LogInformation("HoldExpirationWorker expired {Count} outdated hold(s) and restored available inventory.", expiredHolds.Count);
-        return expiredHolds.Count;
     }
 }
