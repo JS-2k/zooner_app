@@ -17,7 +17,9 @@ import {
   Power,
   Search,
   AlertTriangle,
-  Loader2
+  Loader2,
+  QrCode,
+  Scan
 } from 'lucide-react';
 import { 
   searchProducts, 
@@ -33,8 +35,11 @@ import {
   respondToLiveRequest,
   setShopLiveStatus,
   updateShop,
+  validateHoldQr,
+  collectHold,
   type DuplicateCheckResult,
-  type ShopProfileDto
+  type ShopProfileDto,
+  type ValidateHoldQrResponseDto
 } from '../services/api';
 import type { StoreInventoryItem, ProductSearchResult, CategoryDto, LiveRequestSummary, ProductVariantDto } from '../types';
 
@@ -86,7 +91,55 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const [requests, setRequests] = useState<VendorRequestItem[]>([]);
 
   // Active Walk-In Holds State
-  const [holds, setHolds] = useState<{ id: string; customerName: string; phone: string; product: string; price: number; expiresIn: string; status: string }[]>([]);
+  const [holds, setHolds] = useState<any[]>([]);
+
+  // QR Scan & Verification state
+  const [qrInput, setQrInput] = useState('');
+  const [isValidatingQr, setIsValidatingQr] = useState(false);
+  const [validatedHoldResult, setValidatedHoldResult] = useState<ValidateHoldQrResponseDto | null>(null);
+  const [isCollecting, setIsCollecting] = useState(false);
+
+  const handleValidateQr = async (tokenOrCodeToVerify?: string) => {
+    const code = tokenOrCodeToVerify || qrInput;
+    if (!code.trim() || !currentStoreId) return;
+    setIsValidatingQr(true);
+    try {
+      const res = await validateHoldQr(currentStoreId, code.trim());
+      setValidatedHoldResult(res);
+      if (!res.isValid) {
+        showToast(res.message || 'Hold pass validation failed.', true);
+      } else {
+        showToast('Hold pass verified successfully!', false);
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error validating QR pass.', true);
+    } finally {
+      setIsValidatingQr(false);
+    }
+  };
+
+  const handleMarkAsCollected = async (holdId: string) => {
+    if (!currentStoreId || !holdId) return;
+    setIsCollecting(true);
+    try {
+      const res = await collectHold(currentStoreId, holdId);
+      if (res.success) {
+        showToast(res.message || 'Hold pass marked as collected! Physical inventory updated.', false);
+        setValidatedHoldResult(null);
+        setQrInput('');
+        const inv = await getStoreInventory(currentStoreId);
+        setInventory(inv);
+      } else {
+        showToast(res.message || 'Failed to mark hold as collected.', true);
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error marking hold as collected.', true);
+    } finally {
+      setIsCollecting(false);
+    }
+  };
 
   const handleAcceptRequest = async (id: string) => {
     if (!currentStoreId) return;
@@ -701,10 +754,98 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
           {/* ── TAB 3: ACTIVE HOLDS ── */}
           {activeTab === 'holds' && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-white font-['Outfit']">Counter Holds & Walk-in Reservations</h2>
-                <p className="text-xs text-slate-400">Items reserved under shopper names on billing counter</p>
+                <h2 className="text-xl font-bold text-white font-['Outfit']">Counter Holds & Walk-in Pickup Verifier</h2>
+                <p className="text-xs text-slate-400">Scan customer QR codes or verify pass codes to mark items as collected</p>
+              </div>
+
+              {/* QR Verification Scanner Box */}
+              <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                    <QrCode className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white font-['Outfit']">Scan / Verify Customer QR Pass</h3>
+                    <p className="text-xs text-slate-400">Scan customer QR pass or enter 4-character pass code to validate reservation before handing item over</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Scan className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                    <input
+                      type="text"
+                      value={qrInput}
+                      onChange={(e) => setQrInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleValidateQr()}
+                      placeholder="Paste QR token (zhold:...) or enter pass code (e.g. H-4821)"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <button
+                    onClick={() => handleValidateQr()}
+                    disabled={isValidatingQr || !qrInput.trim()}
+                    className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  >
+                    {isValidatingQr ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scan className="h-4 w-4" />}
+                    <span>Verify QR Code</span>
+                  </button>
+                </div>
+
+                {/* Validated Hold Pass Result Dialog Card */}
+                {validatedHoldResult && (
+                  <div className={`p-5 rounded-2xl border transition-all ${
+                    validatedHoldResult.isValid 
+                      ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200' 
+                      : 'bg-rose-950/40 border-rose-500/40 text-rose-200'
+                  }`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`h-2.5 w-2.5 rounded-full ${validatedHoldResult.isValid ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+                          <span className="text-sm font-bold tracking-wide font-['Outfit']">
+                            {validatedHoldResult.isValid ? 'PASS VERIFIED & ACTIVE' : 'INVALID PASS'}
+                          </span>
+                        </div>
+                        <p className="text-xs mt-1 text-slate-300">{validatedHoldResult.message}</p>
+
+                        {validatedHoldResult.isValid && validatedHoldResult.hold && (
+                          <div className="mt-4 p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2 text-slate-200 text-xs max-w-lg">
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Reserved Product:</span>
+                              <span className="font-bold text-white text-sm">{validatedHoldResult.hold.productName} ({validatedHoldResult.hold.variantName})</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Quantity Reserved:</span>
+                              <span className="font-bold text-white">{validatedHoldResult.hold.quantity} unit(s)</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Store Price to Collect:</span>
+                              <span className="font-black text-emerald-400 text-sm font-['Outfit']">₹{validatedHoldResult.hold.price.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Pass Code:</span>
+                              <span className="font-mono font-bold text-white">{validatedHoldResult.hold.holdCode}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {validatedHoldResult.isValid && validatedHoldResult.hold && (
+                        <button
+                          onClick={() => handleMarkAsCollected(validatedHoldResult.hold!.holdId)}
+                          disabled={isCollecting}
+                          className="px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0"
+                        >
+                          {isCollecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                          <span>Mark as Collected</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">

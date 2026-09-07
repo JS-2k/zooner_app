@@ -149,6 +149,7 @@ public class InventoryHoldDto
     public decimal Price { get; set; }
     public int Quantity { get; set; }
     public string HoldCode { get; set; } = string.Empty;
+    public string QrToken { get; set; } = string.Empty;
     public string Status { get; set; } = "Active";
     public DateTime ExpiresAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
@@ -158,5 +159,18 @@ public class CreateHoldRequest
 {
     [Range(1, 5, ErrorMessage = "Hold quantity must be between 1 and 5 items.")]
     public int Quantity { get; set; } = 1;
+}
+
+public class ValidateHoldQrRequest
+{
+    [Required]
+    public string QrTokenOrCode { get; set; } = string.Empty;
+}
+
+public class ValidateHoldQrResponse
+{
+    public bool IsValid { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public InventoryHoldDto? Hold { get; set; }
 }
 

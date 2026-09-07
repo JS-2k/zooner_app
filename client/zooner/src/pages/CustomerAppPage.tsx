@@ -302,6 +302,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             storeId: rh.storeId,
             storeInventoryId: rh.storeInventoryId,
             passCode: rh.holdCode,
+            qrToken: rh.qrToken,
             productName: rh.productName,
             storeName: rh.storeName,
             storeAddress: rh.storeAddress,
@@ -338,6 +339,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     const newPass: HoldPass = {
       id: `hold-${timestamp}`,
       passCode: `ZN-${codeNum}`,
+      qrToken: `zhold:hold-${timestamp}:ZN-${codeNum}`,
       productName: prodName,
       storeName: storeName,
       storeAddress: storeAddress || matchingStore?.address || '142 DB Road, RS Puram, Coimbatore',
@@ -394,6 +396,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       storeId: storeId,
       storeInventoryId: storeInventoryId.toString(),
       passCode: res.hold?.holdCode || `ZN-${Math.floor(1000 + Math.random() * 9000)}`,
+      qrToken: res.hold?.qrToken || `zhold:${res.hold?.holdId || timestamp}:${res.hold?.holdCode || 'code'}`,
       productName: res.hold?.productName || productName,
       storeName: res.hold?.storeName || storeName,
       storeAddress: res.hold?.storeAddress || storeAddress || 'Store Address',

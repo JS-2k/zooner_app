@@ -723,5 +723,46 @@ export async function becomeVendor(): Promise<{ success: boolean; data?: AuthRes
   }
 }
 
+export interface ValidateHoldQrResponseDto {
+  isValid: boolean;
+  message: string;
+  hold?: InventoryHoldDto;
+}
+
+export async function validateHoldQr(storeId: string, qrTokenOrCode: string): Promise<ValidateHoldQrResponseDto> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/stores/${storeId}/Inventory/holds/validate-qr`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qrTokenOrCode })
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      return { isValid: false, message: errJson?.message || 'Failed to validate QR code.' };
+    }
+    const json: ApiResponse<ValidateHoldQrResponseDto> = await res.json();
+    return json.data || { isValid: false, message: json.message || 'Validation failed.' };
+  } catch (err) {
+    console.error('validateHoldQr error:', err);
+    return { isValid: false, message: 'Network error validating QR pass.' };
+  }
+}
+
+export async function collectHold(storeId: string, holdId: string): Promise<{ success: boolean; message: string; hold?: InventoryHoldDto }> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/stores/${storeId}/Inventory/holds/${holdId}/collect`, {
+      method: 'POST'
+    });
+    const json: ApiResponse<InventoryHoldDto> = await res.json();
+    if (res.ok && json.success && json.data) {
+      return { success: true, message: json.message || 'Marked as collected successfully.', hold: json.data };
+    }
+    return { success: false, message: json.message || 'Failed to mark hold as collected.' };
+  } catch (err) {
+    console.error('collectHold error:', err);
+    return { success: false, message: 'Network error marking hold as collected.' };
+  }
+}
+
 
 

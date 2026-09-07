@@ -397,14 +397,17 @@ public class InventoryService : IInventoryService
         inventory.UpdatedAtUtc = DateTime.UtcNow;
 
         var holdCode = $"H-{Random.Shared.Next(1000, 9999)}";
+        var holdId = Guid.NewGuid();
+        var qrToken = $"zhold:{holdId}:{holdCode}:{Guid.NewGuid().ToString("N")[..8]}";
         var hold = new InventoryHold
         {
-            Id = Guid.NewGuid(),
+            Id = holdId,
             StoreInventoryId = inventory.Id,
             StoreId = store.Id,
             CustomerId = customerId,
             Quantity = quantityToHold,
             HoldCode = holdCode,
+            QrToken = qrToken,
             Status = InventoryHoldStatus.Active,
             ExpiresAtUtc = DateTime.UtcNow.AddMinutes(30),
             CreatedAtUtc = DateTime.UtcNow
@@ -434,6 +437,7 @@ public class InventoryService : IInventoryService
             Price = inventory.Price,
             Quantity = hold.Quantity,
             HoldCode = hold.HoldCode,
+            QrToken = hold.QrToken,
             Status = hold.Status.ToString(),
             ExpiresAtUtc = hold.ExpiresAtUtc,
             CreatedAtUtc = hold.CreatedAtUtc
@@ -532,11 +536,238 @@ public class InventoryService : IInventoryService
             Price = h.StoreInventory?.Price ?? 0,
             Quantity = h.Quantity,
             HoldCode = h.HoldCode,
+            QrToken = string.IsNullOrEmpty(h.QrToken) ? $"zhold:{h.Id}:{h.HoldCode}" : h.QrToken,
             Status = h.Status.ToString(),
             ExpiresAtUtc = h.ExpiresAtUtc,
             CreatedAtUtc = h.CreatedAtUtc
         }).ToList();
 
         return ApiResponse<List<InventoryHoldDto>>.SuccessResponse(dtos);
+    }
+
+    public async Task<ApiResponse<ValidateHoldQrResponse>> ValidateHoldQrAsync(
+        Guid storeId,
+        string qrTokenOrCode,
+        Guid vendorUserId)
+    {
+        var store = await _context.Shops.FirstOrDefaultAsync(s => s.Id == storeId);
+        if (store == null)
+        {
+            return ApiResponse<ValidateHoldQrResponse>.SuccessResponse(new ValidateHoldQrResponse
+            {
+                IsValid = false,
+                Message = "Store not found."
+            });
+        }
+
+        if (store.OwnerId != vendorUserId)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == vendorUserId);
+            if (user == null || !user.IsAdmin)
+            {
+                return ApiResponse<ValidateHoldQrResponse>.SuccessResponse(new ValidateHoldQrResponse
+                {
+                    IsValid = false,
+                    Message = "Unauthorized: You do not own this store."
+                });
+            }
+        }
+
+        var cleanToken = (qrTokenOrCode ?? string.Empty).Trim();
+        var hold = await _context.InventoryHolds
+            .Include(h => h.Store)
+            .Include(h => h.StoreInventory)
+                .ThenInclude(si => si!.ProductVariant)
+                .ThenInclude(pv => pv!.Product)
+            .FirstOrDefaultAsync(h => h.QrToken == cleanToken || h.HoldCode == cleanToken || h.Id.ToString() == cleanToken);
+
+        if (hold == null)
+        {
+            return ApiResponse<ValidateHoldQrResponse>.SuccessResponse(new ValidateHoldQrResponse
+            {
+                IsValid = false,
+                Message = "Invalid QR pass code: Reservation record not found."
+            });
+        }
+
+        if (hold.StoreId != storeId)
+        {
+            return ApiResponse<ValidateHoldQrResponse>.SuccessResponse(new ValidateHoldQrResponse
+            {
+                IsValid = false,
+                Message = $"Hold reservation belongs to a different store ('{hold.Store?.Name}')."
+            });
+        }
+
+        if (hold.Status == InventoryHoldStatus.Fulfilled)
+        {
+            return ApiResponse<ValidateHoldQrResponse>.SuccessResponse(new ValidateHoldQrResponse
+            {
+                IsValid = false,
+                Message = "This hold pass has already been collected."
+            });
+        }
+
+        if (hold.Status == InventoryHoldStatus.Released)
+        {
+            return ApiResponse<ValidateHoldQrResponse>.SuccessResponse(new ValidateHoldQrResponse
+            {
+                IsValid = false,
+                Message = "This hold pass was cancelled or released."
+            });
+        }
+
+        if (hold.ExpiresAtUtc <= DateTime.UtcNow || hold.Status == InventoryHoldStatus.Expired)
+        {
+            if (hold.Status == InventoryHoldStatus.Active)
+            {
+                hold.Status = InventoryHoldStatus.Expired;
+                if (hold.StoreInventory != null)
+                {
+                    hold.StoreInventory.AvailableQuantity = Math.Min(hold.StoreInventory.Quantity, hold.StoreInventory.AvailableQuantity + hold.Quantity);
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            return ApiResponse<ValidateHoldQrResponse>.SuccessResponse(new ValidateHoldQrResponse
+            {
+                IsValid = false,
+                Message = "This hold pass has expired."
+            });
+        }
+
+        if (hold.Status != InventoryHoldStatus.Active)
+        {
+            return ApiResponse<ValidateHoldQrResponse>.SuccessResponse(new ValidateHoldQrResponse
+            {
+                IsValid = false,
+                Message = $"Hold pass is in inactive status ({hold.Status})."
+            });
+        }
+
+        var dto = new InventoryHoldDto
+        {
+            HoldId = hold.Id,
+            StoreInventoryId = hold.StoreInventoryId,
+            StoreId = hold.StoreId,
+            StoreName = hold.Store?.Name ?? string.Empty,
+            StoreAddress = hold.Store?.Address ?? string.Empty,
+            StorePhone = hold.Store?.Phone ?? string.Empty,
+            ProductName = hold.StoreInventory?.ProductVariant?.Product?.Name ?? "Product Item",
+            VariantName = hold.StoreInventory?.ProductVariant?.VariantName ?? "Standard",
+            Price = hold.StoreInventory?.Price ?? 0,
+            Quantity = hold.Quantity,
+            HoldCode = hold.HoldCode,
+            QrToken = hold.QrToken,
+            Status = hold.Status.ToString(),
+            ExpiresAtUtc = hold.ExpiresAtUtc,
+            CreatedAtUtc = hold.CreatedAtUtc
+        };
+
+        return ApiResponse<ValidateHoldQrResponse>.SuccessResponse(new ValidateHoldQrResponse
+        {
+            IsValid = true,
+            Message = "Hold pass verified and active.",
+            Hold = dto
+        });
+    }
+
+    public async Task<ApiResponse<InventoryHoldDto>> CollectHoldAsync(
+        Guid storeId,
+        Guid holdId,
+        Guid vendorUserId)
+    {
+        var store = await _context.Shops.FirstOrDefaultAsync(s => s.Id == storeId);
+        if (store == null)
+        {
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("Store not found.");
+        }
+
+        if (store.OwnerId != vendorUserId)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == vendorUserId);
+            if (user == null || !user.IsAdmin)
+            {
+                return ApiResponse<InventoryHoldDto>.ErrorResponse("Unauthorized: You do not own this store.");
+            }
+        }
+
+        var hold = await _context.InventoryHolds
+            .Include(h => h.Store)
+            .Include(h => h.StoreInventory)
+                .ThenInclude(si => si!.ProductVariant)
+                .ThenInclude(pv => pv!.Product)
+            .FirstOrDefaultAsync(h => h.Id == holdId && h.StoreId == storeId);
+
+        if (hold == null)
+        {
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("Hold reservation not found.");
+        }
+
+        if (hold.Status == InventoryHoldStatus.Fulfilled)
+        {
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("This hold pass has already been collected.");
+        }
+
+        if (hold.Status == InventoryHoldStatus.Released)
+        {
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("This hold pass was cancelled or released.");
+        }
+
+        if (hold.ExpiresAtUtc <= DateTime.UtcNow || hold.Status == InventoryHoldStatus.Expired)
+        {
+            if (hold.Status == InventoryHoldStatus.Active)
+            {
+                hold.Status = InventoryHoldStatus.Expired;
+                if (hold.StoreInventory != null)
+                {
+                    hold.StoreInventory.AvailableQuantity = Math.Min(hold.StoreInventory.Quantity, hold.StoreInventory.AvailableQuantity + hold.Quantity);
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("This hold pass has expired.");
+        }
+
+        if (hold.Status != InventoryHoldStatus.Active)
+        {
+            return ApiResponse<InventoryHoldDto>.ErrorResponse($"Cannot collect hold pass in '{hold.Status}' status.");
+        }
+
+        // Mark as Fulfilled and deduct physical stock quantity
+        hold.Status = InventoryHoldStatus.Fulfilled;
+        hold.ReleasedAtUtc = DateTime.UtcNow;
+
+        if (hold.StoreInventory != null)
+        {
+            // Total physical quantity decreases because item has been handed to customer
+            hold.StoreInventory.Quantity = Math.Max(0, hold.StoreInventory.Quantity - hold.Quantity);
+            // Ensure AvailableQuantity is capped at remaining total Quantity
+            hold.StoreInventory.AvailableQuantity = Math.Min(hold.StoreInventory.Quantity, hold.StoreInventory.AvailableQuantity);
+            hold.StoreInventory.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+
+        var dto = new InventoryHoldDto
+        {
+            HoldId = hold.Id,
+            StoreInventoryId = hold.StoreInventoryId,
+            StoreId = hold.StoreId,
+            StoreName = hold.Store?.Name ?? string.Empty,
+            StoreAddress = hold.Store?.Address ?? string.Empty,
+            StorePhone = hold.Store?.Phone ?? string.Empty,
+            ProductName = hold.StoreInventory?.ProductVariant?.Product?.Name ?? "Product Item",
+            VariantName = hold.StoreInventory?.ProductVariant?.VariantName ?? "Standard",
+            Price = hold.StoreInventory?.Price ?? 0,
+            Quantity = hold.Quantity,
+            HoldCode = hold.HoldCode,
+            QrToken = hold.QrToken,
+            Status = hold.Status.ToString(),
+            ExpiresAtUtc = hold.ExpiresAtUtc,
+            CreatedAtUtc = hold.CreatedAtUtc
+        };
+
+        return ApiResponse<InventoryHoldDto>.SuccessResponse(dto, "Hold pass marked as collected successfully.");
     }
 }

@@ -175,6 +175,49 @@ public class InventoryController : ControllerBase
         var response = await _inventoryService.GetActiveHoldsForCustomerAsync(customerId);
         return Ok(response);
     }
+
+    /// <summary>
+    /// Validate customer QR pass code for in-store pickup (Merchant Authorized)
+    /// </summary>
+    [HttpPost("holds/validate-qr")]
+    [Authorize(Policy = "VendorPolicy")]
+    [ProducesResponseType(typeof(ApiResponse<ValidateHoldQrResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ValidateHoldQrResponse>), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ValidateHoldQr(
+        Guid storeId,
+        [FromBody] ValidateHoldQrRequest request)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var vendorUserId))
+        {
+            return Unauthorized(ApiResponse<ValidateHoldQrResponse>.ErrorResponse("Unauthorized vendor context."));
+        }
+
+        var response = await _inventoryService.ValidateHoldQrAsync(storeId, request.QrTokenOrCode, vendorUserId);
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Mark validated customer hold pass as collected/fulfilled (Merchant Authorized)
+    /// </summary>
+    [HttpPost("holds/{holdId:guid}/collect")]
+    [Authorize(Policy = "VendorPolicy")]
+    [ProducesResponseType(typeof(ApiResponse<InventoryHoldDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<InventoryHoldDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<InventoryHoldDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CollectHold(
+        Guid storeId,
+        Guid holdId)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var vendorUserId))
+        {
+            return Unauthorized(ApiResponse<InventoryHoldDto>.ErrorResponse("Unauthorized vendor context."));
+        }
+
+        var response = await _inventoryService.CollectHoldAsync(storeId, holdId, vendorUserId);
+        return response.Success ? Ok(response) : BadRequest(response);
+    }
 }
 
 

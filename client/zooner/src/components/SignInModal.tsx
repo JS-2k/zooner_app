@@ -116,19 +116,19 @@ export const SignInModal: React.FC<SignInModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-[#0D0F17] text-white border border-white/10 shadow-2xl p-6 sm:p-8">
-        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white text-slate-900 border border-slate-200 shadow-2xl p-6 sm:p-8">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
           <div>
-            <h3 className="text-xl font-bold text-white font-['Outfit']">Zooner Account</h3>
-            <p className="text-xs text-slate-400">One secure account for local shopping & store management</p>
+            <h3 className="text-xl font-bold text-slate-900 font-['Outfit']">Zooner Account</h3>
+            <p className="text-xs text-slate-500 font-medium">One account for local shopping & store management</p>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
+            className="p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -136,17 +136,17 @@ export const SignInModal: React.FC<SignInModalProps> = ({
 
         {/* Tab Selector */}
         {!isSuccess && (
-          <div className="flex rounded-xl bg-white/5 p-1 mb-5 border border-white/5">
+          <div className="flex rounded-2xl bg-slate-100 p-1 mb-5 border border-slate-200/80">
             <button
               type="button"
               onClick={() => {
                 setActiveTab('signin');
                 setAuthError('');
               }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+              className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
                 activeTab === 'signin'
-                  ? 'bg-white text-black shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-white text-slate-950 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               Sign In
@@ -157,10 +157,10 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 setActiveTab('register');
                 setAuthError('');
               }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+              className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
                 activeTab === 'register'
-                  ? 'bg-white text-black shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-white text-slate-950 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               Create Account
@@ -169,55 +169,55 @@ export const SignInModal: React.FC<SignInModalProps> = ({
         )}
 
         {authError && (
-          <div className="mb-4 p-3 rounded-xl bg-red-950/60 border border-red-800 text-xs text-red-300">
+          <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-medium text-rose-700">
             {authError}
           </div>
         )}
 
         {isSuccess ? (
           <div className="py-8 text-center space-y-3">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200">
               <CheckCircle2 className="h-8 w-8" />
             </div>
-            <h4 className="text-xl font-bold text-white font-['Outfit']">
+            <h4 className="text-xl font-bold text-slate-900 font-['Outfit']">
               {activeTab === 'signin' ? 'Signed in successfully!' : 'Account created successfully!'}
             </h4>
-            <p className="text-xs text-slate-400">
-              Authenticated · <span className="text-emerald-400 font-bold">{signedInRole}</span>
+            <p className="text-xs text-slate-500">
+              Authenticated · <span className="text-emerald-600 font-bold">{signedInRole}</span>
             </p>
           </div>
         ) : activeTab === 'signin' ? (
           <form onSubmit={handleSignIn} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="email"
                   required
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/10 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none shadow-sm"
+                  className="w-full rounded-2xl bg-slate-50 border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none shadow-sm transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="password"
                   required
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/10 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none shadow-sm"
+                  className="w-full rounded-2xl bg-slate-50 border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none shadow-sm transition-all"
                 />
               </div>
             </div>
@@ -225,7 +225,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400 transition-colors shadow-md shadow-emerald-500/20 disabled:opacity-60 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20 disabled:opacity-60 cursor-pointer"
             >
               {isLoading ? (
                 <>
@@ -241,7 +241,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             </button>
 
             {onSwitchToRetailer && (
-              <div className="text-center text-xs text-slate-400 pt-2 border-t border-white/5">
+              <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-100 font-medium">
                 Own a physical store?{' '}
                 <button
                   type="button"
@@ -249,7 +249,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     onClose();
                     onSwitchToRetailer();
                   }}
-                  className="text-emerald-400 font-bold hover:underline cursor-pointer"
+                  className="text-emerald-600 font-bold hover:underline cursor-pointer"
                 >
                   Register your store →
                 </button>
@@ -259,68 +259,68 @@ export const SignInModal: React.FC<SignInModalProps> = ({
         ) : (
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                 Full Name
               </label>
               <div className="relative">
-                <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   required
                   placeholder="e.g. Rahul Sharma"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/10 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none shadow-sm"
+                  className="w-full rounded-2xl bg-slate-50 border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none shadow-sm transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="email"
                   required
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/10 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none shadow-sm"
+                  className="w-full rounded-2xl bg-slate-50 border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none shadow-sm transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                 Mobile Number (Optional)
               </label>
               <div className="relative">
-                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="tel"
                   placeholder="98765 43210"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/10 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none shadow-sm"
+                  className="w-full rounded-2xl bg-slate-50 border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none shadow-sm transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="password"
                   required
                   placeholder="At least 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/10 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none shadow-sm"
+                  className="w-full rounded-2xl bg-slate-50 border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none shadow-sm transition-all"
                 />
               </div>
             </div>
@@ -328,7 +328,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400 transition-colors shadow-md shadow-emerald-500/20 disabled:opacity-60 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20 disabled:opacity-60 cursor-pointer"
             >
               {isLoading ? (
                 <>

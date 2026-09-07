@@ -48,5 +48,17 @@ public interface IInventoryService
     Task<ApiResponse<List<InventoryHoldDto>>> GetActiveHoldsForCustomerAsync(
         Guid customerId
     );
+
+    Task<ApiResponse<ValidateHoldQrResponse>> ValidateHoldQrAsync(
+        Guid storeId,
+        string qrTokenOrCode,
+        Guid vendorUserId
+    );
+
+    Task<ApiResponse<InventoryHoldDto>> CollectHoldAsync(
+        Guid storeId,
+        Guid holdId,
+        Guid vendorUserId
+    );
 }
 

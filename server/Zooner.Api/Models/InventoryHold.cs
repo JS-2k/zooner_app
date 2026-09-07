@@ -37,6 +37,9 @@ public class InventoryHold
     [MaxLength(20)]
     public string HoldCode { get; set; } = string.Empty;
 
+    [MaxLength(128)]
+    public string QrToken { get; set; } = string.Empty;
+
     public InventoryHoldStatus Status { get; set; } = InventoryHoldStatus.Active;
 
     public DateTime ExpiresAtUtc { get; set; }

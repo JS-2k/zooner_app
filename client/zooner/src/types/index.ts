@@ -191,6 +191,7 @@ export interface InventoryHoldDto {
   price: number;
   quantity: number;
   holdCode: string;
+  qrToken?: string;
   status: string;
   expiresAtUtc: string;
   createdAtUtc: string;
