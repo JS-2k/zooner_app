@@ -21,8 +21,6 @@ public class ShopCategorySummaryDto
 public class ShopDto
 {
     public Guid Id { get; set; }
-    public Guid OwnerId { get; set; }
-    public string OwnerName { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
@@ -38,6 +36,12 @@ public class ShopDto
     public List<ShopCategorySummaryDto> Categories { get; set; } = new();
     public List<ShopOperatingHourDto> OperatingHours { get; set; } = new();
     public DateTime CreatedAtUtc { get; set; }
+}
+
+public class VendorShopDto : ShopDto
+{
+    public Guid OwnerId { get; set; }
+    public string OwnerName { get; set; } = string.Empty;
 }
 
 public class CreateShopRequest

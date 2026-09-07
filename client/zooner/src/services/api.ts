@@ -9,7 +9,11 @@ import type {
   InventoryHoldDto
 } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || (Capacitor.isNativePlatform() ? 'http://10.0.2.2:5000/api' : (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api'));
+const isNative = Capacitor.isNativePlatform();
+const isProd = import.meta.env.PROD;
+const API_BASE_URL = import.meta.env.VITE_API_URL || (
+  isProd ? (isNative ? 'https://api.zooner.app/api' : '/api') : (isNative ? 'http://10.0.2.2:5000/api' : 'http://localhost:5000/api')
+);
 
 export interface ApiResponse<T> {
   success: boolean;

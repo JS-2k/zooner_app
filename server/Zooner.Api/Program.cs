@@ -148,9 +148,9 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole(UserRoles.Admin));
-    options.AddPolicy("VendorPolicy", policy => policy.RequireRole(UserRoles.Vendor, UserRoles.Both, UserRoles.Admin, "ShopOwner", "Retailer", "VC", "V"));
-    options.AddPolicy("CustomerPolicy", policy => policy.RequireRole(UserRoles.Customer, UserRoles.Both, UserRoles.Admin, "C", "VC", "ShopOwner", "Retailer", "V"));
-    options.AddPolicy("ShopOwnerOnly", policy => policy.RequireRole(UserRoles.Vendor, UserRoles.Both, UserRoles.Admin, "ShopOwner", "Retailer", "VC", "V"));
+    options.AddPolicy("VendorPolicy", policy => policy.RequireRole(UserRoles.Vendor, UserRoles.Admin));
+    options.AddPolicy("CustomerPolicy", policy => policy.RequireRole(UserRoles.Customer, UserRoles.Vendor, UserRoles.Admin));
+    options.AddPolicy("ShopOwnerOnly", policy => policy.RequireRole(UserRoles.Vendor, UserRoles.Admin));
 });
 
 // 6. Configure CORS with strict explicit allowlist (no wildcards)

@@ -24,16 +24,18 @@ public static class DbSeeder
             }
 
             // 2. Seed Default Admin User if not existing
-            var adminEmail = "admin@locallive.com";
-            if (!await context.Users.AnyAsync(u => u.Email == adminEmail))
+            var adminEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL") ?? "admin@locallive.com";
+            var adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD");
+            
+            if (!string.IsNullOrEmpty(adminPassword) && !await context.Users.AnyAsync(u => u.Email == adminEmail))
             {
                 var admin = new User
                 {
                     Id = Guid.NewGuid(),
                     FullName = "LocalLive Administrator",
                     Email = adminEmail,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123456"),
-                    Role = "Admin",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
+                    Role = UserRoles.Admin,
                     IsActive = true,
                     CreatedAtUtc = DateTime.UtcNow
                 };

@@ -12,7 +12,7 @@ public interface IShopService
     Task<ApiResponse> ToggleLiveStatusAsync(Guid ownerId, Guid shopId, bool isLiveEnabled);
     Task<ApiResponse> AssignCategoriesAsync(Guid ownerId, Guid shopId, List<Guid> categoryIds);
     Task<ApiResponse> RemoveCategoryAsync(Guid ownerId, Guid shopId, Guid categoryId);
-    Task<ApiResponse<List<ShopOperatingHourDto>>> GetOperatingHoursAsync(Guid shopId);
+    Task<ApiResponse<List<ShopOperatingHourDto>>> GetOperatingHoursAsync(Guid shopId, Guid? requestingUserId = null, bool isAdmin = false);
     Task<ApiResponse> UpdateOperatingHoursAsync(Guid ownerId, Guid shopId, List<ShopOperatingHourDto> hours);
     Task<List<Shop>> FindNearbyEligibleShopsAsync(double latitude, double longitude, double radiusKm, Guid categoryId);
 }

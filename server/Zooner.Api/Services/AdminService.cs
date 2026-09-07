@@ -130,7 +130,7 @@ public class AdminService : IAdminService
             .AsNoTracking()
             .ToListAsync();
 
-        var dtos = shops.Select(s => new ShopDto
+        var dtos = shops.Select(s => new VendorShopDto
         {
             Id = s.Id,
             OwnerId = s.OwnerId,
@@ -146,7 +146,7 @@ public class AdminService : IAdminService
             IsActive = s.IsActive,
             IsLiveEnabled = s.IsLiveEnabled,
             CreatedAtUtc = s.CreatedAtUtc
-        }).ToList();
+        }).Cast<ShopDto>().ToList();
 
         return ApiResponse<List<ShopDto>>.Ok(dtos);
     }

@@ -60,8 +60,7 @@ public class ShopService : IShopService
                 : ShopVerificationStatus.Pending,
             IsActive = true,
 
-
-            IsLiveEnabled = true,
+            IsLiveEnabled = false,
             CreatedAtUtc = DateTime.UtcNow
         };
 
@@ -87,7 +86,7 @@ public class ShopService : IShopService
         _context.Shops.Add(shop);
         await _context.SaveChangesAsync();
 
-        return ApiResponse<ShopDto>.Ok((await LoadShopDtoAsync(shop.Id))!, "Shop registered successfully.");
+        return ApiResponse<ShopDto>.Ok((await LoadShopDtoAsync(shop.Id, true))!, "Shop registered successfully.");
     }
 
     public async Task<ApiResponse<ShopDto>> GetShopByIdAsync(Guid id, double? userLat = null, double? userLon = null, Guid? requestingUserId = null, bool isAdmin = false)
@@ -110,7 +109,7 @@ public class ShopService : IShopService
             }
         }
 
-        var shopDto = await LoadShopDtoAsync(id, userLat, userLon);
+        var shopDto = await LoadShopDtoAsync(id, isOwner || isAdmin, userLat, userLon);
         if (shopDto == null)
         {
             return ApiResponse<ShopDto>.Fail("Shop not found.");
@@ -130,7 +129,7 @@ public class ShopService : IShopService
             .AsNoTracking()
             .ToListAsync();
 
-        return ApiResponse<List<ShopDto>>.Ok(shops.Select(s => MapToShopDto(s)).ToList());
+        return ApiResponse<List<ShopDto>>.Ok(shops.Select(s => MapToShopDto(s, true)).ToList());
     }
 
     public async Task<ApiResponse<ShopDto>> UpdateShopAsync(Guid ownerId, Guid shopId, UpdateShopRequest request)
@@ -160,7 +159,7 @@ public class ShopService : IShopService
 
         await _context.SaveChangesAsync();
 
-        return ApiResponse<ShopDto>.Ok((await LoadShopDtoAsync(shop.Id))!, "Shop updated successfully.");
+        return ApiResponse<ShopDto>.Ok((await LoadShopDtoAsync(shop.Id, true))!, "Shop updated successfully.");
     }
 
     public async Task<ApiResponse> ToggleLiveStatusAsync(Guid ownerId, Guid shopId, bool isLiveEnabled)
@@ -235,8 +234,23 @@ public class ShopService : IShopService
         return ApiResponse.Ok("Category removed from shop.");
     }
 
-    public async Task<ApiResponse<List<ShopOperatingHourDto>>> GetOperatingHoursAsync(Guid shopId)
+    public async Task<ApiResponse<List<ShopOperatingHourDto>>> GetOperatingHoursAsync(Guid shopId, Guid? requestingUserId = null, bool isAdmin = false)
     {
+        var shop = await _context.Shops.FindAsync(shopId);
+        if (shop == null)
+        {
+            return ApiResponse<List<ShopOperatingHourDto>>.Fail("Shop not found.");
+        }
+
+        bool isOwner = requestingUserId.HasValue && shop.OwnerId == requestingUserId.Value;
+        if (!isOwner && !isAdmin)
+        {
+            if (shop.VerificationStatus != ShopVerificationStatus.Approved || !shop.IsActive || !shop.IsLiveEnabled)
+            {
+                return ApiResponse<List<ShopOperatingHourDto>>.Fail("Shop not found or currently unavailable.");
+            }
+        }
+
         var hours = await _context.ShopOperatingHours
             .Where(h => h.ShopId == shopId)
             .OrderBy(h => h.DayOfWeek)
@@ -322,7 +336,7 @@ public class ShopService : IShopService
         return eligibleShops;
     }
 
-    private async Task<ShopDto?> LoadShopDtoAsync(Guid shopId, double? userLat = null, double? userLon = null)
+    private async Task<ShopDto?> LoadShopDtoAsync(Guid shopId, bool includeOwnerDetails = false, double? userLat = null, double? userLon = null)
     {
         var shop = await _context.Shops
             .Include(s => s.Owner)
@@ -331,10 +345,10 @@ public class ShopService : IShopService
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == shopId);
 
-        return shop == null ? null : MapToShopDto(shop, userLat, userLon);
+        return shop == null ? null : MapToShopDto(shop, includeOwnerDetails, userLat, userLon);
     }
 
-    private static ShopDto MapToShopDto(Shop s, double? userLat = null, double? userLon = null)
+    private static ShopDto MapToShopDto(Shop s, bool includeOwnerDetails = false, double? userLat = null, double? userLon = null)
     {
         var now = DateTime.UtcNow;
         var today = s.OperatingHours.FirstOrDefault(h => h.DayOfWeek == now.DayOfWeek);
@@ -346,11 +360,46 @@ public class ShopService : IShopService
             distance = GeoLocationHelper.CalculateDistanceKm(userLat.Value, userLon.Value, s.Latitude, s.Longitude);
         }
 
+        if (includeOwnerDetails)
+        {
+            return new VendorShopDto
+            {
+                Id = s.Id,
+                OwnerId = s.OwnerId,
+                OwnerName = s.Owner?.FullName ?? string.Empty,
+                Name = s.Name,
+                Description = s.Description,
+                Phone = s.Phone,
+                Address = s.Address,
+                Latitude = s.Latitude,
+                Longitude = s.Longitude,
+                ImageUrl = s.ImageUrl,
+                VerificationStatus = s.VerificationStatus.ToString(),
+                IsActive = s.IsActive,
+                IsLiveEnabled = s.IsLiveEnabled,
+                IsCurrentlyOpen = isOpen,
+                DistanceKm = distance,
+                Categories = s.ShopCategories.Select(sc => new ShopCategorySummaryDto
+                {
+                    CategoryId = sc.CategoryId,
+                    Name = sc.Category?.Name ?? string.Empty,
+                    Slug = sc.Category?.Slug ?? string.Empty,
+                    Icon = sc.Category?.Icon ?? string.Empty
+                }).ToList(),
+                OperatingHours = s.OperatingHours.Select(h => new ShopOperatingHourDto
+                {
+                    DayOfWeek = h.DayOfWeek,
+                    OpenTime = h.OpenTime,
+                    CloseTime = h.CloseTime,
+                    IsClosed = h.IsClosed
+                }).ToList(),
+                CreatedAtUtc = s.CreatedAtUtc
+            };
+        }
+        
         return new ShopDto
         {
             Id = s.Id,
-            OwnerId = s.OwnerId,
-            OwnerName = s.Owner?.FullName ?? string.Empty,
             Name = s.Name,
             Description = s.Description,
             Phone = s.Phone,

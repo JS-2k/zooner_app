@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Zooner.Api.Models.DTOs;
 using Zooner.Api.Services;
+using Zooner.Api.Models;
 
 namespace Zooner.Api.Controllers;
 
@@ -127,7 +128,16 @@ public class ShopsController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<List<ShopOperatingHourDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOperatingHours(Guid id)
     {
-        var response = await _shopService.GetOperatingHoursAsync(id);
+        Guid? requestingUserId = null;
+        bool isAdmin = false;
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedId))
+        {
+            requestingUserId = parsedId;
+            isAdmin = User.IsInRole("Admin");
+        }
+
+        var response = await _shopService.GetOperatingHoursAsync(id, requestingUserId, isAdmin);
         return Ok(response);
     }
 

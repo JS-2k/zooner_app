@@ -46,6 +46,8 @@ public class AuthService : IAuthService
         };
 
         var refreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
+        var plainRefreshToken = refreshToken.Token;
+        refreshToken.Token = HashToken(plainRefreshToken);
 
         _context.Users.Add(user);
         _context.RefreshTokens.Add(refreshToken);
@@ -56,7 +58,7 @@ public class AuthService : IAuthService
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
             AccessToken = accessToken,
-            RefreshToken = refreshToken.Token,
+            RefreshToken = plainRefreshToken,
             ExpiresInMinutes = _tokenService.GetAccessTokenExpiryMinutes(),
             User = MapToUserDto(user)
         }, "Registration successful.");
@@ -76,6 +78,8 @@ public class AuthService : IAuthService
 
         var accessToken = _tokenService.GenerateAccessToken(user);
         var refreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
+        var plainRefreshToken = refreshToken.Token;
+        refreshToken.Token = HashToken(plainRefreshToken);
 
         _context.RefreshTokens.Add(refreshToken);
         await _context.SaveChangesAsync();
@@ -83,7 +87,7 @@ public class AuthService : IAuthService
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
             AccessToken = accessToken,
-            RefreshToken = refreshToken.Token,
+            RefreshToken = plainRefreshToken,
             ExpiresInMinutes = _tokenService.GetAccessTokenExpiryMinutes(),
             User = MapToUserDto(user)
         }, "Login successful.");
@@ -91,9 +95,10 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<AuthResponse>> RefreshTokenAsync(string token, string? ipAddress = null)
     {
+        var hashedToken = HashToken(token);
         var refreshToken = await _context.RefreshTokens
             .Include(rt => rt.User)
-            .FirstOrDefaultAsync(rt => rt.Token == token);
+            .FirstOrDefaultAsync(rt => rt.Token == hashedToken);
 
         if (refreshToken == null)
         {
@@ -130,6 +135,9 @@ public class AuthService : IAuthService
 
         // Token rotation: revoke current token and create replacement
         var newRefreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
+        var plainNewRefreshToken = newRefreshToken.Token;
+        newRefreshToken.Token = HashToken(plainNewRefreshToken);
+        
         refreshToken.RevokedAtUtc = DateTime.UtcNow;
         refreshToken.RevokedByIp = ipAddress;
         refreshToken.ReplacedByToken = newRefreshToken.Token;
@@ -142,7 +150,7 @@ public class AuthService : IAuthService
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
             AccessToken = newAccessToken,
-            RefreshToken = newRefreshToken.Token,
+            RefreshToken = plainNewRefreshToken,
             ExpiresInMinutes = _tokenService.GetAccessTokenExpiryMinutes(),
             User = MapToUserDto(user)
         }, "Token refreshed successfully.");
@@ -150,8 +158,9 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse> RevokeTokenAsync(string token, string? ipAddress = null)
     {
+        var hashedToken = HashToken(token);
         var refreshToken = await _context.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == token);
+            .FirstOrDefaultAsync(rt => rt.Token == hashedToken);
 
         if (refreshToken == null)
         {
@@ -191,13 +200,15 @@ public class AuthService : IAuthService
 
         if (!user.HasVendorCapability)
         {
-            user.Role = UserRoles.Both;
+            user.Role = UserRoles.Vendor;
             user.UpdatedAtUtc = DateTime.UtcNow;
-            _logger.LogInformation("User {UserId} activated Vendor capability. Role updated to Both.", userId);
+            _logger.LogInformation("User {UserId} activated Vendor capability. Role updated to Vendor.", userId);
         }
 
         var accessToken = _tokenService.GenerateAccessToken(user);
         var refreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
+        var plainRefreshToken = refreshToken.Token;
+        refreshToken.Token = HashToken(plainRefreshToken);
 
         _context.RefreshTokens.Add(refreshToken);
         await _context.SaveChangesAsync();
@@ -205,10 +216,19 @@ public class AuthService : IAuthService
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
             AccessToken = accessToken,
-            RefreshToken = refreshToken.Token,
+            RefreshToken = plainRefreshToken,
             ExpiresInMinutes = _tokenService.GetAccessTokenExpiryMinutes(),
             User = MapToUserDto(user)
         }, "Vendor capability activated successfully.");
+    }
+
+    private static string HashToken(string token)
+    {
+        if (string.IsNullOrEmpty(token)) return token;
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(token);
+        var hash = sha256.ComputeHash(bytes);
+        return Convert.ToBase64String(hash);
     }
 
     private static UserDto MapToUserDto(User user) => new()

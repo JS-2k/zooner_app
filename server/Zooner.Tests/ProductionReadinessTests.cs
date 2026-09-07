@@ -5,6 +5,7 @@ using Zooner.Api.Models;
 using Zooner.Api.Models.DTOs;
 using Zooner.Api.Services;
 using Zooner.Api.Services.Background;
+using Microsoft.EntityFrameworkCore;
 
 namespace Zooner.Tests;
 
@@ -301,12 +302,12 @@ public class ProductionReadinessTests
 
         var response = await authService.BecomeVendorAsync(user.Id);
         Assert.True(response.Success);
-        Assert.Equal(UserRoles.Both, response.Data!.User.Role);
+        Assert.Equal(UserRoles.Vendor, response.Data!.User.Role);
 
         // Verify updated entity in db
         var updated = await context.Users.FindAsync(user.Id);
         Assert.NotNull(updated);
-        Assert.Equal(UserRoles.Both, updated.Role);
+        Assert.Equal(UserRoles.Vendor, updated.Role);
         Assert.True(updated.HasCustomerCapability);
         Assert.True(updated.HasVendorCapability);
 
@@ -320,6 +321,41 @@ public class ProductionReadinessTests
         Assert.Contains("Customer", roleClaims);
         Assert.Contains("Vendor", roleClaims);
         Assert.Contains("ShopOwner", roleClaims);
+    }
+
+    [Fact]
+    public async Task RefreshToken_Storage_Is_Hashed_And_Cannot_Be_Found_By_Plaintext()
+    {
+        using var context = TestDbContextFactory.Create(nameof(RefreshToken_Storage_Is_Hashed_And_Cannot_Be_Found_By_Plaintext));
+        var inMemorySettings = new Dictionary<string, string?> {
+            {"Jwt:Key", "SuperSecretKeyForTestingProductionReadinessZooner2026!"},
+            {"Jwt:Issuer", "TestIssuer"},
+            {"Jwt:Audience", "TestAudience"}
+        };
+        var config = new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings).Build();
+        var tokenService = new TokenService(config);
+        var authService = new AuthService(context, tokenService, NullLogger<AuthService>.Instance);
+
+        var request = new RegisterRequest
+        {
+            FullName = "Hash Tester",
+            Email = "hash@tester.com",
+            Password = "SecurePassword123!"
+        };
+
+        var response = await authService.RegisterAsync(request);
+        Assert.True(response.Success);
+        
+        var plainToken = response.Data!.RefreshToken;
+        
+        // Ensure the token stored in DB is not the plain token
+        var dbToken = await context.RefreshTokens.FirstOrDefaultAsync();
+        Assert.NotNull(dbToken);
+        Assert.NotEqual(plainToken, dbToken.Token);
+
+        // Ensure we can refresh using the plain token
+        var refreshResponse = await authService.RefreshTokenAsync(plainToken);
+        Assert.True(refreshResponse.Success);
     }
 
     [Fact]
