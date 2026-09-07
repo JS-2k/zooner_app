@@ -126,9 +126,84 @@ function authHeaders(): Record<string, string> {
   return headers;
 }
 
+async function parseApiResponse<T>(res: Response, defaultErrorMessage: string): Promise<ApiResponse<T>> {
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      const json = await res.json();
+      if (json && typeof json === 'object') {
+        if ('success' in json && typeof (json as any).success === 'boolean') {
+          return json as ApiResponse<T>;
+        }
+        if ((json as any).errors && typeof (json as any).errors === 'object') {
+          const errList: string[] = [];
+          const errObj = (json as any).errors;
+          for (const key of Object.keys(errObj)) {
+            const val = errObj[key];
+            if (Array.isArray(val)) errList.push(...val);
+            else if (typeof val === 'string') errList.push(val);
+          }
+          return {
+            success: false,
+            message: errList.join('. ') || (json as any).title || defaultErrorMessage,
+            data: null as any,
+            errors: errList
+          };
+        }
+        if ((json as any).title || (json as any).detail) {
+          return {
+            success: false,
+            message: (json as any).detail || (json as any).title || defaultErrorMessage,
+            data: null as any
+          };
+        }
+        return {
+          success: res.ok,
+          message: res.ok ? 'Success' : defaultErrorMessage,
+          data: json as T
+        };
+      }
+    } catch {
+      // JSON parse error, fall through to text handler
+    }
+  }
+
+  // Handle non-JSON responses (HTML error pages, Vercel SPA fallbacks, 502/503/504 gateway errors)
+  const rawText = await res.text().catch(() => '');
+  const isHtml = rawText.includes('<!doctype html') || rawText.includes('<html') || contentType.includes('text/html');
+
+  if (isHtml) {
+    if (res.status === 502 || res.status === 503 || res.status === 504) {
+      return {
+        success: false,
+        message: `Backend service is temporarily unavailable (HTTP ${res.status}). The server may be waking up, please retry in a few seconds.`,
+        data: null as any
+      };
+    }
+    if (res.status === 404 || res.ok) {
+      return {
+        success: false,
+        message: 'Unable to reach backend API (received HTML instead of JSON). Please verify backend server and API URL configuration.',
+        data: null as any
+      };
+    }
+    return {
+      success: false,
+      message: `Server returned HTTP ${res.status}. Please try again shortly.`,
+      data: null as any
+    };
+  }
+
+  return {
+    success: false,
+    message: rawText.trim() || (res.statusText ? `HTTP ${res.status}: ${res.statusText}` : defaultErrorMessage),
+    data: null as any
+  };
+}
+
 async function responseData<T>(response: Response): Promise<T | null> {
   if (!response.ok) return null;
-  const body: ApiResponse<T> = await response.json();
+  const body = await parseApiResponse<T>(response, 'Failed to process server response');
   return body.data ?? null;
 }
 
@@ -192,10 +267,7 @@ export async function googleLogin(credential: string): Promise<AuthResult> {
       body: JSON.stringify({ credential })
     });
 
-    const body: ApiResponse<AuthResponse> = await res.json().catch(() => ({
-      success: false,
-      message: 'Failed to parse authentication response from server.'
-    }));
+    const body = await parseApiResponse<AuthResponse>(res, 'Google authentication failed. Please verify your credentials.');
 
     if (res.ok && body.success && body.data) {
       localStorage.setItem('zooner_token', body.data.accessToken);
@@ -225,11 +297,13 @@ export async function googleLogin(credential: string): Promise<AuthResult> {
       success: false,
       error: body.message || 'Google authentication failed. Please verify your credentials.'
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Google login error:', error);
     return {
       success: false,
-      error: 'Unable to connect to authentication server. Please check your network connection.'
+      error: error?.message && !error.message.includes('fetch') 
+        ? error.message 
+        : 'Unable to connect to authentication server. Please check your network connection.'
     };
   }
 }
@@ -249,10 +323,7 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
       body: JSON.stringify({ email, password })
     });
 
-    const body: ApiResponse<AuthResponse> = await res.json().catch(() => ({
-      success: false,
-      message: 'Failed to parse response from server.'
-    }));
+    const body = await parseApiResponse<AuthResponse>(res, 'Invalid email or password. Please try again.');
 
     if (res.ok && body.success && body.data) {
       localStorage.setItem('zooner_token', body.data.accessToken);
@@ -262,7 +333,6 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
         localStorage.removeItem('zooner_refresh_token');
       }
       
-      // Save initial profile
       localStorage.setItem('zooner_user_profile', JSON.stringify({
         id: body.data.user.id,
         name: body.data.user.fullName,
@@ -275,7 +345,6 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
       }));
       window.dispatchEvent(new Event('storage'));
 
-      // Asynchronously enrich with user's shops
       syncUserProfile();
       return { success: true, data: body.data };
     }
@@ -284,11 +353,13 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
       success: false,
       error: body.message || 'Invalid email or password. Please try again.'
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
     return {
       success: false,
-      error: 'Unable to connect to authentication server. Please check your network connection.'
+      error: error?.message && !error.message.includes('fetch')
+        ? error.message
+        : 'Unable to connect to authentication server. Please check your network connection.'
     };
   }
 }
@@ -314,10 +385,7 @@ export async function registerUser(userData: {
       body: JSON.stringify(userData)
     });
 
-    const body: ApiResponse<AuthResponse> = await res.json().catch(() => ({
-      success: false,
-      message: 'Failed to parse response from server.'
-    }));
+    const body = await parseApiResponse<AuthResponse>(res, 'Registration failed. An account with this email may already exist.');
 
     if (res.ok && body.success && body.data) {
       localStorage.setItem('zooner_token', body.data.accessToken);
@@ -350,11 +418,13 @@ export async function registerUser(userData: {
       success: false,
       error: detailedErrors || 'Registration failed. An account with this email may already exist.'
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Registration error:', error);
     return {
       success: false,
-      error: 'Unable to connect to authentication server. Please check your network connection.'
+      error: error?.message && !error.message.includes('fetch')
+        ? error.message
+        : 'Unable to connect to authentication server. Please check your network connection.'
     };
   }
 }
@@ -417,23 +487,6 @@ export async function createShop(shopData: {
   longitude: number;
   categoryIds: string[];
 }): Promise<ShopProfileDto | null> {
-  const localShop: ShopProfileDto = {
-    id: `shop-${Date.now()}`,
-    name: shopData.name,
-    phone: shopData.phone,
-    address: shopData.address,
-    latitude: shopData.latitude,
-    longitude: shopData.longitude,
-    isLiveEnabled: true,
-    isOpen: true,
-    isCurrentlyOpen: true,
-    isVerified: true,
-    distanceKm: 0.1,
-    categoryName: 'Local Retailer',
-    categories: [{ id: shopData.categoryIds[0] || 'cat-1', name: 'Local Retailer' }],
-    products: []
-  };
-
   try {
     const res = await authenticatedFetch(`${API_BASE_URL}/Shops`, {
       method: 'POST',
@@ -447,27 +500,11 @@ export async function createShop(shopData: {
         return result;
       }
     }
+    return null;
   } catch (error) {
-    console.warn('Backend shop create unavailable, saving shop locally:', error);
+    console.error('Failed to create shop:', error);
+    return null;
   }
-
-  // Local fallback save
-  try {
-    const current = localStorage.getItem('zooner_user_profile');
-    if (current) {
-      const parsed = JSON.parse(current);
-      parsed.isVendor = true;
-      parsed.role = 'ShopOwner';
-      parsed.shops = [...(parsed.shops || []).filter((s: any) => s.id !== localShop.id), localShop];
-      localStorage.setItem('zooner_user_profile', JSON.stringify(parsed));
-      window.dispatchEvent(new Event('storage'));
-    }
-    const savedShops = localStorage.getItem('zooner_custom_shops');
-    const existing = savedShops ? JSON.parse(savedShops) : [];
-    localStorage.setItem('zooner_custom_shops', JSON.stringify([...existing, localShop]));
-  } catch {}
-
-  return localShop;
 }
 
 export async function getMyShops(): Promise<ShopProfileDto[]> {
@@ -475,24 +512,11 @@ export async function getMyShops(): Promise<ShopProfileDto[]> {
     const response = await authenticatedFetch(`${API_BASE_URL}/Shops/my-shops`);
     if (response.ok) {
       const data = await responseData<ShopProfileDto[]>(response);
-      if (data && data.length > 0) return data;
+      if (data && Array.isArray(data)) return data;
     }
-  } catch {}
-
-  try {
-    const profile = localStorage.getItem('zooner_user_profile');
-    if (profile) {
-      const parsed = JSON.parse(profile);
-      if (parsed.shops && parsed.shops.length > 0) {
-        return parsed.shops;
-      }
-    }
-    const savedShops = localStorage.getItem('zooner_custom_shops');
-    if (savedShops) {
-      return JSON.parse(savedShops);
-    }
-  } catch {}
-
+  } catch (error) {
+    console.error('Failed to fetch my shops:', error);
+  }
   return [];
 }
 

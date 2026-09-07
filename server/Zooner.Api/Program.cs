@@ -186,11 +186,20 @@ builder.Services.AddCors(options =>
                 return true;
             }
 
-            // Local development origins
-            if (builder.Environment.IsDevelopment())
+            // Vercel preview & production deployments and custom domain
+            if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
             {
-                if (Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
-                    (uri.Host == "localhost" || uri.Host == "127.0.0.1"))
+                var host = uri.Host;
+                if (host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) ||
+                    host.Equals("vercel.app", StringComparison.OrdinalIgnoreCase) ||
+                    host.EndsWith(".zooner.app", StringComparison.OrdinalIgnoreCase) ||
+                    host.Equals("zooner.app", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                // Local development origins
+                if (builder.Environment.IsDevelopment() && (host == "localhost" || host == "127.0.0.1"))
                 {
                     return true;
                 }

@@ -25,7 +25,12 @@ public class GoogleTokenValidator : IGoogleTokenValidator
         {
             var clientId = _configuration["Google:ClientId"] 
                 ?? _configuration["Google__ClientId"]
-                ?? _configuration["Authentication:Google:ClientId"];
+                ?? _configuration["Authentication:Google:ClientId"]
+                ?? _configuration["GOOGLE_CLIENT_ID"]
+                ?? _configuration["VITE_GOOGLE_CLIENT_ID"]
+                ?? Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID")
+                ?? Environment.GetEnvironmentVariable("Google__ClientId")
+                ?? Environment.GetEnvironmentVariable("VITE_GOOGLE_CLIENT_ID");
 
             var settings = new GoogleJsonWebSignature.ValidationSettings();
 

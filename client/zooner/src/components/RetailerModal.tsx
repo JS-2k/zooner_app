@@ -47,25 +47,10 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
     e.preventDefault();
     setErrorMessage(null);
 
-    let token = localStorage.getItem('zooner_token');
+    const token = localStorage.getItem('zooner_token');
     if (!token) {
-      // Auto-establish session with the entered business email & name
-      const userEmail = email.trim() || 'retailer@zooner.app';
-      const userName = ownerName.trim() || 'Store Owner';
-      const profile = {
-        id: `usr-${Date.now()}`,
-        name: userName,
-        email: userEmail,
-        phone: phone.trim() ? `+91 ${phone.trim()}` : '',
-        role: 'ShopOwner',
-        isVendor: true,
-        shops: [],
-        loggedInAt: Date.now()
-      };
-      token = `tok_${Date.now()}`;
-      localStorage.setItem('zooner_token', token);
-      localStorage.setItem('zooner_user_profile', JSON.stringify(profile));
-      window.dispatchEvent(new Event('storage'));
+      setErrorMessage('Please sign in to your Zooner account before registering a store.');
+      return;
     }
 
     setIsSubmitting(true);
@@ -74,7 +59,7 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
       // 1. Upgrade current customer identity to have Vendor capability
       await becomeVendor();
 
-      // 2. Fetch categories or fallback
+      // 2. Fetch categories
       let categoryId = 'cat-1';
       try {
         const cats = await fetchCategories();
@@ -84,7 +69,7 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
         }
       } catch {}
 
-      // 3. Create shop
+      // 3. Create shop on backend
       const shop = await createShop({
         name: storeName.trim() || 'Partner Store',
         phone: phone.startsWith('+') ? phone.trim() : `+91 ${phone.trim()}`,
@@ -95,39 +80,15 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
       });
 
       if (!shop) {
-        setErrorMessage('Failed to create store. Please review the details and try again.');
+        setErrorMessage('Failed to create store. Please check your network connection and try again.');
         setIsSubmitting(false);
         return;
       }
 
       setSubmitted(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Retailer registration error:', err);
-      // Local fallback store setup
-      const localShop = {
-        id: `shop-${Date.now()}`,
-        name: storeName.trim() || 'Partner Store',
-        phone: phone.startsWith('+') ? phone.trim() : `+91 ${phone.trim()}`,
-        address: `${address.trim()}, ${area.trim()}`,
-        latitude: 11.0168,
-        longitude: 76.9558,
-        isLiveEnabled: true,
-        isOpen: true,
-        categoryName: category,
-        products: []
-      };
-      const current = localStorage.getItem('zooner_user_profile');
-      if (current) {
-        try {
-          const p = JSON.parse(current);
-          p.isVendor = true;
-          p.role = 'ShopOwner';
-          p.shops = [...(p.shops || []).filter((s: any) => s.id !== localShop.id), localShop];
-          localStorage.setItem('zooner_user_profile', JSON.stringify(p));
-          window.dispatchEvent(new Event('storage'));
-        } catch {}
-      }
-      setSubmitted(true);
+      setErrorMessage(err?.message || 'An error occurred while creating your store. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
