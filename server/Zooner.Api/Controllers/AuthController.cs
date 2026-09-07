@@ -83,6 +83,36 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Authenticate via Google ID Token credential
+    /// </summary>
+    [HttpPost("google")]
+    [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+            return BadRequest(ApiResponse<AuthResponse>.Fail("Validation failed", errors));
+        }
+
+        var ipAddress = GetClientIpAddress();
+        var response = await _authService.GoogleLoginAsync(request, ipAddress);
+
+        if (!response.Success)
+        {
+            return Unauthorized(response);
+        }
+
+        PrepareAuthResponse(response);
+        return Ok(response);
+    }
+
+    /// <summary>
     /// Sign out by revoking the active refresh token and clearing authentication cookies
     /// </summary>
     [HttpPost("logout")]

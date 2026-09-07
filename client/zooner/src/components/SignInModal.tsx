@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, Phone, Store, User as UserIcon } from 'lucide-react';
-import { loginUser, registerUser, syncUserProfile } from '../services/api';
+import { loginUser, registerUser, syncUserProfile, googleLogin } from '../services/api';
 
 interface SignInModalProps {
   isOpen: boolean;
@@ -9,15 +9,6 @@ interface SignInModalProps {
   onSuccessLogin?: (role: 'Customer' | 'Vendor') => void;
   initialRole?: 'C' | 'V' | 'VC';
   initialTab?: 'signin' | 'register';
-}
-
-function extractNameFromEmail(emailAddress: string): string {
-  const prefix = (emailAddress.split('@')[0] || 'User').replace(/[-_.]+/g, ' ');
-  return prefix
-    .split(' ')
-    .filter(Boolean)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(' ') || 'User';
 }
 
 export const SignInModal: React.FC<SignInModalProps> = ({
@@ -40,48 +31,99 @@ export const SignInModal: React.FC<SignInModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
-  const [signedInRole, setSignedInRole] = useState<'Customer' | 'Merchant' | 'Customer & Merchant'>('Customer');
+  const [signedInRole, setSignedInRole] = useState<'Customer' | 'Merchant'>('Customer');
   const [signedInEmail, setSignedInEmail] = useState('');
-  const [showGooglePicker, setShowGooglePicker] = useState(false);
-  const [googleEmail, setGoogleEmail] = useState('');
-  const [googleName, setGoogleName] = useState('');
-  const [googleAuthError, setGoogleAuthError] = useState('');
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  if (!isOpen) return null;
+  const googleSignInButtonRef = useRef<HTMLDivElement>(null);
+  const googleRegisterButtonRef = useRef<HTMLDivElement>(null);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
-  const establishDynamicSession = (
-    userEmail: string,
-    name?: string,
-    role: 'Customer' | 'Vendor' = 'Customer',
-    mobileNumber?: string
-  ) => {
-    const clean = userEmail.trim().toLowerCase();
-    const displayName = name?.trim() || extractNameFromEmail(clean);
-    const isVendor = role === 'Vendor';
+  const handleGoogleCredentialResponse = async (response: google.accounts.id.CredentialResponse) => {
+    if (!response.credential) {
+      setAuthError('No credential received from Google.');
+      return;
+    }
 
-    const profile = {
-      id: `usr-${Date.now()}`,
-      name: displayName,
-      email: clean,
-      phone: mobileNumber?.trim() || '',
-      role: isVendor ? 'ShopOwner' : 'Customer',
-      isVendor,
-      shops: [],
-      loggedInAt: Date.now()
+    setIsLoading(true);
+    setAuthError('');
+
+    try {
+      const authRes = await googleLogin(response.credential);
+      if (authRes.success && authRes.data) {
+        const profile = await syncUserProfile();
+        const isVendor = profile?.isVendor || authRes.data.user.role === 'Vendor' || authRes.data.user.role === 'ShopOwner';
+        const finalRole = isVendor ? 'Merchant' : 'Customer';
+        setSignedInRole(finalRole);
+        setSignedInEmail(authRes.data.user.email || '');
+        setIsSuccess(true);
+        setTimeout(() => {
+          setIsSuccess(false);
+          onClose();
+          if (onSuccessLogin) onSuccessLogin(isVendor ? 'Vendor' : 'Customer');
+        }, 1200);
+      } else {
+        setAuthError(authRes.error || 'Google sign-in failed. Please try again.');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Google sign-in failed. Please try again.';
+      setAuthError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen || !googleClientId) return;
+
+    let isMounted = true;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const targetRef = activeTab === 'signin'
+      ? googleSignInButtonRef.current
+      : googleRegisterButtonRef.current;
+
+    const initGsi = () => {
+      if (!isMounted || !targetRef || !window.google?.accounts?.id) return;
+      try {
+        targetRef.innerHTML = '';
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        window.google.accounts.id.renderButton(targetRef, {
+          theme: 'outline',
+          size: 'large',
+          type: 'standard',
+          shape: 'rectangular',
+          text: activeTab === 'signin' ? 'signin_with' : 'signup_with',
+          width: 350,
+          logo_alignment: 'left',
+        });
+      } catch (err) {
+        console.error('Error rendering Google Sign-In button:', err);
+      }
     };
 
-    localStorage.setItem('zooner_token', `tok_${Date.now()}_${Math.random().toString(36).slice(2)}`);
-    localStorage.setItem('zooner_user_profile', JSON.stringify(profile));
-    if (mobileNumber?.trim()) {
-      localStorage.setItem('zooner_customer_profile', JSON.stringify({
-        name: displayName,
-        phone: mobileNumber.trim()
-      }));
+    if (window.google?.accounts?.id) {
+      initGsi();
+    } else {
+      intervalId = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          if (intervalId) clearInterval(intervalId);
+          initGsi();
+        }
+      }, 150);
     }
-    window.dispatchEvent(new Event('storage'));
-    return profile;
-  };
+
+    return () => {
+      isMounted = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isOpen, activeTab, googleClientId]);
+
+  if (!isOpen) return null;
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,41 +140,28 @@ export const SignInModal: React.FC<SignInModalProps> = ({
     try {
       const authRes = await loginUser(cleanEmail, password);
 
-      if (authRes && authRes.user) {
+      if (authRes.success && authRes.data) {
         const profile = await syncUserProfile();
-        const finalRole = (profile?.isVendor || selectedRole === 'Vendor') ? 'Merchant' : 'Customer';
+        const isVendor = profile?.isVendor || authRes.data.user.role === 'Vendor' || authRes.data.user.role === 'ShopOwner' || selectedRole === 'Vendor';
+        const finalRole = isVendor ? 'Merchant' : 'Customer';
         setSignedInRole(finalRole);
-        setSignedInEmail(authRes.user.email || cleanEmail);
+        setSignedInEmail(authRes.data.user.email || cleanEmail);
+        setIsSuccess(true);
+        setTimeout(() => {
+          setIsSuccess(false);
+          setEmail('');
+          setPassword('');
+          onClose();
+          if (onSuccessLogin) onSuccessLogin(isVendor ? 'Vendor' : 'Customer');
+        }, 1200);
       } else {
-        // Dynamic fallback for environments where backend is offline or static preview
-        const profile = establishDynamicSession(cleanEmail, fullName, selectedRole, phone);
-        setSignedInRole(profile.isVendor ? 'Merchant' : 'Customer');
-        setSignedInEmail(profile.email);
+        setAuthError(authRes.error || 'Invalid email or password.');
       }
-
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unable to connect to authentication server. Please try again.';
+      setAuthError(message);
+    } finally {
       setIsLoading(false);
-      setIsSuccess(true);
-      setTimeout(() => {
-        setIsSuccess(false);
-        setEmail('');
-        setPassword('');
-        onClose();
-        if (onSuccessLogin) onSuccessLogin(selectedRole);
-      }, 1200);
-    } catch {
-      // Dynamic fallback
-      const profile = establishDynamicSession(cleanEmail, fullName, selectedRole, phone);
-      setSignedInRole(profile.isVendor ? 'Merchant' : 'Customer');
-      setSignedInEmail(profile.email);
-      setIsLoading(false);
-      setIsSuccess(true);
-      setTimeout(() => {
-        setIsSuccess(false);
-        setEmail('');
-        setPassword('');
-        onClose();
-        if (onSuccessLogin) onSuccessLogin(selectedRole);
-      }, 1200);
     }
   };
 
@@ -159,95 +188,34 @@ export const SignInModal: React.FC<SignInModalProps> = ({
         email: cleanEmail,
         password,
         phoneNumber: phone.trim() ? `+91 ${phone.replace(/[^0-9]/g, '')}` : undefined,
-        role: selectedRole === 'Vendor' ? 'ShopOwner' : 'Customer'
+        role: selectedRole === 'Vendor' ? 'ShopOwner' : 'Customer',
       });
 
-      if (authRes && authRes.user) {
+      if (authRes.success && authRes.data) {
         const profile = await syncUserProfile();
-        const finalRole = (profile?.isVendor || selectedRole === 'Vendor') ? 'Merchant' : 'Customer';
+        const isVendor = profile?.isVendor || selectedRole === 'Vendor';
+        const finalRole = isVendor ? 'Merchant' : 'Customer';
         setSignedInRole(finalRole);
-        setSignedInEmail(authRes.user.email || cleanEmail);
+        setSignedInEmail(authRes.data.user.email || cleanEmail);
+        setIsSuccess(true);
+        setTimeout(() => {
+          setIsSuccess(false);
+          setEmail('');
+          setPassword('');
+          setFullName('');
+          setPhone('');
+          onClose();
+          if (onSuccessLogin) onSuccessLogin(isVendor ? 'Vendor' : 'Customer');
+        }, 1200);
       } else {
-        // Dynamic fallback for environments without live API
-        const profile = establishDynamicSession(cleanEmail, fullName, selectedRole, phone);
-        setSignedInRole(profile.isVendor ? 'Merchant' : 'Customer');
-        setSignedInEmail(profile.email);
+        setAuthError(authRes.error || 'Registration failed. Please check your details and try again.');
       }
-
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unable to connect to authentication server. Please try again.';
+      setAuthError(message);
+    } finally {
       setIsLoading(false);
-      setIsSuccess(true);
-      setTimeout(() => {
-        setIsSuccess(false);
-        setEmail('');
-        setPassword('');
-        setFullName('');
-        setPhone('');
-        onClose();
-        if (onSuccessLogin) onSuccessLogin(selectedRole);
-      }, 1200);
-    } catch {
-      const profile = establishDynamicSession(cleanEmail, fullName, selectedRole, phone);
-      setSignedInRole(profile.isVendor ? 'Merchant' : 'Customer');
-      setSignedInEmail(profile.email);
-      setIsLoading(false);
-      setIsSuccess(true);
-      setTimeout(() => {
-        setIsSuccess(false);
-        setEmail('');
-        setPassword('');
-        setFullName('');
-        setPhone('');
-        onClose();
-        if (onSuccessLogin) onSuccessLogin(selectedRole);
-      }, 1200);
     }
-  };
-
-  const handleGoogleAuth = () => {
-    const targetEmail = email.trim().toLowerCase();
-    if (targetEmail && targetEmail.includes('@')) {
-      const profile = establishDynamicSession(targetEmail, fullName, selectedRole, phone);
-      setSignedInRole(profile.isVendor ? 'Merchant' : 'Customer');
-      setSignedInEmail(profile.email);
-      setIsSuccess(true);
-      setTimeout(() => {
-        setIsSuccess(false);
-        onClose();
-        if (onSuccessLogin) onSuccessLogin(selectedRole);
-      }, 1000);
-      return;
-    }
-
-    setGoogleEmail('');
-    setGoogleName(fullName.trim());
-    setGoogleAuthError('');
-    setShowGooglePicker(true);
-  };
-
-  const handleGoogleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setGoogleAuthError('');
-
-    const targetEmail = googleEmail.trim().toLowerCase();
-    if (!targetEmail || !targetEmail.includes('@')) {
-      setGoogleAuthError('Please enter a valid Gmail address (e.g. name@gmail.com).');
-      return;
-    }
-
-    setIsGoogleLoading(true);
-    setTimeout(() => {
-      setIsGoogleLoading(false);
-      setShowGooglePicker(false);
-      const profile = establishDynamicSession(targetEmail, googleName, selectedRole, phone);
-      setSignedInRole(profile.isVendor ? 'Merchant' : 'Customer');
-      setSignedInEmail(profile.email);
-      setIsSuccess(true);
-      setTimeout(() => {
-        setIsSuccess(false);
-        onClose();
-        if (onSuccessLogin) onSuccessLogin(selectedRole);
-      }, 1000);
-    }, 600);
   };
 
   return (
@@ -289,123 +257,6 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 {signedInEmail}
               </p>
             )}
-          </div>
-        ) : showGooglePicker ? (
-          /* ── Google Sign-In Chooser Card ── */
-          <div className="space-y-4">
-            <div className="text-center space-y-2">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 border border-gray-100 shadow-xs">
-                <svg className="w-6 h-6" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z" />
-                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z" />
-                  <path fill="#FBBC05" d="M5.28 14.27a7.195 7.195 0 0 1 0-4.54V6.58H1.25a11.96 11.96 0 0 0 0 10.84l4.03-3.15z" />
-                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-gray-950 tracking-tight">Sign in with Google</h3>
-              <p className="text-xs text-gray-500">
-                Continue to Zooner as a <span className="font-semibold text-[#00A859]">{selectedRole === 'Vendor' ? 'Store Owner' : 'Shopper'}</span>.
-              </p>
-            </div>
-
-            {/* Role selector for Google sign in */}
-            <div className="grid grid-cols-2 p-1 bg-gray-100 rounded-2xl text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setSelectedRole('Customer')}
-                className={`py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  selectedRole === 'Customer'
-                    ? 'bg-white text-gray-950 shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                <UserIcon className="w-3.5 h-3.5" />
-                <span>Shopper</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedRole('Vendor')}
-                className={`py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  selectedRole === 'Vendor'
-                    ? 'bg-[#00A859] text-white shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                <Store className="w-3.5 h-3.5" />
-                <span>Store Owner</span>
-              </button>
-            </div>
-
-            {googleAuthError && (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-medium text-red-600">
-                {googleAuthError}
-              </div>
-            )}
-
-            <form onSubmit={handleGoogleSubmit} className="space-y-3 pt-1">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Gmail address
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="email"
-                    required
-                    autoFocus
-                    placeholder="yourname@gmail.com"
-                    value={googleEmail}
-                    onChange={(e) => {
-                      setGoogleEmail(e.target.value);
-                      if (googleAuthError) setGoogleAuthError('');
-                    }}
-                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#4285F4] focus:ring-1 focus:ring-[#4285F4] outline-hidden transition-all"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Display name (optional)
-                </label>
-                <div className="relative">
-                  <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Your Name"
-                    value={googleName}
-                    onChange={(e) => setGoogleName(e.target.value)}
-                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#4285F4] focus:ring-1 focus:ring-[#4285F4] outline-hidden transition-all"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isGoogleLoading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#4285F4] hover:bg-[#3367D6] py-3 text-sm font-semibold text-white transition-all shadow-xs disabled:opacity-60 cursor-pointer mt-2"
-              >
-                {isGoogleLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin text-white" />
-                    <span>Signing in with Google...</span>
-                  </>
-                ) : (
-                  <span>Continue with Google</span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowGooglePicker(false);
-                  setGoogleAuthError('');
-                }}
-                className="w-full py-2 text-xs font-medium text-gray-500 hover:text-gray-800 transition cursor-pointer"
-              >
-                ← Back to email sign in
-              </button>
-            </form>
           </div>
         ) : activeTab === 'signin' ? (
           /* ── Screen 7: Sign In ── */
@@ -524,19 +375,26 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleGoogleAuth}
-                className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all cursor-pointer"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z" />
-                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z" />
-                  <path fill="#FBBC05" d="M5.28 14.27a7.195 7.195 0 0 1 0-4.54V6.58H1.25a11.96 11.96 0 0 0 0 10.84l4.03-3.15z" />
-                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
-                </svg>
-                <span>Continue with Google</span>
-              </button>
+              {/* Official Google Identity Services Sign-In Button */}
+              {!googleClientId ? (
+                <button
+                  type="button"
+                  onClick={() => setAuthError('Google Client ID is not configured. Please set VITE_GOOGLE_CLIENT_ID in your client environment (.env).')}
+                  className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all cursor-pointer shadow-xs"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z" />
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z" />
+                    <path fill="#FBBC05" d="M5.28 14.27a7.195 7.195 0 0 1 0-4.54V6.58H1.25a11.96 11.96 0 0 0 0 10.84l4.03-3.15z" />
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
+              ) : (
+                <div className="flex justify-center w-full min-h-[44px]">
+                  <div ref={googleSignInButtonRef} className="w-full flex justify-center" />
+                </div>
+              )}
 
               <p className="text-center text-xs text-gray-500 pt-3">
                 Don't have an account?{' '}
@@ -714,19 +572,26 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleGoogleAuth}
-                className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all cursor-pointer"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z" />
-                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z" />
-                  <path fill="#FBBC05" d="M5.28 14.27a7.195 7.195 0 0 1 0-4.54V6.58H1.25a11.96 11.96 0 0 0 0 10.84l4.03-3.15z" />
-                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
-                </svg>
-                <span>Continue with Google</span>
-              </button>
+              {/* Official Google Identity Services Sign-Up Button */}
+              {!googleClientId ? (
+                <button
+                  type="button"
+                  onClick={() => setAuthError('Google Client ID is not configured. Please set VITE_GOOGLE_CLIENT_ID in your client environment (.env).')}
+                  className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all cursor-pointer shadow-xs"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z" />
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z" />
+                    <path fill="#FBBC05" d="M5.28 14.27a7.195 7.195 0 0 1 0-4.54V6.58H1.25a11.96 11.96 0 0 0 0 10.84l4.03-3.15z" />
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
+              ) : (
+                <div className="flex justify-center w-full min-h-[44px]">
+                  <div ref={googleRegisterButtonRef} className="w-full flex justify-center" />
+                </div>
+              )}
 
               <p className="text-center text-xs text-gray-500 pt-2">
                 Already have an account?{' '}

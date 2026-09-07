@@ -52,9 +52,10 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(u => u.Id);
             entity.HasIndex(u => u.Email).IsUnique();
+            entity.HasIndex(u => u.GoogleSubject);
             entity.Property(u => u.Email).IsRequired().HasMaxLength(256);
             entity.Property(u => u.FullName).IsRequired().HasMaxLength(100);
-            entity.Property(u => u.PasswordHash).IsRequired();
+            entity.Property(u => u.GoogleSubject).HasMaxLength(256);
             entity.Property(u => u.Role).HasMaxLength(50).HasDefaultValue("Customer");
         });
 

@@ -9,13 +9,24 @@ public class AuthService : IAuthService
 {
     private readonly AppDbContext _context;
     private readonly ITokenService _tokenService;
+    private readonly IGoogleTokenValidator _googleTokenValidator;
     private readonly ILogger<AuthService> _logger;
 
-    public AuthService(AppDbContext context, ITokenService tokenService, ILogger<AuthService> logger)
+    public AuthService(
+        AppDbContext context, 
+        ITokenService tokenService, 
+        IGoogleTokenValidator googleTokenValidator,
+        ILogger<AuthService> logger)
     {
         _context = context;
         _tokenService = tokenService;
+        _googleTokenValidator = googleTokenValidator;
         _logger = logger;
+    }
+
+    public AuthService(AppDbContext context, ITokenService tokenService, ILogger<AuthService> logger)
+        : this(context, tokenService, new GoogleTokenValidator(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), Microsoft.Extensions.Logging.Abstractions.NullLogger<GoogleTokenValidator>.Instance), logger)
+    {
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request, string? ipAddress = null)
@@ -91,6 +102,93 @@ public class AuthService : IAuthService
             ExpiresInMinutes = _tokenService.GetAccessTokenExpiryMinutes(),
             User = MapToUserDto(user)
         }, "Login successful.");
+    }
+
+    public async Task<ApiResponse<AuthResponse>> GoogleLoginAsync(GoogleLoginRequest request, string? ipAddress = null)
+    {
+        if (string.IsNullOrWhiteSpace(request.Credential))
+        {
+            return ApiResponse<AuthResponse>.Fail("Google credential is required.");
+        }
+
+        var payload = await _googleTokenValidator.ValidateAsync(request.Credential);
+        if (payload == null)
+        {
+            return ApiResponse<AuthResponse>.Fail("Invalid or expired Google authentication token.");
+        }
+
+        var normalizedEmail = payload.Email.Trim().ToLowerInvariant();
+
+        // 1. Check if user already exists with matching Google Subject
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.GoogleSubject == payload.Subject);
+
+        if (user == null)
+        {
+            // 2. Check if user exists with matching email
+            user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
+
+            if (user != null)
+            {
+                // Account linking policy: Only link if Google confirms email is verified
+                if (!payload.EmailVerified)
+                {
+                    _logger.LogWarning("Rejecting Google account linking for unverified email: {Email}", normalizedEmail);
+                    return ApiResponse<AuthResponse>.Fail("Google account email is not verified. Account linking rejected.");
+                }
+
+                // If user already linked to a different Google Subject, reject
+                if (!string.IsNullOrEmpty(user.GoogleSubject) && user.GoogleSubject != payload.Subject)
+                {
+                    _logger.LogWarning("User {UserId} already linked to another Google identity.", user.Id);
+                    return ApiResponse<AuthResponse>.Fail("This email address is already linked to another Google account.");
+                }
+
+                user.GoogleSubject = payload.Subject;
+                user.UpdatedAtUtc = DateTime.UtcNow;
+                _logger.LogInformation("Successfully linked Google identity {Subject} to user {UserId}.", payload.Subject, user.Id);
+            }
+            else
+            {
+                // 3. Brand new user: Default strictly to Customer role (cannot self-assign Vendor or Admin)
+                user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    FullName = !string.IsNullOrWhiteSpace(payload.Name) ? payload.Name.Trim() : "Google User",
+                    Email = normalizedEmail,
+                    GoogleSubject = payload.Subject,
+                    PasswordHash = null,
+                    Role = UserRoles.Customer,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    IsActive = true
+                };
+
+                _context.Users.Add(user);
+                _logger.LogInformation("Created new Zooner customer via Google sign-in: {UserId}", user.Id);
+            }
+        }
+
+        if (!user.IsActive)
+        {
+            return ApiResponse<AuthResponse>.Fail("This account has been deactivated.");
+        }
+
+        var accessToken = _tokenService.GenerateAccessToken(user);
+        var refreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
+        var plainRefreshToken = refreshToken.Token;
+        refreshToken.Token = HashToken(plainRefreshToken);
+
+        _context.RefreshTokens.Add(refreshToken);
+        await _context.SaveChangesAsync();
+
+        return ApiResponse<AuthResponse>.Ok(new AuthResponse
+        {
+            AccessToken = accessToken,
+            RefreshToken = plainRefreshToken,
+            ExpiresInMinutes = _tokenService.GetAccessTokenExpiryMinutes(),
+            User = MapToUserDto(user)
+        }, "Google authentication successful.");
     }
 
     public async Task<ApiResponse<AuthResponse>> RefreshTokenAsync(string token, string? ipAddress = null)

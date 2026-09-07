@@ -89,7 +89,7 @@ export async function refreshAccessToken(): Promise<string | null> {
 }
 
 export async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  let token = localStorage.getItem('zooner_token');
+  const token = localStorage.getItem('zooner_token');
   const headers = new Headers(options.headers || {});
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
@@ -171,7 +171,70 @@ export async function syncUserProfile(): Promise<{
   }
 }
 
-export async function loginUser(email: string, password: string): Promise<AuthResponse | null> {
+export interface AuthResult {
+  success: boolean;
+  data?: AuthResponse;
+  error?: string;
+}
+
+export async function googleLogin(credential: string): Promise<AuthResult> {
+  try {
+    const isNative = Capacitor.isNativePlatform();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (isNative) {
+      headers['X-Client-Platform'] = 'native';
+    }
+
+    const res = await fetch(`${API_BASE_URL}/Auth/google`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify({ credential })
+    });
+
+    const body: ApiResponse<AuthResponse> = await res.json().catch(() => ({
+      success: false,
+      message: 'Failed to parse authentication response from server.'
+    }));
+
+    if (res.ok && body.success && body.data) {
+      localStorage.setItem('zooner_token', body.data.accessToken);
+      if (isNative && body.data.refreshToken) {
+        localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
+      } else {
+        localStorage.removeItem('zooner_refresh_token');
+      }
+
+      localStorage.setItem('zooner_user_profile', JSON.stringify({
+        id: body.data.user.id,
+        name: body.data.user.fullName,
+        email: body.data.user.email,
+        phone: body.data.user.phoneNumber || '',
+        role: body.data.user.role,
+        isVendor: body.data.user.role === 'ShopOwner' || body.data.user.role === 'Admin' || body.data.user.role === 'Vendor',
+        shops: [],
+        loggedInAt: Date.now()
+      }));
+      window.dispatchEvent(new Event('storage'));
+
+      syncUserProfile();
+      return { success: true, data: body.data };
+    }
+
+    return {
+      success: false,
+      error: body.message || 'Google authentication failed. Please verify your credentials.'
+    };
+  } catch (error) {
+    console.error('Google login error:', error);
+    return {
+      success: false,
+      error: 'Unable to connect to authentication server. Please check your network connection.'
+    };
+  }
+}
+
+export async function loginUser(email: string, password: string): Promise<AuthResult> {
   try {
     const isNative = Capacitor.isNativePlatform();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -185,9 +248,13 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
       credentials: 'include',
       body: JSON.stringify({ email, password })
     });
-    if (!res.ok) return null;
-    const body: ApiResponse<AuthResponse> = await res.json();
-    if (body.success && body.data) {
+
+    const body: ApiResponse<AuthResponse> = await res.json().catch(() => ({
+      success: false,
+      message: 'Failed to parse response from server.'
+    }));
+
+    if (res.ok && body.success && body.data) {
       localStorage.setItem('zooner_token', body.data.accessToken);
       if (isNative && body.data.refreshToken) {
         localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
@@ -202,7 +269,7 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
         email: body.data.user.email,
         phone: body.data.user.phoneNumber || '',
         role: body.data.user.role,
-        isVendor: body.data.user.role === 'ShopOwner' || body.data.user.role === 'Admin',
+        isVendor: body.data.user.role === 'ShopOwner' || body.data.user.role === 'Admin' || body.data.user.role === 'Vendor',
         shops: [],
         loggedInAt: Date.now()
       }));
@@ -210,12 +277,19 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
 
       // Asynchronously enrich with user's shops
       syncUserProfile();
-      return body.data;
+      return { success: true, data: body.data };
     }
-    return null;
+
+    return {
+      success: false,
+      error: body.message || 'Invalid email or password. Please try again.'
+    };
   } catch (error) {
     console.error('Login error:', error);
-    return null;
+    return {
+      success: false,
+      error: 'Unable to connect to authentication server. Please check your network connection.'
+    };
   }
 }
 
@@ -225,7 +299,7 @@ export async function registerUser(userData: {
   password: string;
   phoneNumber?: string;
   role?: string;
-}): Promise<AuthResponse | null> {
+}): Promise<AuthResult> {
   try {
     const isNative = Capacitor.isNativePlatform();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -239,9 +313,13 @@ export async function registerUser(userData: {
       credentials: 'include',
       body: JSON.stringify(userData)
     });
-    if (!res.ok) return null;
-    const body: ApiResponse<AuthResponse> = await res.json();
-    if (body.success && body.data) {
+
+    const body: ApiResponse<AuthResponse> = await res.json().catch(() => ({
+      success: false,
+      message: 'Failed to parse response from server.'
+    }));
+
+    if (res.ok && body.success && body.data) {
       localStorage.setItem('zooner_token', body.data.accessToken);
       if (isNative && body.data.refreshToken) {
         localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
@@ -254,19 +332,30 @@ export async function registerUser(userData: {
         email: body.data.user.email,
         phone: body.data.user.phoneNumber || '',
         role: body.data.user.role,
-        isVendor: body.data.user.role === 'ShopOwner' || body.data.user.role === 'Admin',
+        isVendor: body.data.user.role === 'ShopOwner' || body.data.user.role === 'Admin' || body.data.user.role === 'Vendor',
         shops: [],
         loggedInAt: Date.now()
       }));
       window.dispatchEvent(new Event('storage'));
 
       syncUserProfile();
-      return body.data;
+      return { success: true, data: body.data };
     }
-    return null;
+
+    const detailedErrors = Array.isArray(body.errors) && body.errors.length > 0
+      ? body.errors.join('. ')
+      : body.message;
+
+    return {
+      success: false,
+      error: detailedErrors || 'Registration failed. An account with this email may already exist.'
+    };
   } catch (error) {
     console.error('Registration error:', error);
-    return null;
+    return {
+      success: false,
+      error: 'Unable to connect to authentication server. Please check your network connection.'
+    };
   }
 }
 

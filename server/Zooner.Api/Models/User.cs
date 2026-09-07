@@ -18,8 +18,10 @@ public class User
     [MaxLength(20)]
     public string? PhoneNumber { get; set; }
 
-    [Required]
-    public string PasswordHash { get; set; } = string.Empty;
+    public string? PasswordHash { get; set; }
+
+    [MaxLength(256)]
+    public string? GoogleSubject { get; set; }
 
     [MaxLength(50)]
     public string Role { get; set; } = UserRoles.Customer; // Customer, Vendor, Admin

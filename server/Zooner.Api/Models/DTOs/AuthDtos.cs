@@ -59,3 +59,21 @@ public class AuthResponse
     public string TokenType { get; set; } = "Bearer";
     public UserDto User { get; set; } = null!;
 }
+
+public class GoogleLoginRequest
+{
+    [Required(ErrorMessage = "Google credential token is required.")]
+    public string Credential { get; set; } = string.Empty;
+}
+
+public class GoogleTokenPayload
+{
+    public string Subject { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public bool EmailVerified { get; set; }
+    public string? Name { get; set; }
+    public string? GivenName { get; set; }
+    public string? FamilyName { get; set; }
+    public string? Picture { get; set; }
+}
+
