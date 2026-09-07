@@ -77,3 +77,13 @@ public class GoogleTokenPayload
     public string? Picture { get; set; }
 }
 
+public class GoogleValidationResult
+{
+    public bool IsValid { get; set; }
+    public string? ErrorMessage { get; set; }
+    public GoogleTokenPayload? Payload { get; set; }
+
+    public static GoogleValidationResult Success(GoogleTokenPayload payload) => new() { IsValid = true, Payload = payload };
+    public static GoogleValidationResult Fail(string message) => new() { IsValid = false, ErrorMessage = message };
+}
+

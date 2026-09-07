@@ -4,5 +4,5 @@ namespace Zooner.Api.Services;
 
 public interface IGoogleTokenValidator
 {
-    Task<GoogleTokenPayload?> ValidateAsync(string credential);
+    Task<GoogleValidationResult> ValidateAsync(string credential);
 }

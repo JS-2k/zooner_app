@@ -14,11 +14,11 @@ public class GoogleTokenValidator : IGoogleTokenValidator
         _logger = logger;
     }
 
-    public async Task<GoogleTokenPayload?> ValidateAsync(string credential)
+    public async Task<GoogleValidationResult> ValidateAsync(string credential)
     {
         if (string.IsNullOrWhiteSpace(credential))
         {
-            return null;
+            return GoogleValidationResult.Fail("Google credential token is missing or empty.");
         }
 
         try
@@ -36,7 +36,13 @@ public class GoogleTokenValidator : IGoogleTokenValidator
 
             if (!string.IsNullOrWhiteSpace(clientId))
             {
-                settings.Audience = new[] { clientId.Trim() };
+                var trimmedId = clientId.Trim();
+                settings.Audience = new[] { trimmedId };
+                _logger.LogInformation("Validating Google ID token against Audience: {Audience}", trimmedId);
+            }
+            else
+            {
+                _logger.LogWarning("Google Client ID is not configured on the backend server. Configure GOOGLE_CLIENT_ID in server environment variables.");
             }
 
             var payload = await GoogleJsonWebSignature.ValidateAsync(credential, settings);
@@ -44,10 +50,13 @@ public class GoogleTokenValidator : IGoogleTokenValidator
             if (payload == null || string.IsNullOrWhiteSpace(payload.Subject) || string.IsNullOrWhiteSpace(payload.Email))
             {
                 _logger.LogWarning("Google token validation returned payload missing Subject or Email.");
-                return null;
+                return GoogleValidationResult.Fail("Google authentication token is missing required identity claims.");
             }
 
-            return new GoogleTokenPayload
+            _logger.LogInformation("Google token validation successful for user {Email}, email verified: {Verified}", 
+                payload.Email, payload.EmailVerified);
+
+            return GoogleValidationResult.Success(new GoogleTokenPayload
             {
                 Subject = payload.Subject,
                 Email = payload.Email.Trim().ToLowerInvariant(),
@@ -56,17 +65,36 @@ public class GoogleTokenValidator : IGoogleTokenValidator
                 GivenName = payload.GivenName,
                 FamilyName = payload.FamilyName,
                 Picture = payload.Picture
-            };
+            });
         }
         catch (InvalidJwtException ex)
         {
             _logger.LogWarning("Google ID token validation failed: {Message}", ex.Message);
-            return null;
+
+            var lowerMsg = ex.Message.ToLowerInvariant();
+            if (lowerMsg.Contains("audience") || lowerMsg.Contains("aud"))
+            {
+                return GoogleValidationResult.Fail("Google token audience mismatch. Verify that GOOGLE_CLIENT_ID on Render matches VITE_GOOGLE_CLIENT_ID on Vercel.");
+            }
+            if (lowerMsg.Contains("expired") || lowerMsg.Contains("exp"))
+            {
+                return GoogleValidationResult.Fail("Google authentication token has expired. Please sign in again.");
+            }
+            if (lowerMsg.Contains("issuer") || lowerMsg.Contains("iss"))
+            {
+                return GoogleValidationResult.Fail("Google token issuer is invalid.");
+            }
+            if (lowerMsg.Contains("signature") || lowerMsg.Contains("crypto"))
+            {
+                return GoogleValidationResult.Fail("Google token signature verification failed.");
+            }
+
+            return GoogleValidationResult.Fail($"Google authentication token validation failed: {ex.Message}");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error validating Google ID token.");
-            return null;
+            return GoogleValidationResult.Fail("An unexpected error occurred while validating Google authentication credentials.");
         }
     }
 }

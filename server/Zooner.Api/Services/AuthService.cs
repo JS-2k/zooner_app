@@ -111,12 +111,13 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail("Google credential is required.");
         }
 
-        var payload = await _googleTokenValidator.ValidateAsync(request.Credential);
-        if (payload == null)
+        var validationResult = await _googleTokenValidator.ValidateAsync(request.Credential);
+        if (!validationResult.IsValid || validationResult.Payload == null)
         {
-            return ApiResponse<AuthResponse>.Fail("Invalid or expired Google authentication token.");
+            return ApiResponse<AuthResponse>.Fail(validationResult.ErrorMessage ?? "Invalid or expired Google authentication token.");
         }
 
+        var payload = validationResult.Payload;
         var normalizedEmail = payload.Email.Trim().ToLowerInvariant();
 
         // 1. Check if user already exists with matching Google Subject

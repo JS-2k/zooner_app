@@ -61,18 +61,63 @@ public class GoogleAuthTests
     }
 
     [Fact]
-    public async Task GoogleLogin_InvalidToken_ReturnsFail()
+    public async Task GoogleLogin_InvalidToken_ReturnsFailWithSpecificError()
     {
         var dbName = Guid.NewGuid().ToString();
         var (authService, mockValidator, _) = CreateAuthService(dbName);
 
-        mockValidator.Setup(v => v.ValidateAsync(It.IsAny<string>()))
-            .ReturnsAsync((GoogleTokenPayload?)null);
+        mockValidator.Setup(v => v.ValidateAsync("invalid_token"))
+            .ReturnsAsync(GoogleValidationResult.Fail("Google authentication token signature verification failed."));
 
         var result = await authService.GoogleLoginAsync(new GoogleLoginRequest { Credential = "invalid_token" });
 
         Assert.False(result.Success);
-        Assert.Equal("Invalid or expired Google authentication token.", result.Message);
+        Assert.Equal("Google authentication token signature verification failed.", result.Message);
+    }
+
+    [Fact]
+    public async Task GoogleLogin_AudienceMismatch_ReturnsInformativeError()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var (authService, mockValidator, _) = CreateAuthService(dbName);
+
+        mockValidator.Setup(v => v.ValidateAsync("wrong_aud_token"))
+            .ReturnsAsync(GoogleValidationResult.Fail("Google token audience mismatch. Verify that GOOGLE_CLIENT_ID on Render matches VITE_GOOGLE_CLIENT_ID on Vercel."));
+
+        var result = await authService.GoogleLoginAsync(new GoogleLoginRequest { Credential = "wrong_aud_token" });
+
+        Assert.False(result.Success);
+        Assert.Contains("audience mismatch", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GoogleLogin_ExpiredToken_ReturnsExpiredError()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var (authService, mockValidator, _) = CreateAuthService(dbName);
+
+        mockValidator.Setup(v => v.ValidateAsync("expired_token"))
+            .ReturnsAsync(GoogleValidationResult.Fail("Google authentication token has expired. Please sign in again."));
+
+        var result = await authService.GoogleLoginAsync(new GoogleLoginRequest { Credential = "expired_token" });
+
+        Assert.False(result.Success);
+        Assert.Contains("expired", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GoogleLogin_InvalidIssuer_ReturnsIssuerError()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var (authService, mockValidator, _) = CreateAuthService(dbName);
+
+        mockValidator.Setup(v => v.ValidateAsync("wrong_issuer_token"))
+            .ReturnsAsync(GoogleValidationResult.Fail("Google token issuer is invalid."));
+
+        var result = await authService.GoogleLoginAsync(new GoogleLoginRequest { Credential = "wrong_issuer_token" });
+
+        Assert.False(result.Success);
+        Assert.Contains("issuer is invalid", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -86,13 +131,13 @@ public class GoogleAuthTests
         var googleName = "New Shopper";
 
         mockValidator.Setup(v => v.ValidateAsync("valid_google_token"))
-            .ReturnsAsync(new GoogleTokenPayload
+            .ReturnsAsync(GoogleValidationResult.Success(new GoogleTokenPayload
             {
                 Subject = googleSubject,
                 Email = googleEmail,
                 EmailVerified = true,
                 Name = googleName
-            });
+            }));
 
         var result = await authService.GoogleLoginAsync(new GoogleLoginRequest { Credential = "valid_google_token" }, "127.0.0.1");
 
@@ -130,13 +175,13 @@ public class GoogleAuthTests
         await context.SaveChangesAsync();
 
         mockValidator.Setup(v => v.ValidateAsync("token_vendor"))
-            .ReturnsAsync(new GoogleTokenPayload
+            .ReturnsAsync(GoogleValidationResult.Success(new GoogleTokenPayload
             {
                 Subject = "google_sub_vendor_999",
                 Email = "merchant@gmail.com",
                 EmailVerified = true,
                 Name = "Existing Merchant"
-            });
+            }));
 
         var result = await authService.GoogleLoginAsync(new GoogleLoginRequest { Credential = "token_vendor" });
 
@@ -167,13 +212,13 @@ public class GoogleAuthTests
         await context.SaveChangesAsync();
 
         mockValidator.Setup(v => v.ValidateAsync("token_user"))
-            .ReturnsAsync(new GoogleTokenPayload
+            .ReturnsAsync(GoogleValidationResult.Success(new GoogleTokenPayload
             {
                 Subject = "google_sub_newlink_111",
                 Email = "user@gmail.com",
                 EmailVerified = true,
                 Name = "Standard User"
-            });
+            }));
 
         var result = await authService.GoogleLoginAsync(new GoogleLoginRequest { Credential = "token_user" });
 
@@ -206,13 +251,13 @@ public class GoogleAuthTests
 
         // Attacker creates Google account with unverified email matching victim
         mockValidator.Setup(v => v.ValidateAsync("token_unverified"))
-            .ReturnsAsync(new GoogleTokenPayload
+            .ReturnsAsync(GoogleValidationResult.Success(new GoogleTokenPayload
             {
                 Subject = "attacker_sub_999",
                 Email = "target@victim.com",
                 EmailVerified = false, // UNVERIFIED
                 Name = "Attacker"
-            });
+            }));
 
         var result = await authService.GoogleLoginAsync(new GoogleLoginRequest { Credential = "token_unverified" });
 
@@ -245,13 +290,13 @@ public class GoogleAuthTests
 
         // A different Google account tries to log into the same email
         mockValidator.Setup(v => v.ValidateAsync("token_conflict"))
-            .ReturnsAsync(new GoogleTokenPayload
+            .ReturnsAsync(GoogleValidationResult.Success(new GoogleTokenPayload
             {
                 Subject = "different_sub",
                 Email = "user@example.com",
                 EmailVerified = true,
                 Name = "Linked User"
-            });
+            }));
 
         var result = await authService.GoogleLoginAsync(new GoogleLoginRequest { Credential = "token_conflict" });
 
@@ -266,13 +311,13 @@ public class GoogleAuthTests
         var (authService, mockValidator, context) = CreateAuthService(dbName);
 
         mockValidator.Setup(v => v.ValidateAsync("token_normal"))
-            .ReturnsAsync(new GoogleTokenPayload
+            .ReturnsAsync(GoogleValidationResult.Success(new GoogleTokenPayload
             {
                 Subject = "sub_normal_123",
                 Email = "normal@gmail.com",
                 EmailVerified = true,
                 Name = "Normal Person"
-            });
+            }));
 
         var result = await authService.GoogleLoginAsync(new GoogleLoginRequest { Credential = "token_normal" });
 
@@ -289,13 +334,13 @@ public class GoogleAuthTests
         var (authService, mockValidator, _) = CreateAuthService(dbName);
 
         mockValidator.Setup(v => v.ValidateAsync("token_browser"))
-            .ReturnsAsync(new GoogleTokenPayload
+            .ReturnsAsync(GoogleValidationResult.Success(new GoogleTokenPayload
             {
                 Subject = "sub_browser_555",
                 Email = "browser@gmail.com",
                 EmailVerified = true,
                 Name = "Browser User"
-            });
+            }));
 
         var mockEnv = new Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
         mockEnv.Setup(e => e.EnvironmentName).Returns("Development");
