@@ -86,7 +86,8 @@ public class ShopServiceTests
         var toggleOff = await shopService.ToggleLiveStatusAsync(owner.Id, shopRes.Data!.Id, false);
         Assert.True(toggleOff.Success);
 
-        var fetched = await shopService.GetShopByIdAsync(shopRes.Data.Id);
-        Assert.False(fetched.Data!.IsLiveEnabled);
+        var fetched = await shopService.GetShopByIdAsync(shopRes.Data.Id, requestingUserId: owner.Id);
+        Assert.NotNull(fetched.Data);
+        Assert.False(fetched.Data.IsLiveEnabled);
     }
 }

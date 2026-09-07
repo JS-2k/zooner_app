@@ -19,12 +19,26 @@ public class InventoryService : IInventoryService
     public async Task<ApiResponse<List<StoreInventoryDetailDto>>> GetStoreInventoryAsync(
         Guid storeId,
         string? search,
-        Guid? categoryId)
+        Guid? categoryId,
+        Guid? requestingUserId = null,
+        bool isAdmin = false)
     {
         var store = await _context.Shops.FirstOrDefaultAsync(s => s.Id == storeId);
         if (store == null)
         {
             return ApiResponse<List<StoreInventoryDetailDto>>.ErrorResponse("Store not found.");
+        }
+
+        bool isOwner = requestingUserId.HasValue && store.OwnerId == requestingUserId.Value;
+
+        // Public visibility rules: Store must be Approved, Active, and LiveEnabled
+        // UNLESS the caller is the store owner or an administrator.
+        if (!isOwner && !isAdmin)
+        {
+            if (store.VerificationStatus != ShopVerificationStatus.Approved || !store.IsActive || !store.IsLiveEnabled)
+            {
+                return ApiResponse<List<StoreInventoryDetailDto>>.ErrorResponse("Store not found or currently unavailable.");
+            }
         }
 
         var dbQuery = _context.StoreInventories
@@ -114,17 +128,42 @@ public class InventoryService : IInventoryService
         var existing = await _context.StoreInventories
             .FirstOrDefaultAsync(si => si.StoreId == storeId && si.ProductVariantId == request.ProductVariantId);
 
+        if (request.Price < 0)
+        {
+            return ApiResponse<StoreInventoryDetailDto>.ErrorResponse("Price cannot be negative.");
+        }
+
+        if (request.Quantity < 0)
+        {
+            return ApiResponse<StoreInventoryDetailDto>.ErrorResponse("Quantity cannot be negative.");
+        }
+
         if (existing != null)
         {
+            var reservedCount = Math.Max(0, existing.Quantity - existing.AvailableQuantity);
+            if (request.Quantity < reservedCount)
+            {
+                return ApiResponse<StoreInventoryDetailDto>.ErrorResponse(
+                    $"Cannot reduce total quantity ({request.Quantity}) below currently reserved quantity ({reservedCount}). Please fulfill or wait for active customer holds to expire first.");
+            }
+
             existing.Price = request.Price;
             existing.Quantity = request.Quantity;
-            existing.AvailableQuantity = Math.Max(0, request.Quantity - Math.Max(0, existing.Quantity - existing.AvailableQuantity));
+            existing.AvailableQuantity = request.Quantity - reservedCount;
             existing.ShelfLocation = request.ShelfLocation ?? existing.ShelfLocation;
             existing.SKU = request.SKU ?? existing.SKU;
             existing.IsActive = true;
             existing.UpdatedAtUtc = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(ex, "Concurrency conflict updating inventory {InventoryId}", existing.Id);
+                return ApiResponse<StoreInventoryDetailDto>.ErrorResponse("Inventory was modified concurrently by another process. Please refresh and try again.");
+            }
 
             return ApiResponse<StoreInventoryDetailDto>.SuccessResponse(new StoreInventoryDetailDto
             {
@@ -213,15 +252,39 @@ public class InventoryService : IInventoryService
             return ApiResponse<StoreInventoryDetailDto>.ErrorResponse("Inventory record not found.");
         }
 
+        if (request.Price < 0)
+        {
+            return ApiResponse<StoreInventoryDetailDto>.ErrorResponse("Price cannot be negative.");
+        }
+
+        if (request.Quantity < 0)
+        {
+            return ApiResponse<StoreInventoryDetailDto>.ErrorResponse("Quantity cannot be negative.");
+        }
+
         var reservedCount = Math.Max(0, inventory.Quantity - inventory.AvailableQuantity);
+        if (request.Quantity < reservedCount)
+        {
+            return ApiResponse<StoreInventoryDetailDto>.ErrorResponse(
+                $"Cannot reduce total quantity ({request.Quantity}) below currently reserved quantity ({reservedCount}). Please fulfill or wait for active customer holds to expire first.");
+        }
+
         inventory.Price = request.Price;
         inventory.Quantity = request.Quantity;
-        inventory.AvailableQuantity = Math.Max(0, request.Quantity - reservedCount);
+        inventory.AvailableQuantity = request.Quantity - reservedCount;
         inventory.ShelfLocation = request.ShelfLocation;
         inventory.IsActive = request.IsActive;
         inventory.UpdatedAtUtc = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Concurrency conflict updating inventory {InventoryId}", inventoryId);
+            return ApiResponse<StoreInventoryDetailDto>.ErrorResponse("Inventory was modified concurrently by another process. Please refresh and try again.");
+        }
 
         return ApiResponse<StoreInventoryDetailDto>.SuccessResponse(new StoreInventoryDetailDto
         {

@@ -107,6 +107,10 @@ export function AppContent() {
           isOpen={isRetailerModalOpen}
           onClose={() => setIsRetailerModalOpen(false)}
           onSuccess={() => navigateTo('vendor')}
+          onOpenSignIn={() => {
+            setIsRetailerModalOpen(false);
+            setIsSignInModalOpen(true);
+          }}
         />
       </div>
     );
@@ -139,6 +143,10 @@ export function AppContent() {
           isOpen={isRetailerModalOpen}
           onClose={() => setIsRetailerModalOpen(false)}
           onSuccess={() => navigateTo('vendor')}
+          onOpenSignIn={() => {
+            setIsRetailerModalOpen(false);
+            setIsSignInModalOpen(true);
+          }}
         />
       </div>
     );
@@ -181,6 +189,10 @@ export function AppContent() {
         isOpen={isRetailerModalOpen}
         onClose={() => setIsRetailerModalOpen(false)}
         onSuccess={() => navigateTo('vendor')}
+        onOpenSignIn={() => {
+          setIsRetailerModalOpen(false);
+          setIsSignInModalOpen(true);
+        }}
       />
     </div>
   );

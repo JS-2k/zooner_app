@@ -6,7 +6,7 @@ namespace Zooner.Api.Services;
 public interface IShopService
 {
     Task<ApiResponse<ShopDto>> CreateShopAsync(Guid ownerId, CreateShopRequest request);
-    Task<ApiResponse<ShopDto>> GetShopByIdAsync(Guid id, double? userLat = null, double? userLon = null);
+    Task<ApiResponse<ShopDto>> GetShopByIdAsync(Guid id, double? userLat = null, double? userLon = null, Guid? requestingUserId = null, bool isAdmin = false);
     Task<ApiResponse<List<ShopDto>>> GetMyShopsAsync(Guid ownerId);
     Task<ApiResponse<ShopDto>> UpdateShopAsync(Guid ownerId, Guid shopId, UpdateShopRequest request);
     Task<ApiResponse> ToggleLiveStatusAsync(Guid ownerId, Guid shopId, bool isLiveEnabled);

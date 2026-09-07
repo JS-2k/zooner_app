@@ -22,7 +22,7 @@ public class ShopsController : ControllerBase
     /// <summary>
     /// Register a new shop (Requires Vendor capability or Admin)
     /// </summary>
-    [Authorize(Roles = "Vendor,ShopOwner,Retailer,Both,VC,V,Admin")]
+    [Authorize(Policy = "VendorPolicy")]
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<ShopDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ShopDto>), StatusCodes.Status400BadRequest)]
@@ -34,14 +34,23 @@ public class ShopsController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieve shop details by ID
+    /// Retrieve shop details by ID (Public only if Approved, Active & Live; Owners/Admin can view pending/offline)
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<ShopDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ShopDto>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetShopById(Guid id, [FromQuery] double? userLat = null, [FromQuery] double? userLon = null)
     {
-        var response = await _shopService.GetShopByIdAsync(id, userLat, userLon);
+        Guid? requestingUserId = null;
+        bool isAdmin = false;
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedId))
+        {
+            requestingUserId = parsedId;
+            isAdmin = User.IsInRole("Admin");
+        }
+
+        var response = await _shopService.GetShopByIdAsync(id, userLat, userLon, requestingUserId, isAdmin);
         return response.Success ? Ok(response) : NotFound(response);
     }
 

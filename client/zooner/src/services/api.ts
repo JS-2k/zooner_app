@@ -9,7 +9,7 @@ import type {
   InventoryHoldDto
 } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || (Capacitor.isNativePlatform() ? 'http://10.0.2.2:5000/api' : 'http://localhost:5000/api');
+const API_BASE_URL = import.meta.env.VITE_API_URL || (Capacitor.isNativePlatform() ? 'http://10.0.2.2:5000/api' : (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api'));
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -22,8 +22,17 @@ let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
 
 export async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = localStorage.getItem('zooner_refresh_token');
-  if (!refreshToken) return null;
+  const isNative = Capacitor.isNativePlatform();
+  const refreshToken = isNative ? localStorage.getItem('zooner_refresh_token') : null;
+  const currentToken = localStorage.getItem('zooner_token');
+
+  // In browser, if we don't have an active or recent token session, avoid redundant refresh attempts
+  if (!isNative && !currentToken) {
+    return null;
+  }
+  if (isNative && !refreshToken) {
+    return null;
+  }
 
   if (isRefreshing && refreshPromise) {
     return refreshPromise;
@@ -32,10 +41,16 @@ export async function refreshAccessToken(): Promise<string | null> {
   isRefreshing = true;
   refreshPromise = (async () => {
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (isNative) {
+        headers['X-Client-Platform'] = 'native';
+      }
+
       const res = await fetch(`${API_BASE_URL}/Auth/refresh-token`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken })
+        headers,
+        credentials: 'include',
+        body: JSON.stringify(refreshToken ? { refreshToken } : {})
       });
 
       if (!res.ok) {
@@ -46,8 +61,11 @@ export async function refreshAccessToken(): Promise<string | null> {
       const body: ApiResponse<AuthResponse> = await res.json();
       if (body.success && body.data) {
         localStorage.setItem('zooner_token', body.data.accessToken);
-        if (body.data.refreshToken) {
+        if (isNative && body.data.refreshToken) {
           localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
+        } else {
+          // Never store refresh token in browser localStorage; rely strictly on HttpOnly cookie
+          localStorage.removeItem('zooner_refresh_token');
         }
         return body.data.accessToken;
       }
@@ -72,14 +90,23 @@ export async function authenticatedFetch(url: string, options: RequestInit = {})
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
+  if (Capacitor.isNativePlatform() && !headers.has('X-Client-Platform')) {
+    headers.set('X-Client-Platform', 'native');
+  }
 
-  let res = await fetch(url, { ...options, headers });
+  const fetchOptions: RequestInit = {
+    ...options,
+    headers,
+    credentials: options.credentials || 'include'
+  };
+
+  let res = await fetch(url, fetchOptions);
 
   if (res.status === 401) {
     const newToken = await refreshAccessToken();
     if (newToken) {
       headers.set('Authorization', `Bearer ${newToken}`);
-      res = await fetch(url, { ...options, headers });
+      res = await fetch(url, { ...fetchOptions, headers });
     }
   }
 
@@ -88,7 +115,11 @@ export async function authenticatedFetch(url: string, options: RequestInit = {})
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem('zooner_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  if (Capacitor.isNativePlatform()) {
+    headers['X-Client-Platform'] = 'native';
+  }
+  return headers;
 }
 
 async function responseData<T>(response: Response): Promise<T | null> {
@@ -138,17 +169,26 @@ export async function syncUserProfile(): Promise<{
 
 export async function loginUser(email: string, password: string): Promise<AuthResponse | null> {
   try {
+    const isNative = Capacitor.isNativePlatform();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (isNative) {
+      headers['X-Client-Platform'] = 'native';
+    }
+
     const res = await fetch(`${API_BASE_URL}/Auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
+      credentials: 'include',
       body: JSON.stringify({ email, password })
     });
     if (!res.ok) return null;
     const body: ApiResponse<AuthResponse> = await res.json();
     if (body.success && body.data) {
       localStorage.setItem('zooner_token', body.data.accessToken);
-      if (body.data.refreshToken) {
+      if (isNative && body.data.refreshToken) {
         localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
+      } else {
+        localStorage.removeItem('zooner_refresh_token');
       }
       
       // Save initial profile
@@ -183,17 +223,26 @@ export async function registerUser(userData: {
   role?: string;
 }): Promise<AuthResponse | null> {
   try {
+    const isNative = Capacitor.isNativePlatform();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (isNative) {
+      headers['X-Client-Platform'] = 'native';
+    }
+
     const res = await fetch(`${API_BASE_URL}/Auth/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
+      credentials: 'include',
       body: JSON.stringify(userData)
     });
     if (!res.ok) return null;
     const body: ApiResponse<AuthResponse> = await res.json();
     if (body.success && body.data) {
       localStorage.setItem('zooner_token', body.data.accessToken);
-      if (body.data.refreshToken) {
+      if (isNative && body.data.refreshToken) {
         localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
+      } else {
+        localStorage.removeItem('zooner_refresh_token');
       }
       localStorage.setItem('zooner_user_profile', JSON.stringify({
         id: body.data.user.id,
@@ -227,14 +276,20 @@ export async function getCurrentUser(): Promise<UserDto | null> {
 }
 
 export function logoutUser(): void {
-  const refreshToken = localStorage.getItem('zooner_refresh_token');
-  if (refreshToken) {
-    fetch(`${API_BASE_URL}/Auth/logout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken })
-    }).catch(() => {});
+  const isNative = Capacitor.isNativePlatform();
+  const refreshToken = isNative ? localStorage.getItem('zooner_refresh_token') : null;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (isNative) {
+    headers['X-Client-Platform'] = 'native';
   }
+
+  fetch(`${API_BASE_URL}/Auth/logout`, {
+    method: 'POST',
+    headers,
+    credentials: 'include',
+    body: JSON.stringify(refreshToken ? { refreshToken } : {})
+  }).catch(() => {});
+
   localStorage.removeItem('zooner_token');
   localStorage.removeItem('zooner_refresh_token');
   localStorage.removeItem('zooner_user_profile');
@@ -268,9 +323,9 @@ export async function createShop(shopData: {
   categoryIds: string[];
 }): Promise<ShopProfileDto | null> {
   try {
-    const res = await fetch(`${API_BASE_URL}/Shops`, {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Shops`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(shopData)
     });
     const result = await responseData<ShopProfileDto>(res);
@@ -286,7 +341,7 @@ export async function createShop(shopData: {
 
 export async function getMyShops(): Promise<ShopProfileDto[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/Shops/my-shops`, { headers: authHeaders() });
+    const response = await authenticatedFetch(`${API_BASE_URL}/Shops/my-shops`);
     return (await responseData<ShopProfileDto[]>(response)) ?? [];
   } catch {
     return [];
@@ -301,9 +356,9 @@ export async function updateShop(shopId: string, shop: {
   longitude?: number;
 }): Promise<ShopProfileDto | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/Shops/${shopId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/Shops/${shopId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(shop)
     });
     return responseData<ShopProfileDto>(response);
@@ -314,9 +369,9 @@ export async function updateShop(shopId: string, shop: {
 
 export async function setShopLiveStatus(shopId: string, isLiveEnabled: boolean): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE_URL}/Shops/${shopId}/live-status`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/Shops/${shopId}/live-status`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isLiveEnabled })
     });
     return response.ok;
@@ -327,7 +382,7 @@ export async function setShopLiveStatus(shopId: string, isLiveEnabled: boolean):
 
 export async function getIncomingRequests(shopId: string): Promise<LiveRequestSummary[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/Shops/${shopId}/incoming-requests`, { headers: authHeaders() });
+    const response = await authenticatedFetch(`${API_BASE_URL}/Shops/${shopId}/incoming-requests`);
     return (await responseData<LiveRequestSummary[]>(response)) ?? [];
   } catch {
     return [];
@@ -336,9 +391,9 @@ export async function getIncomingRequests(shopId: string): Promise<LiveRequestSu
 
 export async function respondToLiveRequest(requestId: string, shopId: string): Promise<Record<string, unknown> | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/Requests/${requestId}/respond`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/Requests/${requestId}/respond`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ shopId })
     });
     return responseData<Record<string, unknown>>(response);
@@ -536,13 +591,9 @@ export async function addStoreInventory(storeId: string, item: {
   sku?: string;
 }): Promise<StoreInventoryItem | null> {
   try {
-    const token = localStorage.getItem('zooner_token');
-    const res = await fetch(`${API_BASE_URL}/Stores/${storeId}/Inventory`, {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Stores/${storeId}/Inventory`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(item)
     });
     if (!res.ok) return null;
@@ -561,13 +612,9 @@ export async function updateStoreInventory(storeId: string, inventoryId: string,
   isActive?: boolean;
 }): Promise<StoreInventoryItem | null> {
   try {
-    const token = localStorage.getItem('zooner_token');
-    const res = await fetch(`${API_BASE_URL}/Stores/${storeId}/Inventory/${inventoryId}`, {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Stores/${storeId}/Inventory/${inventoryId}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(item)
     });
     if (!res.ok) return null;
@@ -581,12 +628,8 @@ export async function updateStoreInventory(storeId: string, inventoryId: string,
 
 export async function deleteStoreInventory(storeId: string, inventoryId: string): Promise<boolean> {
   try {
-    const token = localStorage.getItem('zooner_token');
-    const res = await fetch(`${API_BASE_URL}/Stores/${storeId}/Inventory/${inventoryId}`, {
-      method: 'DELETE',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      }
+    const res = await authenticatedFetch(`${API_BASE_URL}/Stores/${storeId}/Inventory/${inventoryId}`, {
+      method: 'DELETE'
     });
     return res.ok;
   } catch (error) {
@@ -651,18 +694,22 @@ export async function fetchMyActiveHolds(): Promise<InventoryHoldDto[]> {
 
 export async function becomeVendor(): Promise<{ success: boolean; data?: AuthResponse; error?: string }> {
   try {
-    const res = await authenticatedFetch(`${API_BASE_URL}/auth/become-vendor`, {
+    const isNative = Capacitor.isNativePlatform();
+    const res = await authenticatedFetch(`${API_BASE_URL}/Auth/become-vendor`, {
       method: 'POST'
     });
     const json: ApiResponse<AuthResponse> = await res.json();
     if (res.ok && json.success && json.data) {
       localStorage.setItem('zooner_token', json.data.accessToken);
-      if (json.data.refreshToken) {
+      if (isNative && json.data.refreshToken) {
         localStorage.setItem('zooner_refresh_token', json.data.refreshToken);
+      } else {
+        localStorage.removeItem('zooner_refresh_token');
       }
       if (json.data.user) {
         localStorage.setItem('zooner_user', JSON.stringify(json.data.user));
       }
+      await syncUserProfile();
       return { success: true, data: json.data };
     }
     return { success: false, error: json.message || 'Failed to activate vendor capability.' };

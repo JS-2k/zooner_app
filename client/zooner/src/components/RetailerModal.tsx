@@ -1,74 +1,99 @@
-import React, { useState } from 'react';
-import { X, Store, CheckCircle, ArrowRight, ShieldCheck, Upload, MapPin, Loader2 } from 'lucide-react';
-import { createShop, registerUser, loginUser, fetchCategories, becomeVendor } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import { X, Store, CheckCircle, ArrowRight, ShieldCheck, Upload, MapPin, Loader2, AlertCircle, LogIn } from 'lucide-react';
+import { createShop, fetchCategories, becomeVendor } from '../services/api';
 
 interface RetailerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  onOpenSignIn?: () => void;
 }
 
-export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, onSuccess, onOpenSignIn }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [storeName, setStoreName] = useState('');
   const [category, setCategory] = useState('Footwear & Sports');
   const [area, setArea] = useState('RS Puram, Coimbatore');
   const [address, setAddress] = useState('42, DB Road, RS Puram');
-  const [ownerName, setOwnerName] = useState('Ramesh Kumar');
-  const [phone, setPhone] = useState('9842210987');
-  const [email, setEmail] = useState('apex@cbestores.in');
+  const [ownerName, setOwnerName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const isAuthenticated = Boolean(localStorage.getItem('zooner_token'));
+
+  useEffect(() => {
+    if (isOpen) {
+      setErrorMessage(null);
+      try {
+        const stored = localStorage.getItem('zooner_user_profile');
+        if (stored) {
+          const profile = JSON.parse(stored);
+          if (profile.name && !ownerName) setOwnerName(profile.name);
+          if (profile.email && !email) setEmail(profile.email);
+          if (profile.phone && !phone) setPhone(profile.phone.replace(/^\+91\s*/, ''));
+        }
+      } catch {
+        // ignore profile parse issues
+      }
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
+    const token = localStorage.getItem('zooner_token');
+    if (!token) {
+      setErrorMessage('Please sign in or create an account first before registering your store.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // 1. Ensure authenticated user and activate vendor capability
-      let token = localStorage.getItem('zooner_token');
-      if (!token) {
-        const cleanPhone = phone.replace(/[^0-9]/g, '') || '9842210987';
-        const userEmail = email.trim() || `vendor_${cleanPhone}@zooner.in`;
-        const userPass = `VendorPass_${cleanPhone}!`;
-        
-        let auth = await loginUser(userEmail, userPass);
-        if (!auth) {
-          auth = await registerUser({
-            fullName: ownerName || 'Store Owner',
-            email: userEmail,
-            password: userPass,
-            phoneNumber: `+91 ${cleanPhone}`,
-            role: 'Both'
-          });
-        }
-        token = auth?.accessToken || null;
-      } else {
-        // Upgrade current customer identity to have Vendor capability
-        await becomeVendor();
+      // 1. Upgrade current customer identity to have Vendor capability
+      const vendorResult = await becomeVendor();
+      if (!vendorResult.success) {
+        setErrorMessage(vendorResult.error || 'Failed to activate vendor capabilities on your account.');
+        setIsSubmitting(false);
+        return;
       }
 
       // 2. Fetch categories to get valid CategoryId
       const cats = await fetchCategories();
       const matchedCat = cats.find(c => c.name.toLowerCase().includes(category.toLowerCase().split(' ')[0])) || cats[0];
-      const categoryId = matchedCat?.id || '00000000-0000-0000-0000-000000000001';
+      const categoryId = matchedCat?.id;
+      if (!categoryId) {
+        setErrorMessage('Failed to resolve store category. Please check your connection and try again.');
+        setIsSubmitting(false);
+        return;
+      }
 
       // 3. Create shop in backend
-      await createShop({
-        name: storeName || 'Apex Footwear & Athleisure',
-        phone: `+91 ${phone}`,
-        address: `${address}, ${area}`,
+      const shop = await createShop({
+        name: storeName.trim() || 'Partner Store',
+        phone: phone.startsWith('+') ? phone.trim() : `+91 ${phone.trim()}`,
+        address: `${address.trim()}, ${area.trim()}`,
         latitude: 11.0168,
         longitude: 76.9558,
         categoryIds: [categoryId]
       });
 
+      if (!shop) {
+        setErrorMessage('Failed to create store. Please review the details and try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
       setSubmitted(true);
     } catch (err) {
       console.error('Retailer registration error:', err);
-      setSubmitted(true);
+      setErrorMessage('An unexpected network error occurred while creating your store. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -76,6 +101,7 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
 
   const handleReset = () => {
     setSubmitted(false);
+    setErrorMessage(null);
     setStep(1);
     onClose();
   };
@@ -154,8 +180,46 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
                 </button>
               </div>
             </div>
+          ) : !isAuthenticated ? (
+            <div className="py-6 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                <LogIn className="h-8 w-8" />
+              </div>
+              <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-2 font-['Outfit']">
+                Account Required
+              </h4>
+              <p className="text-slate-600 dark:text-slate-300 text-sm max-w-sm mx-auto mb-6">
+                To link and manage a store on Zooner, please sign in or create an account first. Store ownership will be tied to your verified profile.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleReset();
+                    onOpenSignIn?.();
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-600/25 cursor-pointer"
+                >
+                  <LogIn className="h-4 w-4" />
+                  Sign In / Register
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="rounded-xl border border-slate-300 dark:border-slate-700 px-6 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {errorMessage && (
+                <div className="flex items-start gap-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 p-3.5 text-xs text-rose-700 dark:text-rose-300">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div className="flex-1">{errorMessage}</div>
+                </div>
+              )}
               {step === 1 ? (
                 <>
                   <div>

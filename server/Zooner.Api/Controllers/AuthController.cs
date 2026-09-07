@@ -15,11 +15,13 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly ILogger<AuthController> _logger;
+    private readonly IWebHostEnvironment _environment;
 
-    public AuthController(IAuthService authService, ILogger<AuthController> logger)
+    public AuthController(IAuthService authService, ILogger<AuthController> logger, IWebHostEnvironment environment)
     {
         _authService = authService;
         _logger = logger;
+        _environment = environment;
     }
 
     /// <summary>
@@ -47,7 +49,7 @@ public class AuthController : ControllerBase
             return BadRequest(response);
         }
 
-        SetRefreshTokenCookie(response.Data!.RefreshToken);
+        PrepareAuthResponse(response);
         return Ok(response);
     }
 
@@ -76,7 +78,7 @@ public class AuthController : ControllerBase
             return Unauthorized(response);
         }
 
-        SetRefreshTokenCookie(response.Data!.RefreshToken);
+        PrepareAuthResponse(response);
         return Ok(response);
     }
 
@@ -97,12 +99,14 @@ public class AuthController : ControllerBase
             await _authService.RevokeTokenAsync(token, ipAddress);
         }
 
-        // Clear refresh token cookie
+        // Clear refresh token cookie safely
+        var isDev = _environment.IsDevelopment();
         Response.Cookies.Delete("refreshToken", new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.None
+            Secure = !isDev || Request.IsHttps,
+            SameSite = isDev ? SameSiteMode.Lax : SameSiteMode.None,
+            Path = "/"
         });
 
         return Ok(ApiResponse.Ok("Successfully signed out."));
@@ -131,7 +135,7 @@ public class AuthController : ControllerBase
             return BadRequest(response);
         }
 
-        SetRefreshTokenCookie(response.Data!.RefreshToken);
+        PrepareAuthResponse(response);
         return Ok(response);
     }
 
@@ -186,18 +190,40 @@ public class AuthController : ControllerBase
             return BadRequest(response);
         }
 
-        SetRefreshTokenCookie(response.Data!.RefreshToken);
+        PrepareAuthResponse(response);
         return Ok(response);
+    }
+
+    private bool IsNativeClient()
+    {
+        return Request.Headers.TryGetValue("X-Client-Platform", out var platform) && 
+               platform.ToString().Equals("native", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void PrepareAuthResponse(ApiResponse<AuthResponse> response)
+    {
+        if (response.Data != null && !string.IsNullOrEmpty(response.Data.RefreshToken))
+        {
+            SetRefreshTokenCookie(response.Data.RefreshToken);
+
+            // For browser clients, do NOT leak the refresh token into JSON bodies; rely exclusively on the HttpOnly cookie
+            if (!IsNativeClient())
+            {
+                response.Data.RefreshToken = string.Empty;
+            }
+        }
     }
 
     private void SetRefreshTokenCookie(string token)
     {
+        var isDev = _environment.IsDevelopment();
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
             Expires = DateTime.UtcNow.AddDays(7),
-            Secure = true,
-            SameSite = SameSiteMode.None
+            Secure = !isDev || Request.IsHttps,
+            SameSite = isDev ? SameSiteMode.Lax : SameSiteMode.None,
+            Path = "/"
         };
         Response.Cookies.Append("refreshToken", token, cookieOptions);
     }

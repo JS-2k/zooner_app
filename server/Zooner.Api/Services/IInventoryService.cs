@@ -7,7 +7,9 @@ public interface IInventoryService
     Task<ApiResponse<List<StoreInventoryDetailDto>>> GetStoreInventoryAsync(
         Guid storeId,
         string? search,
-        Guid? categoryId
+        Guid? categoryId,
+        Guid? requestingUserId = null,
+        bool isAdmin = false
     );
 
     Task<ApiResponse<StoreInventoryDetailDto>> AddStoreInventoryAsync(

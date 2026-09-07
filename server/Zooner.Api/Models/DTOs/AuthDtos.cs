@@ -17,7 +17,8 @@ public class RegisterRequest
     [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
     public string Password { get; set; } = string.Empty;
 
-    public string Role { get; set; } = "Customer"; // "Customer", "Retailer", "Admin"
+    // Note: Public registration always creates standard Customer accounts; any client-provided value is safely ignored.
+    public string? Role { get; set; }
 }
 
 public class LoginRequest

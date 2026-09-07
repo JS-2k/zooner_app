@@ -20,17 +20,27 @@ public class InventoryController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieve inventory items for a specific store
+    /// Retrieve inventory items for a specific store (Gated by store approval/live status unless owner or admin)
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<List<StoreInventoryDetailDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<StoreInventoryDetailDto>>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetStoreInventory(
         Guid storeId,
         [FromQuery] string? search,
         [FromQuery] Guid? categoryId)
     {
-        var response = await _inventoryService.GetStoreInventoryAsync(storeId, search, categoryId);
-        return Ok(response);
+        Guid? requestingUserId = null;
+        bool isAdmin = false;
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedId))
+        {
+            requestingUserId = parsedId;
+            isAdmin = User.IsInRole("Admin");
+        }
+
+        var response = await _inventoryService.GetStoreInventoryAsync(storeId, search, categoryId, requestingUserId, isAdmin);
+        return response.Success ? Ok(response) : NotFound(response);
     }
 
     /// <summary>
@@ -38,7 +48,7 @@ public class InventoryController : ControllerBase
     /// Authorized: Authenticated vendor must own the store
     /// </summary>
     [HttpPost]
-    [Authorize]
+    [Authorize(Policy = "VendorPolicy")]
     [ProducesResponseType(typeof(ApiResponse<StoreInventoryDetailDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<StoreInventoryDetailDto>), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> AddInventory(
@@ -60,7 +70,7 @@ public class InventoryController : ControllerBase
     /// Authorized: Authenticated vendor must own the store
     /// </summary>
     [HttpPut("{inventoryId:guid}")]
-    [Authorize]
+    [Authorize(Policy = "VendorPolicy")]
     [ProducesResponseType(typeof(ApiResponse<StoreInventoryDetailDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateInventory(
         Guid storeId,
@@ -82,7 +92,7 @@ public class InventoryController : ControllerBase
     /// Authorized: Authenticated vendor must own the store
     /// </summary>
     [HttpDelete("{inventoryId:guid}")]
-    [Authorize]
+    [Authorize(Policy = "VendorPolicy")]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     public async Task<IActionResult> DeleteInventory(
         Guid storeId,

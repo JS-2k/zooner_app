@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Zooner.Api.Data;
 using Zooner.Api.Hubs;
+using Zooner.Api.Models;
 using Zooner.Api.Models.DTOs;
 using Zooner.Api.Services;
 using Zooner.Api.Services.Background;
@@ -83,10 +84,28 @@ builder.Services.AddHostedService<HoldExpirationWorker>();
 builder.Services.AddSignalR();
 
 // 5. Configure JWT Authentication (Supporting HTTP Bearer and SignalR WebSockets)
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("JWT Secret Key is not configured.");
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "LocalLiveApi";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "LocalLiveClient";
+var jwtKey = builder.Configuration["Jwt:Key"];
+
+// In Production, fail fast if secure secrets are missing
+if (!builder.Environment.IsDevelopment())
+{
+    if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32 || jwtKey.StartsWith("Development", StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException("Production startup failed: A secure, production JWT Key of at least 32 characters must be configured via the 'JWT__KEY' environment variable.");
+    }
+
+    if (string.IsNullOrWhiteSpace(connectionString) || connectionString.Contains("zooner_dev.db"))
+    {
+        throw new InvalidOperationException("Production startup failed: A valid production database connection string must be configured via 'DATABASE_URL' or 'ConnectionStrings__PostgreSql'.");
+    }
+}
+else
+{
+    jwtKey ??= "DevelopmentSuperSecretJwtKeyForLocalTestingOnly2026!DoNotUseInProduction";
+}
+
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "ZoonerApi";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "ZoonerClient";
 
 builder.Services.AddAuthentication(options =>
 {
@@ -95,7 +114,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false;
+    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -125,39 +144,62 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// Centralized Authorization Policies
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("ShopOwnerOnly", policy => policy.RequireRole("Vendor", "ShopOwner", "Retailer", "Both", "Admin"));
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole(UserRoles.Admin));
+    options.AddPolicy("VendorPolicy", policy => policy.RequireRole(UserRoles.Vendor, UserRoles.Both, UserRoles.Admin, "ShopOwner", "Retailer", "VC", "V"));
+    options.AddPolicy("CustomerPolicy", policy => policy.RequireRole(UserRoles.Customer, UserRoles.Both, UserRoles.Admin, "C", "VC", "ShopOwner", "Retailer", "V"));
+    options.AddPolicy("ShopOwnerOnly", policy => policy.RequireRole(UserRoles.Vendor, UserRoles.Both, UserRoles.Admin, "ShopOwner", "Retailer", "VC", "V"));
 });
 
-// 6. Configure CORS
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"];
+// 6. Configure CORS with strict explicit allowlist (no wildcards)
+var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+var envOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+var allowedOrigins = configOrigins.Concat(envOrigins).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+if (builder.Environment.IsDevelopment() && allowedOrigins.Count == 0)
+{
+    allowedOrigins.AddRange(["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"]);
+}
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClientApp", policy =>
     {
         policy.SetIsOriginAllowed(origin =>
-              {
-                  if (string.IsNullOrEmpty(origin)) return false;
-                  if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
-                  {
-                      if (uri.Host == "localhost" || 
-                          uri.Host == "127.0.0.1" || 
-                          uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) || 
-                          uri.Scheme == "capacitor" ||
-                          uri.Host == "capacitor")
-                      {
-                          return true;
-                      }
-                  }
-                  return allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase);
-              })
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        {
+            if (string.IsNullOrEmpty(origin)) return false;
+
+            // Direct match against configured allowlist
+            if (allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // Mobile Capacitor origins
+            if (origin.Equals("capacitor://localhost", StringComparison.OrdinalIgnoreCase) ||
+                origin.Equals("http://localhost", StringComparison.OrdinalIgnoreCase) ||
+                origin.Equals("https://localhost", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // Local development origins
+            if (builder.Environment.IsDevelopment())
+            {
+                if (Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+                    (uri.Host == "localhost" || uri.Host == "127.0.0.1"))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        })
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
     });
 });
 
@@ -279,7 +321,12 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred while running database migrations or seeding.");
+        logger.LogCritical(ex, "An error occurred while running database migrations or seeding.");
+        if (!app.Environment.IsDevelopment())
+        {
+            // Fail startup immediately in Production rather than running on a failed/corrupted schema
+            throw;
+        }
     }
 }
 

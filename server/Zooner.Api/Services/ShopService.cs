@@ -90,8 +90,26 @@ public class ShopService : IShopService
         return ApiResponse<ShopDto>.Ok((await LoadShopDtoAsync(shop.Id))!, "Shop registered successfully.");
     }
 
-    public async Task<ApiResponse<ShopDto>> GetShopByIdAsync(Guid id, double? userLat = null, double? userLon = null)
+    public async Task<ApiResponse<ShopDto>> GetShopByIdAsync(Guid id, double? userLat = null, double? userLon = null, Guid? requestingUserId = null, bool isAdmin = false)
     {
+        var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == id);
+        if (shop == null)
+        {
+            return ApiResponse<ShopDto>.Fail("Shop not found.");
+        }
+
+        bool isOwner = requestingUserId.HasValue && shop.OwnerId == requestingUserId.Value;
+
+        // Public visibility rules: Shop must be Approved, Active, and LiveEnabled
+        // UNLESS the caller is the store owner or an administrator.
+        if (!isOwner && !isAdmin)
+        {
+            if (shop.VerificationStatus != ShopVerificationStatus.Approved || !shop.IsActive || !shop.IsLiveEnabled)
+            {
+                return ApiResponse<ShopDto>.Fail("Shop not found or currently unavailable.");
+            }
+        }
+
         var shopDto = await LoadShopDtoAsync(id, userLat, userLon);
         if (shopDto == null)
         {

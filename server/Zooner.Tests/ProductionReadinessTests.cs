@@ -415,4 +415,232 @@ public class ProductionReadinessTests
         // Stock restored from 3 back to 5
         Assert.Equal(5, updatedInventory.AvailableQuantity);
     }
+
+    [Fact]
+    public async Task PublicRegistration_Always_Assigns_Customer_Role_Ignoring_Client_Supplied_Role()
+    {
+        using var context = TestDbContextFactory.Create(nameof(PublicRegistration_Always_Assigns_Customer_Role_Ignoring_Client_Supplied_Role));
+        var inMemorySettings = new Dictionary<string, string?> {
+            {"Jwt:Key", "SuperSecretKeyForTestingProductionReadinessZooner2026!"},
+            {"Jwt:Issuer", "TestIssuer"},
+            {"Jwt:Audience", "TestAudience"}
+        };
+        var config = new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings).Build();
+        var tokenService = new TokenService(config);
+        var authService = new AuthService(context, tokenService, NullLogger<AuthService>.Instance);
+
+        // Attempt privilege escalation to Admin via registration request
+        var adminAttempt = await authService.RegisterAsync(new RegisterRequest
+        {
+            FullName = "Malicious Hacker",
+            Email = "hacker@test.com",
+            Password = "SecurePassword123!",
+            Role = UserRoles.Admin
+        });
+
+        Assert.True(adminAttempt.Success);
+        Assert.NotNull(adminAttempt.Data);
+        // CRITICAL: Public registration must unconditionally ignore client-supplied role and assign Customer
+        Assert.Equal(UserRoles.Customer, adminAttempt.Data.User.Role);
+
+        var dbUser = await context.Users.FindAsync(adminAttempt.Data.User.Id);
+        Assert.NotNull(dbUser);
+        Assert.Equal(UserRoles.Customer, dbUser.Role);
+        Assert.False(dbUser.HasVendorCapability);
+
+        // Attempt privilege escalation to ShopOwner via registration request
+        var vendorAttempt = await authService.RegisterAsync(new RegisterRequest
+        {
+            FullName = "Vendor Wannabe",
+            Email = "vendor@test.com",
+            Password = "SecurePassword123!",
+            Role = "ShopOwner"
+        });
+
+        Assert.True(vendorAttempt.Success);
+        Assert.Equal(UserRoles.Customer, vendorAttempt.Data!.User.Role);
+    }
+
+    [Fact]
+    public async Task Unapproved_Store_Direct_Id_Lookup_Returns_404_For_Public_And_Success_For_Owner_Or_Admin()
+    {
+        using var context = TestDbContextFactory.Create(nameof(Unapproved_Store_Direct_Id_Lookup_Returns_404_For_Public_And_Success_For_Owner_Or_Admin));
+        var shopService = new ShopService(context, _config, NullLogger<ShopService>.Instance);
+
+        var owner = new User { Id = Guid.NewGuid(), FullName = "Shop Owner", Email = "owner@test.com", PasswordHash = "h" };
+        var otherUser = new User { Id = Guid.NewGuid(), FullName = "Random User", Email = "other@test.com", PasswordHash = "h" };
+        var pendingShop = new Shop
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = owner.Id,
+            Name = "Pending Gadgets",
+            Phone = "12345",
+            Address = "Tech St",
+            VerificationStatus = ShopVerificationStatus.Pending,
+            IsActive = true,
+            IsLiveEnabled = true
+        };
+
+        context.Users.AddRange(owner, otherUser);
+        context.Shops.Add(pendingShop);
+        await context.SaveChangesAsync();
+
+        // 1. Unauthenticated public caller -> 404
+        var publicLookup = await shopService.GetShopByIdAsync(pendingShop.Id, userLat: null, userLon: null, requestingUserId: null, isAdmin: false);
+        Assert.False(publicLookup.Success);
+        Assert.Contains("unavailable", publicLookup.Message.ToLower());
+
+        // 2. Different authenticated user -> 404
+        var otherUserLookup = await shopService.GetShopByIdAsync(pendingShop.Id, userLat: null, userLon: null, requestingUserId: otherUser.Id, isAdmin: false);
+        Assert.False(otherUserLookup.Success);
+
+        // 3. Store owner -> 200 Success
+        var ownerLookup = await shopService.GetShopByIdAsync(pendingShop.Id, userLat: null, userLon: null, requestingUserId: owner.Id, isAdmin: false);
+        Assert.True(ownerLookup.Success);
+        Assert.NotNull(ownerLookup.Data);
+        Assert.Equal(pendingShop.Name, ownerLookup.Data.Name);
+
+        // 4. Admin caller -> 200 Success
+        var adminLookup = await shopService.GetShopByIdAsync(pendingShop.Id, userLat: null, userLon: null, requestingUserId: otherUser.Id, isAdmin: true);
+        Assert.True(adminLookup.Success);
+        Assert.NotNull(adminLookup.Data);
+    }
+
+    [Fact]
+    public async Task Unapproved_Store_Inventory_Hidden_From_Public_Store_Query()
+    {
+        using var context = TestDbContextFactory.Create(nameof(Unapproved_Store_Inventory_Hidden_From_Public_Store_Query));
+        var inventoryService = new InventoryService(context, NullLogger<InventoryService>.Instance);
+
+        var ownerId = Guid.NewGuid();
+        var pendingShop = new Shop
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = ownerId,
+            Name = "Unapproved Shop",
+            Phone = "123",
+            Address = "Street",
+            VerificationStatus = ShopVerificationStatus.Pending,
+            IsActive = true,
+            IsLiveEnabled = true
+        };
+
+        var product = new Product { Id = Guid.NewGuid(), Name = "Earbuds", NormalizedName = "earbuds", IsActive = true };
+        var variant = new ProductVariant { Id = Guid.NewGuid(), ProductId = product.Id, VariantName = "White", IsActive = true };
+        var inv = new StoreInventory
+        {
+            Id = Guid.NewGuid(),
+            StoreId = pendingShop.Id,
+            ProductVariantId = variant.Id,
+            Price = 999m,
+            Quantity = 10,
+            AvailableQuantity = 10,
+            IsActive = true
+        };
+
+        context.Shops.Add(pendingShop);
+        context.Products.Add(product);
+        context.ProductVariants.Add(variant);
+        context.StoreInventories.Add(inv);
+        await context.SaveChangesAsync();
+
+        // Public visitor cannot access inventory of unapproved store (returns error/unavailable)
+        var publicInv = await inventoryService.GetStoreInventoryAsync(pendingShop.Id, search: null, categoryId: null, requestingUserId: null, isAdmin: false);
+        Assert.False(publicInv.Success);
+        Assert.Contains("unavailable", publicInv.Message.ToLower());
+
+        // Another user cannot access inventory of unapproved store
+        var otherUserInv = await inventoryService.GetStoreInventoryAsync(pendingShop.Id, search: null, categoryId: null, requestingUserId: Guid.NewGuid(), isAdmin: false);
+        Assert.False(otherUserInv.Success);
+        Assert.Contains("unavailable", otherUserInv.Message.ToLower());
+
+        // Store owner CAN see inventory
+        var ownerInv = await inventoryService.GetStoreInventoryAsync(pendingShop.Id, search: null, categoryId: null, requestingUserId: ownerId, isAdmin: false);
+        Assert.True(ownerInv.Success);
+        Assert.Single(ownerInv.Data!);
+
+        // Admin CAN see inventory
+        var adminInv = await inventoryService.GetStoreInventoryAsync(pendingShop.Id, search: null, categoryId: null, requestingUserId: null, isAdmin: true);
+        Assert.True(adminInv.Success);
+        Assert.Single(adminInv.Data!);
+    }
+
+    [Fact]
+    public async Task Inventory_Cannot_Reduce_Total_Quantity_Below_Reserved_Quantity_And_Rejects_Negative_Values()
+    {
+        using var context = TestDbContextFactory.Create(nameof(Inventory_Cannot_Reduce_Total_Quantity_Below_Reserved_Quantity_And_Rejects_Negative_Values));
+        var inventoryService = new InventoryService(context, NullLogger<InventoryService>.Instance);
+
+        var ownerId = Guid.NewGuid();
+        var shop = new Shop
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = ownerId,
+            Name = "Approved Shop",
+            Phone = "123",
+            Address = "Street",
+            VerificationStatus = ShopVerificationStatus.Approved,
+            IsActive = true,
+            IsLiveEnabled = true
+        };
+
+        var product = new Product { Id = Guid.NewGuid(), Name = "Charger", NormalizedName = "charger", IsActive = true };
+        var variant = new ProductVariant { Id = Guid.NewGuid(), ProductId = product.Id, VariantName = "65W", IsActive = true };
+
+        var inv = new StoreInventory
+        {
+            Id = Guid.NewGuid(),
+            StoreId = shop.Id,
+            ProductVariantId = variant.Id,
+            Price = 100m,
+            Quantity = 10,
+            AvailableQuantity = 6, // 4 items are currently reserved / on hold
+            IsActive = true
+        };
+
+        context.Shops.Add(shop);
+        context.Products.Add(product);
+        context.ProductVariants.Add(variant);
+        context.StoreInventories.Add(inv);
+        await context.SaveChangesAsync();
+
+        // 1. Rejects negative price
+        var negativePrice = await inventoryService.UpdateStoreInventoryAsync(shop.Id, inv.Id, ownerId, new UpdateStoreInventoryRequest
+        {
+            Price = -10m,
+            Quantity = 10
+        });
+        Assert.False(negativePrice.Success);
+        Assert.Contains("negative", negativePrice.Message.ToLower());
+
+        // 2. Rejects negative quantity
+        var negativeQty = await inventoryService.UpdateStoreInventoryAsync(shop.Id, inv.Id, ownerId, new UpdateStoreInventoryRequest
+        {
+            Price = 100m,
+            Quantity = -2
+        });
+        Assert.False(negativeQty.Success);
+        Assert.Contains("negative", negativeQty.Message.ToLower());
+
+        // 3. Rejects reducing TotalQuantity (e.g. to 3) below currently reserved items (4 items)
+        var belowReserved = await inventoryService.UpdateStoreInventoryAsync(shop.Id, inv.Id, ownerId, new UpdateStoreInventoryRequest
+        {
+            Price = 100m,
+            Quantity = 3
+        });
+        Assert.False(belowReserved.Success);
+        Assert.Contains("Cannot reduce total quantity", belowReserved.Message);
+
+        // 4. Successfully updates quantity above reserved items (e.g. to 8)
+        var validUpdate = await inventoryService.UpdateStoreInventoryAsync(shop.Id, inv.Id, ownerId, new UpdateStoreInventoryRequest
+        {
+            Price = 120m,
+            Quantity = 8
+        });
+        Assert.True(validUpdate.Success);
+        Assert.Equal(8, validUpdate.Data!.Quantity);
+        // Available should be 8 - 4 reserved = 4
+        Assert.Equal(4, validUpdate.Data.AvailableQuantity);
+        Assert.Equal(120m, validUpdate.Data.Price);
+    }
 }
