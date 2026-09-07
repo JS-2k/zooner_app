@@ -5,20 +5,21 @@
 @layer base {
   :root {
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-heading: 'Outfit', 'Inter', sans-serif;
-    --bg-dark-base: #07080B;
+    --font-heading: 'Inter', 'Outfit', sans-serif;
+    --brand-green: #00A859;
   }
 
   body {
     font-family: var(--font-sans);
     overflow-x: hidden;
-    background: #07080B;
-    color: #EDEDED;
+    background: #F8FAFC;
+    color: #111827;
+    -webkit-tap-highlight-color: transparent;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
-    letter-spacing: -0.03em;
+    letter-spacing: -0.02em;
   }
 }
 

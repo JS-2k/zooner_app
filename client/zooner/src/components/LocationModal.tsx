@@ -51,7 +51,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         // Fallback to default location area if permission denied
         onSelectLocation({
           id: 'default-coimbatore',
-          name: 'Coimbatore Central',
+          name: 'Coimbatore',
           city: 'Coimbatore',
           storesCount: 0,
           activeRequests: 0,
@@ -63,30 +63,39 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     );
   };
 
+  const predefinedLocations: string[] = [
+    'Coimbatore',
+    'RS Puram',
+    'Gandhipuram',
+    'Race Course',
+    'Peelamedu',
+    'Saibaba Colony'
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0"
         onClick={onClose}
       />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl transition-all">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white border border-gray-100 shadow-2xl transition-all z-10 text-gray-900">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-6 py-5">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-50 text-[#00A859]">
               <MapPin className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white font-['Outfit']">Select Discovery Area</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Discover inventory at shops within walking & driving distance</p>
+              <h3 className="text-base font-bold text-gray-950 font-['Inter']">Select Location</h3>
+              <p className="text-xs text-gray-500">Discover stores and real stock nearby</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-950 dark:hover:text-white transition-colors"
+            className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -98,35 +107,69 @@ export const LocationModal: React.FC<LocationModalProps> = ({
           <button
             onClick={handleDetectGPS}
             disabled={isLocating}
-            className="mb-4 flex w-full items-center justify-between rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/80 px-4 py-3 text-left transition-all hover:bg-indigo-100 dark:hover:bg-indigo-900/40 cursor-pointer disabled:opacity-50"
+            className="mb-4 flex w-full items-center justify-between rounded-2xl bg-green-50/60 border border-green-200/80 px-4 py-3 text-left transition-all hover:bg-green-100/60 cursor-pointer disabled:opacity-50"
           >
             <div className="flex items-center gap-3">
               <div className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-500 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-600"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00A859] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-[#00A859]"></span>
               </div>
               <div>
-                <div className="text-sm font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5 font-['Outfit']">
-                  <Navigation className={`h-3.5 w-3.5 ${isLocating ? 'animate-spin' : ''}`} />
+                <div className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                  <Navigation className={`h-3.5 w-3.5 text-[#00A859] ${isLocating ? 'animate-spin' : ''}`} />
                   {isLocating ? 'Detecting your GPS position...' : 'Use Current Location (GPS)'}
                 </div>
-                <div className="text-xs text-indigo-700 dark:text-indigo-400/80">
+                <div className="text-xs text-gray-500">
                   {selectedLocation.lat && selectedLocation.lng
-                    ? `Active GPS (${selectedLocation.lat.toFixed(4)}°, ${selectedLocation.lng.toFixed(4)}°)`
+                    ? `Active (${selectedLocation.lat.toFixed(4)}°, ${selectedLocation.lng.toFixed(4)}°)`
                     : 'Auto-detect real-time GPS coordinates'}
                 </div>
               </div>
             </div>
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
+            <span className="text-xs font-semibold text-[#00A859]">
               {isLocating ? 'Locating...' : 'Detect'}
             </span>
           </button>
 
           {gpsError && (
-            <div className="mb-4 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-500 font-semibold">
+            <div className="mb-4 p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-600 font-medium">
               {gpsError}
             </div>
           )}
+
+          {/* Quick neighborhood tags */}
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-gray-700 mb-2">
+              Popular Local Areas
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {predefinedLocations.map((loc) => (
+                <button
+                  key={loc}
+                  type="button"
+                  onClick={() => {
+                    onSelectLocation({
+                      id: `loc-${loc.toLowerCase().replace(/\s+/g, '-')}`,
+                      name: loc,
+                      city: 'Coimbatore',
+                      storesCount: 12,
+                      activeRequests: 4,
+                      lat: 11.0168,
+                      lng: 76.9558
+                    });
+                    onClose();
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                    selectedLocation.name.toLowerCase().includes(loc.toLowerCase())
+                      ? 'bg-[#00A859] text-white border-[#00A859]'
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  {loc}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Search / Custom Area Input */}
           <form
@@ -138,7 +181,9 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   name: query.trim(),
                   city: 'Coimbatore',
                   storesCount: 0,
-                  activeRequests: 0
+                  activeRequests: 0,
+                  lat: 11.0168,
+                  lng: 76.9558
                 });
                 onClose();
               }
@@ -146,31 +191,26 @@ export const LocationModal: React.FC<LocationModalProps> = ({
             className="space-y-3"
           >
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Enter custom neighborhood or area name..."
+                placeholder="Search other area..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/80 py-3 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:outline-hidden focus:ring-1 focus:ring-[#00A859]"
               />
             </div>
 
             {query.trim() && (
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white py-3 text-sm font-bold shadow-md shadow-indigo-600/25 transition-all cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#00A859] hover:bg-[#00924d] text-white py-2.5 text-sm font-semibold shadow-xs transition-all cursor-pointer"
               >
                 <MapPin className="h-4 w-4" />
-                <span>Set Zone to "{query.trim()}"</span>
+                <span>Set Area to "{query.trim()}"</span>
               </button>
             )}
           </form>
-        </div>
-
-        {/* Footer */}
-        <div className="bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800/80 px-6 py-3.5 text-center text-xs text-slate-500 dark:text-slate-400">
-          Zooner connects you with physical inventory within 5–15 km of your location.
         </div>
       </div>
     </div>

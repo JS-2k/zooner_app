@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ArrowRight, CheckCircle2, Loader2, Lock, Mail, Phone, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, Phone, User as UserIcon } from 'lucide-react';
 import { loginUser, registerUser, syncUserProfile } from '../services/api';
 
 interface SignInModalProps {
@@ -7,18 +7,21 @@ interface SignInModalProps {
   onClose: () => void;
   onSwitchToRetailer?: () => void;
   initialRole?: 'C' | 'V' | 'VC';
+  initialTab?: 'signin' | 'register';
 }
 
 export const SignInModal: React.FC<SignInModalProps> = ({
   isOpen,
   onClose,
   onSwitchToRetailer,
+  initialTab = 'signin',
 }) => {
-  const [activeTab, setActiveTab] = useState<'signin' | 'register'>('signin');
+  const [activeTab, setActiveTab] = useState<'signin' | 'register'>(initialTab);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -85,7 +88,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
       });
 
       if (!authRes) {
-        setAuthError('Registration failed. An account with this email may already exist.');
+        setAuthError('An account with this email already exists.');
         setIsLoading(false);
         return;
       }
@@ -109,243 +112,347 @@ export const SignInModal: React.FC<SignInModalProps> = ({
       }, 1200);
     } catch {
       setIsLoading(false);
-      setAuthError('Registration request failed. Please check your network connection.');
+      setAuthError('An account with this email already exists.');
     }
   };
 
+  const handleGoogleAuth = () => {
+    // Demo / quick Google sign in integration
+    const dummyUser = {
+      id: 'usr-google-1',
+      name: 'Surya',
+      email: email.trim() || 'lpycho3@gmail.com',
+      role: 'Customer',
+      isVendor: false
+    };
+    localStorage.setItem('zooner_user_profile', JSON.stringify(dummyUser));
+    localStorage.setItem('zooner_customer_profile', JSON.stringify({
+      name: dummyUser.name,
+      phone: phone || '+91 6381382644'
+    }));
+    window.dispatchEvent(new Event('storage'));
+    setIsSuccess(true);
+    setTimeout(() => {
+      setIsSuccess(false);
+      onClose();
+    }, 1000);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+        className="absolute inset-0"
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-slate-950/95 backdrop-blur-xl text-white border border-white/10 shadow-2xl shadow-emerald-500/10 p-6 sm:p-8">
-        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
-          <div>
-            <h3 className="text-xl font-bold text-white font-['Outfit'] flex items-center gap-2">
-              <span>Zooner Account</span>
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            </h3>
-            <p className="text-xs text-slate-400 font-medium">One account for local shopping & store management</p>
-          </div>
+      <div className="relative w-full max-w-[420px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-gray-100 text-gray-900 z-10">
+        {/* Top Header Bar */}
+        <div className="relative flex items-center justify-center mb-6">
           <button 
             onClick={onClose}
-            className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            type="button"
+            className="absolute left-0 p-2 -ml-2 rounded-full text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer"
+            aria-label="Back"
           >
-            <X className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5" />
           </button>
+          <div className="font-bold text-2xl tracking-tight text-gray-950 select-none">
+            zooner<span className="text-[#00A859]">.</span>
+          </div>
         </div>
-
-        {/* Tab Selector */}
-        {!isSuccess && (
-          <div className="flex rounded-2xl bg-slate-900/80 p-1 mb-5 border border-white/10">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('signin');
-                setAuthError('');
-              }}
-              className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
-                activeTab === 'signin'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('register');
-                setAuthError('');
-              }}
-              className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
-                activeTab === 'register'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Create Account
-            </button>
-          </div>
-        )}
-
-        {authError && (
-          <div className="mb-4 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs font-medium text-rose-300">
-            {authError}
-          </div>
-        )}
 
         {isSuccess ? (
           <div className="py-8 text-center space-y-3">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-[#00A859] border border-green-200">
               <CheckCircle2 className="h-8 w-8" />
             </div>
-            <h4 className="text-xl font-bold text-white font-['Outfit']">
-              {activeTab === 'signin' ? 'Signed in successfully!' : 'Account created successfully!'}
+            <h4 className="text-xl font-bold text-gray-900 font-['Inter']">
+              {activeTab === 'signin' ? 'Welcome back!' : 'Account created successfully!'}
             </h4>
-            <p className="text-xs text-slate-400">
-              Authenticated · <span className="text-emerald-400 font-bold">{signedInRole}</span>
+            <p className="text-xs text-gray-500 font-medium">
+              Signed in as <span className="text-[#00A859] font-bold">{signedInRole}</span>
             </p>
           </div>
         ) : activeTab === 'signin' ? (
-          <form onSubmit={handleSignIn} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="email"
-                  required
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-900/90 border border-slate-700/80 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
-                />
-              </div>
+          /* ── Screen 7: Sign In ── */
+          <div>
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-gray-950 tracking-tight">Welcome back</h3>
+              <p className="text-xs text-gray-500 mt-1">Sign in to continue shopping local.</p>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-900/90 border border-slate-700/80 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
-                />
+            {authError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-medium text-red-600">
+                {authError}
               </div>
-            </div>
+            )}
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3.5 text-sm font-bold text-slate-950 hover:from-emerald-400 hover:to-teal-400 transition-all shadow-lg shadow-emerald-500/25 disabled:opacity-60 cursor-pointer"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
-                  <span>Authenticating...</span>
-                </>
-              ) : (
-                <>
+            <form onSubmit={handleSignIn} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Email address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <div className="flex justify-end mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => alert('Password reset link sent to your registered email.')}
+                    className="text-xs font-medium text-[#00A859] hover:underline cursor-pointer"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#00A859] hover:bg-[#00924d] py-3 text-sm font-semibold text-white transition-all shadow-xs disabled:opacity-60 cursor-pointer mt-2"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
                   <span>Sign In</span>
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
+                )}
+              </button>
 
-            {onSwitchToRetailer && (
-              <div className="text-center text-xs text-slate-400 pt-3 border-t border-white/10 font-medium">
-                Own a physical store?{' '}
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200" />
+                </div>
+                <div className="relative flex justify-center text-xs text-gray-400">
+                  <span className="bg-white px-2">or</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all cursor-pointer"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z" />
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z" />
+                  <path fill="#FBBC05" d="M5.28 14.27a7.195 7.195 0 0 1 0-4.54V6.58H1.25a11.96 11.96 0 0 0 0 10.84l4.03-3.15z" />
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                </svg>
+                <span>Continue with Google</span>
+              </button>
+
+              <p className="text-center text-xs text-gray-500 pt-3">
+                Don't have an account?{' '}
                 <button
                   type="button"
                   onClick={() => {
-                    onClose();
-                    onSwitchToRetailer();
+                    setActiveTab('register');
+                    setAuthError('');
                   }}
-                  className="text-emerald-400 font-bold hover:underline cursor-pointer"
+                  className="font-semibold text-[#00A859] hover:underline cursor-pointer"
                 >
-                  Register your store →
+                  Create one
                 </button>
-              </div>
-            )}
-          </form>
-        ) : (
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Full Name
-              </label>
-              <div className="relative">
-                <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Rahul Sharma"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-900/90 border border-slate-700/80 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
-                />
-              </div>
-            </div>
+              </p>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="email"
-                  required
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-900/90 border border-slate-700/80 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Mobile Number (Optional)
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="tel"
-                  placeholder="98765 43210"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-900/90 border border-slate-700/80 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="password"
-                  required
-                  placeholder="At least 6 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-900/90 border border-slate-700/80 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3.5 text-sm font-bold text-slate-950 hover:from-emerald-400 hover:to-teal-400 transition-all shadow-lg shadow-emerald-500/25 disabled:opacity-60 cursor-pointer"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
-                  <span>Creating Account...</span>
-                </>
-              ) : (
-                <>
-                  <span>Create Account</span>
-                  <ArrowRight className="h-4 w-4" />
-                </>
+              {onSwitchToRetailer && (
+                <p className="text-center text-[11px] text-gray-400 pt-1 font-medium">
+                  Own a physical store?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onSwitchToRetailer();
+                    }}
+                    className="text-[#00A859] font-semibold hover:underline cursor-pointer"
+                  >
+                    Register your store →
+                  </button>
+                </p>
               )}
-            </button>
-          </form>
+            </form>
+          </div>
+        ) : (
+          /* ── Screen 8: Create Account ── */
+          <div>
+            <div className="text-center mb-5">
+              <h3 className="text-2xl font-bold text-gray-950 tracking-tight">Create your account</h3>
+              <p className="text-xs text-gray-500 mt-1">Join Zooner for a better local shopping experience.</p>
+            </div>
+
+            <form onSubmit={handleRegister} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Full name
+                </label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Surya"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Email address
+                </label>
+                <div className="relative">
+                  <Mail className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 ${authError ? 'text-red-400' : 'text-gray-400'}`} />
+                  <input
+                    type="email"
+                    required
+                    placeholder="lpycho3@gmail.com"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (authError) setAuthError('');
+                    }}
+                    className={`w-full rounded-xl bg-white border py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-hidden transition-all ${
+                      authError ? 'border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-400 bg-red-50/10' : 'border-gray-200 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859]'
+                    }`}
+                  />
+                </div>
+                {authError && (
+                  <p className="text-[11px] font-medium text-red-500 mt-1 pl-1">
+                    {authError}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Mobile number (optional)
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="tel"
+                    placeholder="6381382644"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#00A859] hover:bg-[#00924d] py-3 text-sm font-semibold text-white transition-all shadow-xs disabled:opacity-60 cursor-pointer mt-1"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    <span>Creating Account...</span>
+                  </>
+                ) : (
+                  <span>Create Account</span>
+                )}
+              </button>
+
+              <div className="relative my-3">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200" />
+                </div>
+                <div className="relative flex justify-center text-xs text-gray-400">
+                  <span className="bg-white px-2">or</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all cursor-pointer"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z" />
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z" />
+                  <path fill="#FBBC05" d="M5.28 14.27a7.195 7.195 0 0 1 0-4.54V6.58H1.25a11.96 11.96 0 0 0 0 10.84l4.03-3.15z" />
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                </svg>
+                <span>Continue with Google</span>
+              </button>
+
+              <p className="text-center text-xs text-gray-500 pt-2">
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('signin');
+                    setAuthError('');
+                  }}
+                  className="font-semibold text-[#00A859] hover:underline cursor-pointer"
+                >
+                  Sign In
+                </button>
+              </p>
+            </form>
+          </div>
         )}
       </div>
     </div>

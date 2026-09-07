@@ -1,40 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, 
   MapPin, 
-  Navigation, 
-  CheckCircle2, 
   Clock, 
-  Send, 
   Radio, 
-  Phone, 
   Bookmark, 
   ArrowLeft,
   X, 
   Compass, 
   User, 
-  SlidersHorizontal, 
   ChevronRight,
-  MessageSquare,
-  Store as StoreIcon
+  ChevronDown,
+  Store as StoreIcon,
+  ShieldCheck,
+  Shield,
+  Sparkles,
+  Share2,
+  Settings,
+  Bell,
+  HelpCircle,
+  Info,
+  LogOut,
+  CheckCircle2,
+  Smartphone,
+  Shirt,
+  ShoppingBag,
+  PlusSquare,
+  Home,
+  Award,
+  Car,
+  Star,
+  Loader2
 } from 'lucide-react';
-import { Capacitor } from '@capacitor/core';
-import { 
-
-  fetchShops, 
-  fetchCategories, 
-  sendLiveRequest, 
-  searchProducts, 
-  reserveInventoryHold,
-  releaseInventoryHold,
-  fetchMyActiveHolds
-} from '../services/api';
-
-import { HoldPassSheet, type HoldPass } from '../components/HoldPassSheet';
-import { DirectChatDrawer } from '../components/DirectChatDrawer';
-import { MobileWelcomeModal } from '../components/MobileWelcomeModal';
-import type { Store, Product, LocationArea, RetailerResponse, ProductSearchResult, StoreInventoryItem } from '../types';
+import type { LocationArea } from '../types';
 
 interface CustomerAppPageProps {
   currentLocation: LocationArea;
@@ -45,110 +43,158 @@ interface CustomerAppPageProps {
   onOpenRetailerModal?: () => void;
 }
 
-type TabType = 'discover' | 'requests' | 'holds' | 'account';
+type TabType = 'explore' | 'live-ask' | 'holds' | 'account';
 
-const FEATURED_CATALOG_PRODUCTS: Product[] = [
+// ── Default Mock Products Matching Screen 2 & Screen 4 ──
+const INITIAL_DEMO_PRODUCTS = [
   {
-    id: 'feat-1',
-    name: 'Sony WH-1000XM5 Wireless Noise-Canceling Headphones',
+    id: 'prod-sony-1',
+    name: 'Sony WH-1000XM5 Wireless Headphones',
     category: 'Electronics',
-    price: 26990,
-    originalPrice: 29990,
-    storeName: 'Soniq World Electronics',
+    price: 29990,
+    storeName: 'The Tech Hub',
     storeArea: 'DB Road, RS Puram',
-    distance: '350m',
-    inStock: true,
-    stockCount: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80',
-    rating: 4.9,
-    reviewsCount: 38
-  },
-  {
-    id: 'feat-2',
-    name: 'Apple iPhone 15 Pro (128GB - Natural Titanium)',
-    category: 'Electronics',
-    price: 127900,
-    originalPrice: 134900,
-    storeName: 'iDestiny Authorised Apple Reseller',
-    storeArea: 'Race Course Road',
     distance: '1.2 km',
     inStock: true,
-    stockCount: 5,
-    imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=600&q=80',
-    rating: 4.9,
-    reviewsCount: 54
+    stockStatus: 'In stock',
+    rating: 4.6,
+    reviewsCount: 128,
+    imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80',
+    storeId: 'store-tech-hub'
   },
   {
-    id: 'feat-3',
-    name: 'Nike Air Zoom Pegasus 40 Running Shoes',
-    category: 'Footwear',
-    price: 8995,
-    originalPrice: 11895,
-    storeName: 'Nike Flagship Store',
-    storeArea: 'Brookefields Mall',
-    distance: '800m',
-    inStock: true,
-    stockCount: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80',
-    rating: 4.8,
-    reviewsCount: 29
-  },
-  {
-    id: 'feat-4',
-    name: 'Apple MacBook Air M3 (15-inch, 16GB RAM / 512GB SSD)',
+    id: 'prod-sony-2',
+    name: 'Sony WH-1000XM5 Midnight Blue',
     category: 'Electronics',
-    price: 134900,
-    originalPrice: 144900,
-    storeName: 'Supreme Computers',
-    storeArea: 'DB Road, RS Puram',
-    distance: '450m',
+    price: 29990,
+    storeName: 'Vasanth Electronics',
+    storeArea: 'Cross Cut Road',
+    distance: '2.8 km',
     inStock: true,
-    stockCount: 2,
-    imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=600&q=80',
-    rating: 5.0,
-    reviewsCount: 19
+    stockStatus: 'In stock',
+    rating: 4.4,
+    reviewsCount: 86,
+    imageUrl: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=400&q=80',
+    storeId: 'store-vasanth'
   },
   {
-    id: 'feat-5',
-    name: 'Titan Edge Minimalist Quartz Watch',
-    category: 'Accessories',
-    price: 14495,
-    originalPrice: 16995,
-    storeName: 'World of Titan',
-    storeArea: 'Cross Cut Road, Gandhipuram',
-    distance: '1.5 km',
+    id: 'prod-sony-3',
+    name: 'Sony WH-1000XM5 Silver',
+    category: 'Electronics',
+    price: 29990,
+    storeName: 'Mobile World',
+    storeArea: 'Gandhipuram',
+    distance: '3.6 km',
     inStock: true,
-    stockCount: 6,
-    imageUrl: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=600&q=80',
-    rating: 4.7,
-    reviewsCount: 16
-  },
-  {
-    id: 'feat-6',
-    name: 'Philips Hue Smart Color LED Starter Kit',
-    category: 'Appliances',
-    price: 4299,
-    originalPrice: 5499,
-    storeName: 'Lightcraft Electricals',
-    storeArea: 'Avinashi Road',
-    distance: '2.1 km',
-    inStock: true,
-    stockCount: 8,
-    imageUrl: 'https://images.unsplash.com/photo-1550985616-10810253b84d?auto=format&fit=crop&w=600&q=80',
-    rating: 4.8,
-    reviewsCount: 42
+    stockStatus: 'Low stock',
+    rating: 4.3,
+    reviewsCount: 64,
+    imageUrl: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=400&q=80',
+    storeId: 'store-mobile-world'
   }
 ];
 
-interface LocalUserProfile {
-  id?: string;
-  name?: string;
-  phone?: string;
-  email?: string;
-  role?: string;
-  isVendor?: boolean;
-  shops?: { id: string; name: string }[];
+const STORE_CATALOG_ITEMS = [
+  {
+    id: 'store-prod-1',
+    name: 'Sony WH-1000XM5 Wireless Headphones',
+    price: 29990,
+    stockStatus: 'In stock',
+    imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80',
+  },
+  {
+    id: 'store-prod-2',
+    name: 'Sony WH-CH720N Wireless Headphones',
+    price: 8990,
+    stockStatus: 'In stock',
+    imageUrl: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=400&q=80',
+  },
+  {
+    id: 'store-prod-3',
+    name: 'Sony WF-1000XM5 True Wireless Earbuds',
+    price: 24990,
+    stockStatus: 'Low stock',
+    imageUrl: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=400&q=80',
+  }
+];
+
+interface ActiveHold {
+  id: string;
+  holdId: string;
+  productName: string;
+  storeName: string;
+  storeAddress: string;
+  storePhone: string;
+  price: number;
+  status: 'active' | 'completed' | 'expired';
+  reservedUntil: string;
+  totalSeconds: number;
+  qrCode: string;
 }
+
+// ── Deterministic QR Code Generator Component ──
+const MiniQRCode: React.FC<{ value: string; size?: number }> = ({ value, size = 130 }) => {
+  const matrix = useMemo(() => {
+    const dim = 21;
+    const grid: boolean[][] = Array.from({ length: dim }, () => Array(dim).fill(false));
+
+    // Add finder patterns (top-left, top-right, bottom-left)
+    const addFinder = (startR: number, startC: number) => {
+      for (let r = 0; r < 7; r++) {
+        for (let c = 0; c < 7; c++) {
+          if (
+            r === 0 || r === 6 || c === 0 || c === 6 ||
+            (r >= 2 && r <= 4 && c >= 2 && c <= 4)
+          ) {
+            grid[startR + r][startC + c] = true;
+          }
+        }
+      }
+    };
+
+    addFinder(0, 0);
+    addFinder(0, 14);
+    addFinder(14, 0);
+
+    // Hash value to populate deterministic inner bits
+    let hash = 0;
+    for (let i = 0; i < value.length; i++) {
+      hash = (hash << 5) - hash + value.charCodeAt(i);
+      hash |= 0;
+    }
+
+    for (let r = 0; r < dim; r++) {
+      for (let c = 0; c < dim; c++) {
+        if ((r < 7 && c < 7) || (r < 7 && c >= 14) || (r >= 14 && c < 7)) continue;
+        const bit = Math.abs(Math.sin(hash + r * 23 + c * 37)) > 0.46;
+        grid[r][c] = bit;
+      }
+    }
+    return grid;
+  }, [value]);
+
+  const cellSize = size / 21;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rounded-lg">
+      <rect width={size} height={size} fill="#ffffff" />
+      {matrix.map((row, r) =>
+        row.map((active, c) =>
+          active ? (
+            <rect
+              key={`${r}-${c}`}
+              x={c * cellSize}
+              y={r * cellSize}
+              width={cellSize}
+              height={cellSize}
+              fill="#111827"
+            />
+          ) : null
+        )
+      )}
+    </svg>
+  );
+};
 
 export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   currentLocation,
@@ -158,1873 +204,1083 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   onOpenSignIn,
   onOpenRetailerModal,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('discover');
-  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
-  const [userProfile, setUserProfile] = useState<LocalUserProfile | null>(() => {
+  // Navigation & Screen States
+  const [activeTab, setActiveTab] = useState<TabType>('explore');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStore, setSelectedStore] = useState<{
+    name: string;
+    rating: number;
+    reviewsCount: number;
+    distance: string;
+    openStatus: string;
+    image: string;
+  } | null>(null);
+  const [storeActiveTab, setStoreActiveTab] = useState<'products' | 'about' | 'reviews'>('products');
+
+  // Home Filters
+  const [radiusFilter, setRadiusFilter] = useState<'2 km' | '5 km' | '10 km' | '15 km'>('2 km');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [bookmarkedIds, setBookmarkedIds] = useState<Record<string, boolean>>({});
+
+  // Live Ask Form State
+  const [askProductName, setAskProductName] = useState('');
+  const [askVariant, setAskVariant] = useState('');
+  const [askRadius, setAskRadius] = useState<'2 km' | '5 km' | '10 km' | '15 km'>('5 km');
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastDone, setBroadcastDone] = useState(false);
+
+  // Active Hold State
+  const [activeHold, setActiveHold] = useState<ActiveHold | null>(() => {
+    const saved = localStorage.getItem('zooner_active_primary_hold');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    // Default initial mock active hold matching Screen 5
+    return {
+      id: 'hold-demo-1',
+      holdId: '#ZH7832',
+      productName: 'Sony WH-1000XM5',
+      storeName: 'The Tech Hub',
+      storeAddress: '142 DB Road, RS Puram, Coimbatore',
+      storePhone: '+91 422 254 8890',
+      price: 29990,
+      status: 'active',
+      reservedUntil: 'Today, 4:32 PM',
+      totalSeconds: 28 * 60 + 15,
+      qrCode: 'zooner:hold:ZH7832:sony-wh-1000xm5'
+    };
+  });
+
+  // Countdown timer for Hold
+  useEffect(() => {
+    if (!activeHold || activeHold.totalSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setActiveHold(prev => {
+        if (!prev || prev.totalSeconds <= 0) return prev;
+        const updated = { ...prev, totalSeconds: prev.totalSeconds - 1 };
+        localStorage.setItem('zooner_active_primary_hold', JSON.stringify(updated));
+        return updated;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeHold]);
+
+  // User Profile
+  const [userProfile, setUserProfile] = useState(() => {
     const saved = localStorage.getItem('zooner_user_profile');
     if (saved) {
       try { return JSON.parse(saved); } catch {}
     }
-    return null;
+    return {
+      name: 'Surya',
+      email: 'lpycho3@gmail.com',
+      role: 'Shopper'
+    };
   });
 
   useEffect(() => {
-    const syncUser = () => {
+    const handleStorage = () => {
       const saved = localStorage.getItem('zooner_user_profile');
       if (saved) {
         try { setUserProfile(JSON.parse(saved)); } catch {}
-      } else {
-        setUserProfile(null);
       }
     };
-    window.addEventListener('storage', syncUser);
-    return () => window.removeEventListener('storage', syncUser);
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  const isVendor = userProfile && (
-    userProfile.role === 'V' || 
-    userProfile.role === 'VC' || 
-    userProfile.role === 'Vendor' || 
-    userProfile.role === 'ShopOwner' || 
-    userProfile.isVendor
-  );
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [radiusFilter, setRadiusFilter] = useState<'2km' | '5km' | '10km' | '15km'>('5km');
-  const [inStockOnly, setInStockOnly] = useState(true);
-
-  const [liveStores, setLiveStores] = useState<Store[]>([]);
-  const [liveProducts, setLiveProducts] = useState<Product[]>([]);
-  const [categoriesList, setCategoriesList] = useState<{ id: string; label: string }[]>([
-    { id: 'all', label: 'All' }
-  ]);
-
-  // Fetch Live Database Data from API (Supabase)
-  useEffect(() => {
-    async function loadLiveData() {
-      try {
-        const [shopsData, categoriesData] = await Promise.all([
-          fetchShops(currentLocation.lat, currentLocation.lng),
-          fetchCategories()
-        ]);
-
-        if (shopsData && shopsData.length > 0) {
-          const formatted: Store[] = shopsData.map((s) => ({
-            id: s.id,
-            name: s.name,
-            category: s.categoryName || 'General Store',
-            area: s.address || 'Local Area',
-            address: s.address || '',
-            phone: s.phone || '',
-            openStatus: s.isOpen ? 'Open Now' : 'Closed',
-            verified: s.isVerified ?? true,
-            rating: 4.9,
-            reviewCount: 24,
-            tags: ['verified', 'store'],
-            latitude: s.latitude,
-            longitude: s.longitude,
-            distance: '350m'
-          }));
-          setLiveStores(formatted);
-
-          const prods: Product[] = [];
-          shopsData.forEach((s) => {
-            if (Array.isArray(s.products)) {
-              s.products.forEach((p) => {
-                prods.push({
-                  id: p.id,
-                  name: p.name,
-                  category: s.categoryName || 'General',
-                  price: p.price,
-                  originalPrice: p.originalPrice,
-                  storeName: s.name,
-                  storeArea: s.address || 'Local Area',
-                  distance: '350m',
-                  inStock: p.inStock ?? true,
-                  stockCount: p.stockCount || 5,
-                  imageUrl: p.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80',
-                  rating: 4.8,
-                  reviewsCount: 12
-                });
-              });
-            }
-          });
-          setLiveProducts(prods);
-        }
-
-        if (categoriesData && categoriesData.length > 0) {
-          setCategoriesList([
-            { id: 'all', label: 'All Categories' },
-            ...categoriesData.map((c) => ({
-              id: c.name,
-              label: c.name
-            }))
-          ]);
-        }
-      } catch (err) {
-        console.error('API live fetch:', err);
-      }
-    }
-    loadLiveData();
-  }, [currentLocation]);
-
-  // 300ms Search Debounce
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [searchQuery]);
-
-  // Global Canonical Product Catalog State
-  const [canonicalProducts, setCanonicalProducts] = useState<ProductSearchResult[]>([]);
-  const [isSearchingCanonical, setIsSearchingCanonical] = useState<boolean>(false);
-  const [selectedCanonicalProduct, setSelectedCanonicalProduct] = useState<ProductSearchResult | null>(null);
-
-  // Live Timer State for hold countdown purity
-  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(Date.now());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Fetch Global Product Catalog results
-  const refreshCanonicalSearch = React.useCallback(async () => {
-    setIsSearchingCanonical(true);
-    try {
-      const results = await searchProducts(
-        debouncedQuery,
-        selectedCategory,
-        currentLocation.lat,
-        currentLocation.lng
-      );
-      setCanonicalProducts(results);
-    } catch (err) {
-      console.error('Error fetching global catalog:', err);
-    } finally {
-      setIsSearchingCanonical(false);
-    }
-  }, [debouncedQuery, selectedCategory, currentLocation.lat, currentLocation.lng]);
-
-  useEffect(() => {
-    refreshCanonicalSearch();
-  }, [refreshCanonicalSearch]);
-
-  // Selected Store / Product Detail State
-  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [toastNotice, setToastNotice] = useState<{ message: string; isError: boolean } | null>(null);
-
-  const showToast = (message: string, isError: boolean = false) => {
-    setToastNotice({ message, isError });
-    setTimeout(() => setToastNotice(null), 4000);
-  };
-
-  // Active Hold Passes (persisted in localStorage)
-  const [holds, setHolds] = useState<HoldPass[]>(() => {
-    const saved = localStorage.getItem('zooner_customer_holds');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.debug('Failed parsing customer holds:', e);
-      }
-    }
-    return [];
-  });
-
-  // Sheet & Drawer States
-  const [selectedPassForSheet, setSelectedPassForSheet] = useState<HoldPass | null>(null);
-  const [chatPass, setChatPass] = useState<HoldPass | null>(null);
-
-  // Customer Profile (Counter Identity)
-  const [customerProfile, setCustomerProfile] = useState<{ name: string; phone: string }>(() => {
-    const saved = localStorage.getItem('zooner_customer_profile');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.debug('Failed parsing customer profile:', e);
-      }
-    }
-    return { name: '', phone: '' };
-  });
-  const [profileSavedFeedback, setProfileSavedFeedback] = useState(false);
-
-  // Saved Stores
-  const [savedStores, setSavedStores] = useState<string[]>(() => {
-    const saved = localStorage.getItem('zooner_saved_stores');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.debug('Failed parsing saved stores:', e);
-      }
-    }
-    return [];
-  });
-
-  // Live Broadcast State
-  const [broadcastProduct, setBroadcastProduct] = useState('');
-  const [broadcastSize, setBroadcastSize] = useState('UK 9');
-  const [broadcastRadius, setBroadcastRadius] = useState('5 km');
-  const [isBroadcasting, setIsBroadcasting] = useState(false);
-  const [broadcastSent, setBroadcastSent] = useState(false);
-  const [liveResponses, setLiveResponses] = useState<RetailerResponse[]>([]);
-  const [broadcastError, setBroadcastError] = useState('');
-
-  // Sync holds to localStorage
-  const saveHolds = (updated: HoldPass[]) => {
-    setHolds(updated);
-    localStorage.setItem('zooner_customer_holds', JSON.stringify(updated));
-  };
-
-  // Sync active holds from backend
-  useEffect(() => {
-    const token = localStorage.getItem('zooner_token');
-    if (token) {
-      fetchMyActiveHolds().then(remoteHolds => {
-        if (remoteHolds && remoteHolds.length > 0) {
-          const mapped: HoldPass[] = remoteHolds.map(rh => ({
-            id: rh.holdId,
-            holdId: rh.holdId,
-            storeId: rh.storeId,
-            storeInventoryId: rh.storeInventoryId,
-            passCode: rh.holdCode,
-            qrToken: rh.qrToken,
-            productName: rh.productName,
-            storeName: rh.storeName,
-            storeAddress: rh.storeAddress,
-            storePhone: rh.storePhone,
-            price: rh.price,
-            customerName: userProfile?.name || 'Customer',
-            customerPhone: userProfile?.phone || '',
-            createdAt: new Date(rh.createdAtUtc).getTime(),
-            expiresAt: new Date(rh.expiresAtUtc).getTime(),
-            status: rh.status.toLowerCase() === 'active' ? 'active' : 'expired'
-          }));
-          saveHolds(mapped);
-        }
-      }).catch(err => {
-        console.debug('Active holds sync skipped:', err);
-      });
-    }
-  }, [userProfile]);
-
-
-  const handleHoldItem = React.useCallback((
-    prodName: string, 
-    storeName: string, 
-    price: number = 0,
-    storeAddress?: string,
-    storePhone?: string
-  ) => {
-    const timestamp = Date.now();
-    const codeNum = Math.floor(1000 + Math.random() * 9000);
-    const matchingStore = liveStores.find((s: Store) => 
-      s.name.toLowerCase().includes(storeName.toLowerCase().split('·')[0].trim())
-    );
-
-    const newPass: HoldPass = {
-      id: `hold-${timestamp}`,
-      passCode: `ZN-${codeNum}`,
-      qrToken: `zhold:hold-${timestamp}:ZN-${codeNum}`,
-      productName: prodName,
-      storeName: storeName,
-      storeAddress: storeAddress || matchingStore?.address || '142 DB Road, RS Puram, Coimbatore',
-      storePhone: storePhone || '+91 422 254 8890',
-      storeClosing: matchingStore?.openStatus || 'Open until 9:30 PM',
-      price: price || 6499,
-      customerName: customerProfile.name || 'Customer',
-      customerPhone: customerProfile.phone || '+91 98422 12345',
-      createdAt: timestamp,
-      expiresAt: timestamp + 30 * 60 * 1000,
-      status: 'active'
-    };
-
-    const updated = [newPass, ...holds];
-    saveHolds(updated);
-    setSelectedPassForSheet(newPass);
-  }, [liveStores, customerProfile, holds]);
-
-  // Hold reservation for a specific store inventory item
-  const handleHoldStoreInventory = async (
-    storeInventoryId: string,
-    productName: string,
-    storeName: string,
-    price: number,
-    storeAddress?: string,
-    storePhone?: string
-  ) => {
-    const token = localStorage.getItem('zooner_token');
-    if (!token) {
-      onOpenSignIn('C');
-      return;
-    }
-
-    const carryingStore = selectedCanonicalProduct?.carryingStores?.find((s) => s.inventoryId.toString() === storeInventoryId.toString());
-    const storeId = carryingStore ? carryingStore.storeId.toString() : '';
-
-    if (!storeId) {
-      showToast('Unable to identify store for this item.', true);
-      return;
-    }
-
-    const res = await reserveInventoryHold(storeId, storeInventoryId.toString(), 1);
-    if (!res.success) {
-      showToast(res.error || 'Failed to reserve hold pass. Insufficient stock or active hold already exists.', true);
-      return;
-    }
-
-    showToast('Hold pass reserved for 30 minutes!', false);
-
-    const timestamp = Date.now();
-    const newPass: HoldPass = {
-      id: res.hold?.holdId || `hold-${timestamp}`,
-      holdId: res.hold?.holdId,
-      storeId: storeId,
-      storeInventoryId: storeInventoryId.toString(),
-      passCode: res.hold?.holdCode || `ZN-${Math.floor(1000 + Math.random() * 9000)}`,
-      qrToken: res.hold?.qrToken || `zhold:${res.hold?.holdId || timestamp}:${res.hold?.holdCode || 'code'}`,
-      productName: res.hold?.productName || productName,
-      storeName: res.hold?.storeName || storeName,
-      storeAddress: res.hold?.storeAddress || storeAddress || 'Store Address',
-      storePhone: res.hold?.storePhone || storePhone || '',
-      price: res.hold?.price || price,
-      customerName: userProfile?.name || customerProfile.name || 'Customer',
-      customerPhone: userProfile?.phone || customerProfile.phone || '',
-      createdAt: timestamp,
-      expiresAt: res.hold?.expiresAtUtc ? new Date(res.hold.expiresAtUtc).getTime() : timestamp + 30 * 60 * 1000,
-      status: 'active'
-    };
-
-    const updated = [newPass, ...holds];
-    saveHolds(updated);
-    setSelectedPassForSheet(newPass);
-
-    refreshCanonicalSearch();
-    if (selectedCanonicalProduct) {
-      setSelectedCanonicalProduct(null);
-    }
-  };
-
-  const handleCancelHold = async (passId: string) => {
-    const pass = holds.find(h => h.id === passId || h.holdId === passId);
-    if (pass && pass.holdId && pass.storeId && pass.storeInventoryId) {
-      await releaseInventoryHold(pass.storeId, pass.storeInventoryId, pass.holdId);
-    }
-    const updated = holds.map(h => (h.id === passId || h.holdId === passId) ? { ...h, status: 'cancelled' as const } : h);
-    saveHolds(updated);
-  };
-
-
-  const toggleSaveStore = (storeId: string) => {
-    setSavedStores(prev => {
-      const next = prev.includes(storeId) ? prev.filter(id => id !== storeId) : [...prev, storeId];
-      localStorage.setItem('zooner_saved_stores', JSON.stringify(next));
-      return next;
+  const filteredProducts = useMemo(() => {
+    return INITIAL_DEMO_PRODUCTS.filter(p => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesQuery = !q || p.name.toLowerCase().includes(q) || p.storeName.toLowerCase().includes(q);
+      const matchesCategory = selectedCategory === 'all' || p.category.toLowerCase() === selectedCategory.toLowerCase();
+      return matchesQuery && matchesCategory;
     });
+  }, [searchQuery, selectedCategory]);
+
+  const toggleBookmark = (id: string) => {
+    setBookmarkedIds(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleBroadcast = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('zooner_customer_profile', JSON.stringify(customerProfile));
-    setProfileSavedFeedback(true);
-    setTimeout(() => setProfileSavedFeedback(false), 2000);
-  };
-
-  // Broadcast Live Request Handler
-  const handleBroadcast = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!broadcastProduct.trim()) return;
+    if (!askProductName.trim()) return;
     setIsBroadcasting(true);
-
-    const selectedLiveCategory = categoriesList.find(category => category.id === selectedCategory);
-    if (!selectedLiveCategory || selectedLiveCategory.id === 'all') {
-      setBroadcastError('Choose a category in Explore before sending a live request.');
+    setTimeout(() => {
       setIsBroadcasting(false);
-      return;
-    }
-    setBroadcastError('');
-    const result = await sendLiveRequest({
-      requestText: `${broadcastProduct}${broadcastSize ? ` (${broadcastSize})` : ''}`,
-      categoryId: selectedLiveCategory.id,
-      searchRadiusKm: parseInt(broadcastRadius) || 5,
-      latitude: currentLocation.lat || 11.0168,
-      longitude: currentLocation.lng || 76.9558
-    });
-
-    setIsBroadcasting(false);
-    setBroadcastSent(true);
-
-    if (result && Array.isArray(result.responses) && result.responses.length > 0) {
-      setLiveResponses(result.responses.map((response) => {
-        const r = response as unknown as Record<string, unknown>;
-        const distNum = typeof r.distanceKm === 'number' ? r.distanceKm : undefined;
-        return {
-          id: String(r.id || Math.random()),
-          storeName: String(r.shopName || r.storeName || 'Nearby Merchant'),
-          storeArea: String(r.shopAddress || r.storeArea || 'Local Area'),
-          distance: distNum ? `${distNum.toFixed(1)} km` : 'Nearby',
-          price: typeof r.price === 'number' ? r.price : 0,
-          available: r.status === 'Available' || r.available === true,
-          conditionNote: String(r.message || 'This shop has confirmed availability. Contact them to confirm price and variant.'),
-          rating: 0,
-          verified: true,
-          avatar: ''
-        };
-      }));
-    } else {
-      setLiveResponses([]);
-    }
+      setBroadcastDone(true);
+      setTimeout(() => {
+        setBroadcastDone(false);
+        setAskProductName('');
+        setAskVariant('');
+      }, 4000);
+    }, 1200);
   };
 
-  // Radius limit parsing (numeric km)
-  const maxRadiusKm = parseInt(radiusFilter) || 5;
+  const handleReserveProduct = (prodName: string, price: number) => {
+    const newHold: ActiveHold = {
+      id: `hold-${Date.now()}`,
+      holdId: `#ZH${Math.floor(1000 + Math.random() * 9000)}`,
+      productName: prodName,
+      storeName: selectedStore?.name || 'The Tech Hub',
+      storeAddress: '142 DB Road, RS Puram, Coimbatore',
+      storePhone: '+91 422 254 8890',
+      price: price,
+      status: 'active',
+      reservedUntil: 'Today, ' + new Date(Date.now() + 30 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      totalSeconds: 30 * 60,
+      qrCode: `zooner:hold:${Date.now()}:${prodName}`
+    };
+    setActiveHold(newHold);
+    localStorage.setItem('zooner_active_primary_hold', JSON.stringify(newHold));
+    setSelectedStore(null);
+    setActiveTab('holds');
+  };
 
-  // Products filtering based on query, category, and radius
-  const filteredProducts = liveProducts.filter(prod => {
-    const matchesQuery = debouncedQuery === '' || 
-      prod.name.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-      prod.category.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-      prod.storeName.toLowerCase().includes(debouncedQuery.toLowerCase());
-    
-    const matchesCategory = selectedCategory === 'all' || 
-      prod.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
-      selectedCategory.toLowerCase().includes(prod.category.toLowerCase());
+  const formatTimer = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return `${String(mins).padStart(2, '0')} : ${String(secs).padStart(2, '0')}`;
+  };
 
-    const matchesStock = !inStockOnly || prod.inStock;
-
-    // Radius distance check (e.g. "350m", "1.2 km")
-    let prodDistanceKm = 1.0;
-    if (prod.distance) {
-      if (prod.distance.includes('km')) {
-        prodDistanceKm = parseFloat(prod.distance) || 1.0;
-      } else if (prod.distance.includes('m')) {
-        prodDistanceKm = (parseFloat(prod.distance) || 300) / 1000;
-      }
-    }
-    const matchesRadius = prodDistanceKm <= maxRadiusKm;
-
-    return matchesQuery && matchesCategory && matchesStock && matchesRadius;
-  });
-
-  // Stores filtering
-  const filteredStores = liveStores.filter(st => {
-    const matchesQuery = debouncedQuery === '' ||
-      st.name.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-      st.category.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-      st.tags.some(t => t.toLowerCase().includes(debouncedQuery.toLowerCase()));
-
-    const matchesCategory = selectedCategory === 'all' ||
-      st.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
-      selectedCategory.toLowerCase().includes(st.category.toLowerCase());
-
-    let storeDistanceKm = 1.0;
-    if (st.distance) {
-      if (st.distance.includes('km')) {
-        storeDistanceKm = parseFloat(st.distance) || 1.0;
-      } else if (st.distance.includes('m')) {
-        storeDistanceKm = (parseFloat(st.distance) || 300) / 1000;
-      }
-    }
-    const matchesRadius = storeDistanceKm <= maxRadiusKm;
-
-    return matchesQuery && matchesCategory && matchesRadius;
-  });
-
-  // Active holds count
-  const activeHolds = holds.filter(h => h.status === 'active' && h.expiresAt > currentTime);
+  // ── 8 CATEGORIES MATCHING SCREEN 1 ──
+  const CATEGORIES_DATA = [
+    { id: 'electronics', label: 'Electronics', icon: Smartphone, iconColor: 'text-[#00A859]', bg: 'bg-green-50/70' },
+    { id: 'fashion', label: 'Fashion', icon: Shirt, iconColor: 'text-red-500', bg: 'bg-red-50/70' },
+    { id: 'grocery', label: 'Grocery', icon: ShoppingBag, iconColor: 'text-[#00A859]', bg: 'bg-green-50/70' },
+    { id: 'pharmacy', label: 'Pharmacy', icon: PlusSquare, iconColor: 'text-emerald-600', bg: 'bg-emerald-50/70' },
+    { id: 'home', label: 'Home & Living', icon: Home, iconColor: 'text-blue-500', bg: 'bg-blue-50/70' },
+    { id: 'beauty', label: 'Beauty', icon: Sparkles, iconColor: 'text-pink-500', bg: 'bg-pink-50/70' },
+    { id: 'sports', label: 'Sports', icon: Award, iconColor: 'text-slate-800', bg: 'bg-slate-100' },
+    { id: 'automotive', label: 'Automotive', icon: Car, iconColor: 'text-sky-600', bg: 'bg-sky-50/70' },
+  ];
 
   return (
-    <div className="zooner-app min-h-screen text-white flex flex-col selection:bg-white selection:text-black pb-28 md:pb-16 font-sans">
+    <div className="flex-1 flex flex-col bg-white text-gray-900 font-sans pb-20 select-none">
       
-      {/* ── TOP APP BAR (Compact, Minimalist) ── */}
-      <header className="zooner-app-header sticky top-0 z-40 px-4 sm:px-8 py-3.5">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-          
-          {/* Brand Logo */}
-          <div className="flex items-center gap-3">
-            {!Capacitor.isNativePlatform() && (
-              <button 
-                onClick={onNavigateToHome}
-                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
-                title="Back to Landing Page"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Website</span>
-              </button>
-            )}
-
-            <span className="text-xl font-black tracking-tight text-white font-['Outfit']">
-              zooner<span className="text-cyan-300">.</span>
-            </span>
-
-            <span className="zooner-live-pill text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded">
-              Live nearby
-            </span>
-          </div>
-
-          {/* Location Trigger (GPS) */}
-          <button
-            onClick={onOpenLocationModal}
-            className="zooner-location-control flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-colors cursor-pointer"
-          >
-            <MapPin className="h-3 w-3 text-emerald-400 shrink-0" />
-            <span className="truncate max-w-[130px] sm:max-w-[200px]">{currentLocation.name || 'RS Puram'}</span>
-          </button>
-
-          {/* Right link: Vendor Dashboard / Sign In */}
-          <div className="flex items-center gap-2">
-            {isVendor && (
-              <button
-                onClick={onNavigateToVendor}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-xs font-bold transition-all cursor-pointer shadow-md shadow-amber-500/10"
-              >
-                <StoreIcon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Merchant OS</span>
-                <span className="sm:hidden">Vendor</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => setIsWelcomeModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-xs font-semibold text-white transition-colors cursor-pointer"
-            >
-              <User className="h-3.5 w-3.5 text-emerald-400" />
-              <span>{userProfile?.name ? (userProfile.name.split(' ')[0]) : 'Sign In'}</span>
-            </button>
-          </div>
-
-        </div>
-      </header>
-
-      {/* ── GLOBAL ACTIVE HOLD TICKER BANNER ── */}
-      {activeHolds.length > 0 && (
-        <div className="bg-[#07080B] border-b border-white/10 px-4 sm:px-8 py-2.5">
-          <div className="max-w-6xl mx-auto flex items-center justify-between text-xs">
-            <div 
-              onClick={() => setSelectedPassForSheet(activeHolds[0])}
-              className="flex items-center gap-2.5 truncate cursor-pointer group"
-            >
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <span className="font-mono text-emerald-400 font-bold uppercase text-[10px] tracking-wider shrink-0">
-                Active Hold
-              </span>
-              <span className="text-white truncate font-medium group-hover:underline">
-                {activeHolds[0].productName} · {activeHolds[0].storeName}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <button
-                onClick={() => setSelectedPassForSheet(activeHolds[0])}
-                className="font-mono text-xs font-bold text-white px-3 py-1 rounded-full border border-white/20 hover:border-white/40 transition-colors cursor-pointer"
-              >
-                View Pass
-              </button>
-            </div>
+      {/* ── TOP MOBILE STATUS BAR (9:41, Cellular, Wifi, Battery) ── */}
+      <div className="w-full flex items-center justify-between px-6 pt-3 pb-1 text-xs font-semibold text-gray-900 bg-white z-20">
+        <span>9:41</span>
+        <div className="flex items-center gap-1.5 text-gray-900">
+          {/* Cellular signal */}
+          <svg className="w-4 h-3.5" viewBox="0 0 17 12" fill="currentColor">
+            <rect x="0" y="9" width="3" height="3" rx="0.5" />
+            <rect x="4" y="6" width="3" height="6" rx="0.5" />
+            <rect x="8" y="3" width="3" height="9" rx="0.5" />
+            <rect x="12" y="0" width="3" height="12" rx="0.5" />
+          </svg>
+          {/* Wifi */}
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+            <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+            <line x1="12" y1="20" x2="12.01" y2="20" strokeWidth="3" strokeLinecap="round" />
+          </svg>
+          {/* Battery */}
+          <div className="w-5 h-2.5 border border-gray-900 rounded-xs p-0.5 flex items-center">
+            <div className="h-full w-full bg-gray-900 rounded-2xs" />
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ── MAIN APP VIEW CONTAINER ── */}
-      <main className="zooner-app-content flex-1 max-w-6xl mx-auto w-full px-4 sm:px-8 py-6 space-y-8">
-        
-        {/* ========================================================
-            TAB 1: DISCOVER (Search, Categories, Shelf Feed & Stores)
-           ======================================================== */}
-        {activeTab === 'discover' && (
-          <div className="space-y-6 text-left">
-            <section className="zooner-explore-hero">
-              <div>
-                <div className="zooner-eyebrow"><span /> Your neighborhood, in stock</div>
-                <h1>Explore local shelves,<br className="hidden sm:block" /> not endless delivery lists.</h1>
-                <p>Compare what is available around {currentLocation.city || 'you'} and reserve it before you leave.</p>
-              </div>
-              <div className="zooner-hero-stat">
-                <span className="h-2 w-2 rounded-full bg-cyan-300 animate-pulse" />
-                <strong>{filteredStores.length || '—'}</strong>
-                <small>stores in your area</small>
-              </div>
-            </section>
-            
-            {/* Search Bar with 300ms Debounce */}
-            <div className="zooner-discovery-controls space-y-3">
-              <div className="zooner-search flex items-center rounded-full px-4 py-3 transition-colors">
-                <Search className="h-4 w-4 text-slate-400 mr-3 shrink-0" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search global product catalog (e.g. sony xm5, iphone 15, air max)..."
-                  className="w-full bg-transparent text-white placeholder-slate-500 text-xs sm:text-sm font-normal focus:outline-none"
-                />
-                {isSearchingCanonical && (
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse mr-2 shrink-0" title="Searching Catalog..." />
-                )}
-                {searchQuery && (
-                  <button 
-                    onClick={() => setSearchQuery('')}
-                    className="p-1 text-slate-500 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+      {/* ── MAIN SCREEN CONTAINER ── */}
+      <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar">
 
-              {/* Filters Bar: Scope Radius & In-Stock */}
-              <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1 border-b border-white/10 pb-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-slate-500 font-mono text-[11px] uppercase tracking-wider flex items-center gap-1">
-                    <SlidersHorizontal className="h-3 w-3" /> Radius:
-                  </span>
-                  
-                  <div className="flex items-center gap-1.5">
-                    {(['2km', '5km', '10km', '15km'] as const).map(rad => (
-                      <button
-                        key={rad}
-                        onClick={() => setRadiusFilter(rad)}
-                        className={`px-2.5 py-1 text-xs font-mono rounded-full border transition-colors cursor-pointer ${
-                          radiusFilter === rad 
-                            ? 'bg-white text-slate-950 font-bold border-white' 
-                            : 'border-white/10 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {rad}
-                      </button>
-                    ))}
-                  </div>
+        {/* ══════════════════════════════════════════════════════════════════
+            SCREEN 4: STORE DETAILS (When a Store is Selected)
+        ══════════════════════════════════════════════════════════════════ */}
+        {selectedStore ? (
+          <div className="animate-in fade-in duration-150">
+            {/* Store Cover Banner */}
+            <div className="relative h-48 sm:h-52 w-full bg-gray-900 overflow-hidden">
+              <img
+                src={selectedStore.image}
+                alt={selectedStore.name}
+                className="w-full h-full object-cover opacity-85"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/40" />
 
-                  <button
-                    onClick={() => setInStockOnly(!inStockOnly)}
-                    className={`px-2.5 py-1 text-xs font-mono rounded-full border transition-colors cursor-pointer ${
-                      inStockOnly 
-                        ? 'border-emerald-400/40 text-emerald-400 font-bold bg-emerald-950/20' 
-                        : 'border-white/10 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    In Stock Only
-                  </button>
-                </div>
-
-                <div className="text-slate-500 font-mono text-[11px]">
-                  {filteredProducts.length} Items · {filteredStores.length} Stores
-                </div>
-              </div>
-
-              {/* Categories stay deliberately quiet: one horizontal filter, no icon noise. */}
-              <div className="zooner-category-filter overflow-x-auto no-scrollbar" role="tablist" aria-label="Product categories">
-                {categoriesList.map(cat => {
-                  const isSelected = selectedCategory === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCategory(cat.id)}
-                      className={`px-4 py-2 rounded-full text-xs font-semibold tracking-wide transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 border ${
-                        isSelected 
-                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold border-emerald-400 shadow-lg shadow-emerald-500/20 scale-[1.02]' 
-                          : 'bg-[#12141D] text-slate-300 border-white/10 hover:border-white/25 hover:text-white'
-                      }`}
-                    >
-                      <span className="text-sm">
-                        {cat.id === 'all' ? '✨' : cat.id === 'footwear' ? '👟' : cat.id === 'electronics' ? '📱' : cat.id === 'appliances' ? '⚡' : cat.id === 'clothing' ? '👕' : '🛍️'}
-                      </span>
-                      <span>{cat.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Empty Search Result Notice (Only when user explicitly searches and gets 0 results) */}
-            {debouncedQuery !== '' && canonicalProducts.length === 0 && filteredProducts.length === 0 && (
-              <div className="border border-white/10 bg-slate-900/80 backdrop-blur-md rounded-2xl p-8 sm:p-12 text-center space-y-4 my-8">
-                <div className="text-xs font-mono uppercase tracking-widest text-emerald-400 font-bold">
-                  Search Result Notice
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black font-['Outfit'] text-white">
-                  No shelf inventory found for "{debouncedQuery}" within {radiusFilter}.
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
-                  Local physical stores might still carry this in their backroom stock, or a store slightly farther away may have it.
-                </p>
-
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
-                  {radiusFilter !== '15km' && (
-                    <button
-                      onClick={() => setRadiusFilter(radiusFilter === '2km' ? '5km' : radiusFilter === '5km' ? '10km' : '15km')}
-                      className="w-full sm:w-auto px-6 py-3 rounded-full border border-white/20 hover:border-white/40 text-xs font-bold font-mono text-white transition-colors cursor-pointer"
-                    >
-                      Expand Radius to {radiusFilter === '2km' ? '5km' : radiusFilter === '5km' ? '10km' : '15km'}
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => {
-                      setBroadcastProduct(searchQuery || 'Product inquiry');
-                      setActiveTab('requests');
-                    }}
-                    className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 text-xs font-bold flex items-center justify-center gap-2 hover:from-emerald-400 hover:to-teal-400 transition-colors cursor-pointer shadow-lg shadow-emerald-500/20"
-                  >
-                    <Radio className="h-3.5 w-3.5" />
-                    <span>Broadcast Live Ask to Stores</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Verified Global Products Catalog & In-Store Shelf Items */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              {/* Top Floating Buttons */}
+              <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
+                <button
+                  type="button"
+                  onClick={() => setSelectedStore(null)}
+                  className="w-9 h-9 rounded-full bg-white text-gray-800 flex items-center justify-center shadow-md hover:bg-gray-100 transition cursor-pointer"
+                  aria-label="Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
                 <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs font-mono uppercase tracking-widest text-slate-300 font-bold">
-                    {debouncedQuery ? `Search Results (${canonicalProducts.length > 0 ? canonicalProducts.length : filteredProducts.length} Items)` : `Featured Nearby Catalog (${(canonicalProducts.length > 0 ? canonicalProducts.length : filteredProducts.length > 0 ? filteredProducts.length : FEATURED_CATALOG_PRODUCTS.length)} Products)`}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (navigator.share) {
+                        navigator.share({ title: selectedStore.name, url: window.location.href });
+                      } else {
+                        alert('Store link copied to clipboard!');
+                      }
+                    }}
+                    className="w-9 h-9 rounded-full bg-white text-gray-800 flex items-center justify-center shadow-md hover:bg-gray-100 transition cursor-pointer"
+                    aria-label="Share"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleBookmark(selectedStore.name)}
+                    className="w-9 h-9 rounded-full bg-white text-gray-800 flex items-center justify-center shadow-md hover:bg-gray-100 transition cursor-pointer"
+                    aria-label="Bookmark"
+                  >
+                    <Bookmark className={`w-4 h-4 ${bookmarkedIds[selectedStore.name] ? 'fill-[#00A859] text-[#00A859]' : ''}`} />
+                  </button>
                 </div>
-                <span className="text-[11px] font-mono text-slate-500">
-                  Within {radiusFilter} · Store Comparison &amp; 30-Min Hold
-                </span>
               </div>
 
-              {/* 2-Column / 3-Column Visual Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                {canonicalProducts.length > 0 ? (
-                  canonicalProducts.map(cp => {
-                    const carryingCount = cp.carryingStores ? cp.carryingStores.length : 0;
-                    const lowestPrice = cp.carryingStores && cp.carryingStores.length > 0
-                      ? Math.min(...cp.carryingStores.map((s: StoreInventoryItem) => s.price))
-                      : 0;
-                    const nearestStore = cp.carryingStores && cp.carryingStores.length > 0 ? cp.carryingStores[0] : null;
-                    const distKm = nearestStore?.distanceKm;
-                    const distanceLabel = distKm != null
-                      ? (distKm < 1 ? `${(distKm * 1000).toFixed(0)}m` : `${distKm.toFixed(1)} km`)
-                      : 'Nearby';
-
-                    return (
-                      <div
-                        key={cp.id}
-                        onClick={() => setSelectedCanonicalProduct(cp)}
-                        className="group border border-white/10 hover:border-emerald-500/40 bg-slate-900/80 hover:bg-slate-900/95 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between cursor-pointer relative"
-                      >
-                        {/* Top Badges over Image */}
-                        <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
-                          <img 
-                            src={cp.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80'} 
-                            alt={cp.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-                          
-                          {/* Status Badges */}
-                          <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-                            <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-emerald-400 font-semibold flex items-center gap-1.5">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                              {carryingCount} {carryingCount === 1 ? 'Store' : 'Stores'} Carrying
-                            </span>
-
-                            <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-slate-300 font-semibold flex items-center gap-1">
-                              <MapPin className="h-2.5 w-2.5 text-emerald-400" />
-                              {distanceLabel}
-                            </span>
-                          </div>
-
-                          {/* Store Overlay Pill */}
-                          {nearestStore && (
-                            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                              <span className="text-xs font-semibold text-white drop-shadow-md truncate">
-                                Nearest: {nearestStore.storeName}
-                              </span>
-                              <span className="text-[10px] text-slate-300 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded border border-white/10">
-                                {nearestStore.availableQuantity} available
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Card Content Body */}
-                        <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                          <div className="space-y-1">
-                            <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
-                              {cp.name}
-                            </h4>
-                            <p className="text-xs text-slate-400 line-clamp-1">
-                              {cp.brandName ? `${cp.brandName} · ` : ''}{cp.categoryName || 'General'}
-                            </p>
-                          </div>
-
-                          {/* Price & Action Row */}
-                          <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
-                            <div className="font-mono">
-                              <div className="text-[10px] text-slate-400 uppercase tracking-wider">In Stock From</div>
-                              <div className="text-base font-extrabold text-white">
-                                ₹{lowestPrice.toLocaleString('en-IN')}
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedCanonicalProduct(cp);
-                              }}
-                              className="px-3.5 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs transition-all shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer"
-                            >
-                              View Stores ({carryingCount})
-                            </button>
-                          </div>
-                        </div>
-
-                      </div>
-                    );
-                  })
-                ) : (
-                  (filteredProducts.length > 0 ? filteredProducts : FEATURED_CATALOG_PRODUCTS).map(product => (
-                    <div
-                      key={product.id}
-                      onClick={() => setSelectedProduct(product)}
-                      className="group border border-white/10 hover:border-emerald-500/40 bg-slate-900/80 hover:bg-slate-900/95 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between cursor-pointer relative"
-                    >
-                      {/* Top Badges over Image */}
-                      <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
-                        <img 
-                          src={product.imageUrl} 
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-                        
-                        {/* Status Badges */}
-                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-                          <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-emerald-400 font-semibold flex items-center gap-1.5">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                            {product.stockCount} on counter
-                          </span>
-
-                          <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-slate-300 font-semibold flex items-center gap-1">
-                            <MapPin className="h-2.5 w-2.5 text-emerald-400" />
-                            {product.distance}
-                          </span>
-                        </div>
-
-                        {/* Store Overlay Pill */}
-                        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                          <span className="text-xs font-semibold text-white drop-shadow-md truncate">
-                            {product.storeName}
-                          </span>
-                          <span className="text-[10px] text-slate-300 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded border border-white/10">
-                            {product.storeArea}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Card Content Body */}
-                      <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                        <div className="space-y-1">
-                          <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
-                            {product.name}
-                          </h4>
-                          <p className="text-xs text-slate-400 line-clamp-1">
-                            Category: {product.category}
-                          </p>
-                        </div>
-
-                        {/* Price & Action Row */}
-                        <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
-                          <div className="font-mono">
-                            <div className="text-base font-extrabold text-white">
-                              ₹{product.price.toLocaleString('en-IN')}
-                            </div>
-                            {product.originalPrice && (
-                              <div className="text-[10px] text-slate-500 line-through">
-                                ₹{product.originalPrice.toLocaleString('en-IN')}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleHoldItem(product.name, product.storeName, product.price);
-                              }}
-                              className="px-3.5 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs transition-all shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer"
-                            >
-                              Hold 30m
-                            </button>
-
-                            <a
-                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${product.storeName}, ${product.storeArea}, Coimbatore`)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-2 rounded-full border border-white/15 hover:border-white/40 text-slate-300 hover:text-white transition-colors shrink-0 cursor-pointer"
-                              title="View Map Navigation"
-                            >
-                              <Navigation className="h-3.5 w-3.5" />
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  ))
-                )}
+              {/* Title overlay on banner */}
+              <div className="absolute bottom-4 left-5 right-5 text-white">
+                <h1 className="text-2xl font-bold tracking-tight drop-shadow-sm">{selectedStore.name}</h1>
               </div>
             </div>
 
+            {/* Store Meta Card */}
+            <div className="px-5 py-4 border-b border-gray-100 bg-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-full bg-gray-900 text-white font-bold text-lg flex items-center justify-center shrink-0">
+                    {selectedStore.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-gray-950">{selectedStore.name}</h2>
+                    <div className="flex items-center gap-2 text-xs text-gray-600 mt-0.5">
+                      <span className="flex items-center text-amber-500 font-semibold gap-0.5">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        {selectedStore.rating}
+                      </span>
+                      <span>({selectedStore.reviewsCount} reviews)</span>
+                    </div>
+                  </div>
+                </div>
 
-            {/* Nearby Verified Physical Stores Directory */}
-            <div className="space-y-4 pt-6">
-              <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                <span className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold">
-                  Physical Stores Nearby
-                </span>
-                <span className="text-[11px] font-mono text-slate-500">
-                  Within {radiusFilter}
-                </span>
+                <div className="text-right">
+                  <div className="flex items-center justify-end gap-1 text-xs text-[#00A859] font-medium">
+                    <MapPin className="w-3 h-3 text-[#00A859]" />
+                    {selectedStore.distance}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    <span className="text-[#00A859] font-semibold">Open</span> · Closes 9:00 PM
+                  </div>
+                </div>
               </div>
+            </div>
 
-              <div className="divide-y divide-white/10">
-                {filteredStores.map(store => {
-                  const isSaved = savedStores.includes(store.id);
-                  return (
-                    <div
-                      key={store.id}
-                      onClick={() => setSelectedStore(store)}
-                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-white/[0.015] transition-colors"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-white">{store.name}</span>
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                        </div>
-                        <div className="text-xs text-slate-400">
-                          <span>{store.category}</span>
-                          <span className="mx-2 text-slate-600">·</span>
-                          <span>{store.area}</span>
-                          <span className="mx-2 text-slate-600">·</span>
-                          <span className="font-mono text-slate-400">{store.distance}</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500 font-mono">
-                          {store.openStatus}
-                        </div>
+            {/* Segmented Tabs: Products | About | Reviews */}
+            <div className="flex border-b border-gray-100 px-5 bg-white">
+              {(['products', 'about', 'reviews'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setStoreActiveTab(tab)}
+                  className={`py-3 px-4 text-xs font-semibold capitalize border-b-2 transition cursor-pointer ${
+                    storeActiveTab === tab
+                      ? 'border-[#00A859] text-gray-950'
+                      : 'border-transparent text-gray-400 hover:text-gray-700'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Products Tab List */}
+            {storeActiveTab === 'products' && (
+              <div className="p-5 space-y-3">
+                {STORE_CATALOG_ITEMS.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 bg-white rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between gap-3 hover:border-gray-200 transition"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-16 h-16 rounded-xl bg-gray-50 overflow-hidden shrink-0 flex items-center justify-center p-1">
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="w-full h-full object-contain mix-blend-multiply"
+                        />
                       </div>
-
-                      <div className="flex items-center gap-3 self-end sm:self-center">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleSaveStore(store.id);
-                          }}
-                          className="p-2 text-slate-500 hover:text-white transition-colors cursor-pointer"
-                          title={isSaved ? 'Remove Bookmark' : 'Save Store'}
-                        >
-                          <Bookmark className={`h-4 w-4 ${isSaved ? 'text-white fill-white' : ''}`} />
-                        </button>
-
-                        <span className="text-xs font-mono text-slate-400 hover:text-white flex items-center gap-1">
-                          <span>Catalog</span>
-                          <ChevronRight className="h-3.5 w-3.5" />
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-semibold text-gray-900 truncate">{item.name}</h4>
+                        <div className="text-sm font-bold text-gray-950 mt-1">₹ {item.price.toLocaleString('en-IN')}</div>
+                        <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full mt-1 ${
+                          item.stockStatus === 'In stock'
+                            ? 'bg-green-50 text-[#00A859]'
+                            : 'bg-amber-50 text-amber-700'
+                        }`}>
+                          {item.stockStatus}
                         </span>
                       </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleReserveProduct(item.name, item.price)}
+                      className="shrink-0 bg-[#00A859] hover:bg-[#00924d] text-white px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
+                    >
+                      Reserve
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {storeActiveTab === 'about' && (
+              <div className="p-5 text-xs text-gray-600 space-y-3">
+                <p>
+                  <strong>The Tech Hub</strong> is an authorized electronics and audio retailer operating in RS Puram, Coimbatore since 2018.
+                </p>
+                <div className="p-3 rounded-xl bg-gray-50 space-y-1.5 text-gray-700">
+                  <div><strong>Address:</strong> 142 DB Road, RS Puram, Coimbatore</div>
+                  <div><strong>Phone:</strong> +91 422 254 8890</div>
+                  <div><strong>Hours:</strong> Mon – Sat: 10:00 AM – 9:00 PM</div>
+                </div>
+              </div>
+            )}
+
+            {storeActiveTab === 'reviews' && (
+              <div className="p-5 space-y-3">
+                <div className="p-3 rounded-xl bg-gray-50 text-xs">
+                  <div className="flex items-center justify-between font-semibold text-gray-900 mb-1">
+                    <span>Arun Kumar</span>
+                    <span className="text-amber-500">★★★★★</span>
+                  </div>
+                  <p className="text-gray-600">Reserved a Sony WH-1000XM5 and collected it in 15 minutes. Super smooth counter verification!</p>
+                </div>
+                <div className="p-3 rounded-xl bg-gray-50 text-xs">
+                  <div className="flex items-center justify-between font-semibold text-gray-900 mb-1">
+                    <span>Priya M.</span>
+                    <span className="text-amber-500">★★★★☆</span>
+                  </div>
+                  <p className="text-gray-600">Genuine stock with bill & warranty. Great customer service.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : isSearching || searchQuery.trim().length > 0 ? (
+
+          /* ══════════════════════════════════════════════════════════════════
+              SCREEN 2: SEARCH RESULTS
+          ══════════════════════════════════════════════════════════════════ */
+          <div className="animate-in fade-in duration-150 p-5">
+            {/* Top Search Bar */}
+            <div className="flex items-center gap-2 mb-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSearching(false);
+                  setSearchQuery('');
+                }}
+                className="p-2 -ml-2 rounded-full text-gray-800 hover:bg-gray-100 transition cursor-pointer"
+                aria-label="Back"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+
+              <div className="flex-1 relative flex items-center">
+                <Search className="absolute left-3.5 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Search for products (e.g., iPhone, milk, shoe...)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden shadow-xs"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Results Header: "Results near Coimbatore" & "Sort v" */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">
+                  Results near {currentLocation.name.split(',')[0]}
+                </h3>
+                <p className="text-[11px] text-gray-500 mt-0.5">12 products • 8 stores</p>
+              </div>
+
+              <button
+                type="button"
+                className="flex items-center gap-1 border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50 transition cursor-pointer"
+              >
+                <span>Sort</span>
+                <ChevronDown className="w-3 h-3 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Product Cards List */}
+            <div className="space-y-3">
+              {filteredProducts.map((prod) => (
+                <div
+                  key={prod.id}
+                  className="bg-white rounded-2xl border border-gray-100 p-3 shadow-xs flex gap-3.5 items-center relative hover:border-gray-200 transition"
+                >
+                  {/* Thumbnail */}
+                  <div className="w-20 h-20 rounded-xl bg-gray-50 shrink-0 flex items-center justify-center overflow-hidden p-1.5">
+                    <img
+                      src={prod.imageUrl}
+                      alt={prod.name}
+                      className="w-full h-full object-contain mix-blend-multiply"
+                    />
+                  </div>
+
+                  {/* Details */}
+                  <div className="flex-1 min-w-0 pr-6">
+                    <h4 className="text-xs font-semibold text-gray-900 truncate">
+                      {prod.name}
+                    </h4>
+
+                    {/* Bookmark icon top right */}
+                    <button
+                      type="button"
+                      onClick={() => toggleBookmark(prod.id)}
+                      className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 cursor-pointer"
+                    >
+                      <Bookmark className={`w-4 h-4 ${bookmarkedIds[prod.id] ? 'fill-[#00A859] text-[#00A859]' : ''}`} />
+                    </button>
+
+                    <div className="text-sm font-bold text-gray-950 mt-1">
+                      ₹ {prod.price.toLocaleString('en-IN')}
+                    </div>
+
+                    <div className="mt-1">
+                      <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                        prod.stockStatus === 'In stock'
+                          ? 'bg-green-50 text-[#00A859]'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}>
+                        {prod.stockStatus}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="text-[11px] text-gray-500 truncate">
+                        {prod.distance} • {prod.storeName}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-1">
+                      <div className="flex items-center gap-1 text-[11px] text-gray-600">
+                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        <span className="font-semibold">{prod.rating}</span>
+                        <span>({prod.reviewsCount})</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedStore({
+                            name: prod.storeName,
+                            rating: prod.rating,
+                            reviewsCount: prod.reviewsCount,
+                            distance: prod.distance,
+                            openStatus: 'Open • Closes at 9:00 PM',
+                            image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80'
+                          });
+                        }}
+                        className="bg-[#00A859] hover:bg-[#00924d] text-white px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shadow-xs transition"
+                      >
+                        View Store
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : activeTab === 'explore' ? (
+
+          /* ══════════════════════════════════════════════════════════════════
+              SCREEN 1: EXPLORE (HOME)
+          ══════════════════════════════════════════════════════════════════ */
+          <div className="animate-in fade-in duration-150 p-5 space-y-5">
+            {/* Header: Logo & Location Selector */}
+            <div className="flex items-center justify-between">
+              <div 
+                onClick={onNavigateToHome}
+                className="font-bold text-2xl tracking-tight text-gray-950 select-none cursor-pointer"
+                title="Zooner Home"
+              >
+                zooner<span className="text-[#00A859]">.</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={onOpenLocationModal}
+                className="flex items-center gap-1.5 text-xs font-semibold text-gray-800 hover:text-gray-950 transition cursor-pointer"
+              >
+                <MapPin className="w-3.5 h-3.5 text-[#00A859]" />
+                <span>{currentLocation.city || 'Coimbatore'}</span>
+                <ChevronDown className="w-3 h-3 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Headline Section */}
+            <div>
+              <h2 className="text-3xl font-extrabold text-gray-950 tracking-tight leading-tight">
+                Find it nearby.
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">
+                Check real stock at local stores and reserve it before you go.
+              </p>
+            </div>
+
+            {/* Search Bar */}
+            <div 
+              onClick={() => setIsSearching(true)}
+              className="w-full bg-white border border-gray-200 rounded-xl py-3 px-3.5 flex items-center gap-2.5 shadow-xs cursor-pointer hover:border-gray-300 transition"
+            >
+              <Search className="w-4 h-4 text-gray-400 shrink-0" />
+              <span className="text-xs text-gray-400 select-none">
+                Search for products (e.g., iPhone, milk, shoe...)
+              </span>
+            </div>
+
+            {/* Radius Pills */}
+            <div className="flex items-center gap-2">
+              {(['2 km', '5 km', '10 km', '15 km'] as const).map((rad) => (
+                <button
+                  key={rad}
+                  type="button"
+                  onClick={() => setRadiusFilter(rad)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+                    radiusFilter === rad
+                      ? 'bg-[#00A859] text-white shadow-xs'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {rad}
+                </button>
+              ))}
+            </div>
+
+            {/* Browse by category */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-gray-900">Browse by category</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsSearching(true)}
+                  className="text-xs font-semibold text-[#00A859] hover:underline cursor-pointer"
+                >
+                  See all
+                </button>
+              </div>
+
+              {/* 4 columns x 2 rows */}
+              <div className="grid grid-cols-4 gap-2.5">
+                {CATEGORIES_DATA.map((cat) => {
+                  const Icon = cat.icon;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory(cat.id);
+                        setIsSearching(true);
+                      }}
+                      className="bg-gray-50/80 hover:bg-gray-100 rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 transition cursor-pointer border border-transparent hover:border-gray-200"
+                    >
+                      <div className="w-8 h-8 flex items-center justify-center">
+                        <Icon className={`w-5 h-5 ${cat.iconColor}`} />
+                      </div>
+                      <span className="text-[10px] font-medium text-gray-700 text-center leading-tight">
+                        {cat.label}
+                      </span>
+                    </button>
                   );
                 })}
               </div>
             </div>
 
-          </div>
-        )}
-
-        {/* ========================================================
-            TAB 2: LIVE ASK (Direct Merchant Stock Broadcast)
-           ======================================================== */}
-        {activeTab === 'requests' && (
-          <div className="space-y-6 text-left max-w-2xl mx-auto">
-
-            {/* Hero Banner */}
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-950/80 via-[#0B0C11] to-[#07080B] border border-emerald-500/20 p-6">
-              <div className="absolute top-3 right-4 opacity-10">
-                <Radio className="h-20 w-20 text-emerald-400" />
+            {/* Support local stores banner */}
+            <div className="rounded-2xl bg-[#FFF8EE] border border-amber-100/80 p-4 flex items-center justify-between overflow-hidden relative shadow-xs">
+              <div className="space-y-0.5 max-w-[200px]">
+                <h4 className="text-xs font-bold text-gray-950">Support local stores</h4>
+                <p className="text-[11px] text-gray-500">Shop nearby. Stronger communities.</p>
               </div>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-500 font-bold block mb-2">
-                Direct Merchant Broadcast
-              </span>
-              <h2 className="text-2xl font-black text-white font-['Outfit'] leading-tight">
-                Ask all local stores<br />in 1 tap.
+
+              {/* Cute Storefront Illustration */}
+              <div className="relative w-20 h-16 shrink-0 flex items-center justify-center">
+                <div className="w-16 h-12 bg-white rounded-lg border border-amber-200 shadow-sm relative flex flex-col overflow-hidden">
+                  {/* Striped awning */}
+                  <div className="h-3 w-full bg-repeating-linear-gradient flex">
+                    <div className="flex-1 bg-red-400" />
+                    <div className="flex-1 bg-white" />
+                    <div className="flex-1 bg-red-400" />
+                    <div className="flex-1 bg-white" />
+                    <div className="flex-1 bg-red-400" />
+                  </div>
+                  {/* Window & door */}
+                  <div className="flex-1 flex items-center justify-center gap-1 p-1">
+                    <div className="w-4 h-5 bg-sky-100 border border-sky-200 rounded-2xs" />
+                    <div className="w-3 h-6 bg-amber-800 rounded-t-xs" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'live-ask' ? (
+
+          /* ══════════════════════════════════════════════════════════════════
+              SCREEN 3: LIVE ASK
+          ══════════════════════════════════════════════════════════════════ */
+          <div className="animate-in fade-in duration-150 p-5 space-y-5">
+            {/* Header: Logo & Location */}
+            <div className="flex items-center justify-between">
+              <div 
+                onClick={onNavigateToHome}
+                className="font-bold text-2xl tracking-tight text-gray-950 select-none cursor-pointer"
+                title="Zooner Home"
+              >
+                zooner<span className="text-[#00A859]">.</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={onOpenLocationModal}
+                className="flex items-center gap-1 text-xs font-semibold text-gray-800 hover:text-gray-950 transition cursor-pointer"
+              >
+                <MapPin className="w-3.5 h-3.5 text-[#00A859]" />
+                <span>{currentLocation.city || 'Coimbatore'}</span>
+                <ChevronDown className="w-3 h-3 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Headline */}
+            <div>
+              <h2 className="text-2xl font-black text-gray-950 tracking-tight leading-tight">
+                Can't find it?<br />Ask local stores.
               </h2>
-              <p className="text-xs text-slate-400 leading-relaxed mt-2">
-                Can't find your exact size or variant? Broadcast to verified shopkeepers nearby.
+              <p className="text-xs text-gray-500 mt-1">
+                Send a request to nearby shopkeepers. They'll notify you if they have it.
               </p>
             </div>
 
-            {/* Broadcast Form */}
-            <form onSubmit={handleBroadcast} className="space-y-4 border border-white/10 rounded-2xl p-6 bg-slate-900/80 backdrop-blur-md shadow-xl">
-              {broadcastError && (
-                <p className="rounded-xl bg-rose-500/10 border border-rose-500/20 px-3 py-2 text-xs font-medium text-rose-300">{broadcastError}</p>
-              )}
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono uppercase tracking-wider text-slate-300 block font-bold">
-                  Product Name &amp; Model
+            {broadcastDone && (
+              <div className="p-3.5 rounded-xl bg-green-50 border border-green-200 text-xs font-medium text-[#00A859] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Broadcast dispatched! Verified stores in {askRadius} radius notified.</span>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleBroadcast} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Product name / model
                 </label>
                 <input
                   type="text"
-                  value={broadcastProduct}
-                  onChange={(e) => setBroadcastProduct(e.target.value)}
-                  placeholder="e.g. Nike Pegasus 40, Titan Edge watch, Philips 12W LED"
-                  className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none transition-all"
                   required
+                  placeholder="e.g. iPhone 15, Nike Air, Amul Milk"
+                  value={askProductName}
+                  onChange={(e) => setAskProductName(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden shadow-xs"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono uppercase tracking-wider text-slate-300 block font-bold">
-                    Size / Variant
-                  </label>
-                  <input
-                    type="text"
-                    value={broadcastSize}
-                    onChange={(e) => setBroadcastSize(e.target.value)}
-                    placeholder="e.g. UK 9, 256GB"
-                    className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none transition-all"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Size / Variant (optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 256GB, UK 9, 1 Litre"
+                  value={askVariant}
+                  onChange={(e) => setAskVariant(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden shadow-xs"
+                />
+              </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono uppercase tracking-wider text-slate-300 block font-bold">
-                    Target Radius
-                  </label>
-                  <select
-                    value={broadcastRadius}
-                    onChange={(e) => setBroadcastRadius(e.target.value)}
-                    className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none transition-all"
-                  >
-                    <option value="2 km">Within 2 km</option>
-                    <option value="5 km">Within 5 km</option>
-                    <option value="10 km">Within 10 km</option>
-                  </select>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Target radius
+                </label>
+                <div className="flex items-center gap-2">
+                  {(['2 km', '5 km', '10 km', '15 km'] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setAskRadius(r)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                        askRadius === r
+                          ? 'bg-[#00A859] text-white shadow-xs'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={isBroadcasting || !broadcastProduct.trim()}
-                className="w-full py-3.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
+                disabled={isBroadcasting}
+                className="w-full bg-[#00A859] hover:bg-[#00924d] text-white py-3.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition disabled:opacity-60 mt-2"
               >
                 {isBroadcasting ? (
                   <>
-                    <span className="h-3.5 w-3.5 rounded-full border-2 border-slate-950 border-t-transparent animate-spin" />
-                    <span>Pinging Verified Retailers...</span>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Broadcasting...</span>
                   </>
                 ) : (
                   <>
-                    <Send className="h-3.5 w-3.5" />
-                    <span>Broadcast Live Request</span>
+                    <Radio className="w-4 h-4" />
+                    <span>Broadcast to Nearby Stores</span>
                   </>
                 )}
               </button>
             </form>
 
-            {/* Broadcast Live Response Feed */}
-            {broadcastSent && (
-              <div className="space-y-4 pt-4 border-t border-white/10">
-                <div className="flex items-center justify-between text-xs pb-1">
-                  <div className="flex items-center gap-2 text-emerald-400 font-mono font-bold">
-                    <Radio className="h-3.5 w-3.5 animate-pulse" />
-                    <span>Live Merchant Replies</span>
-                  </div>
-                  <span className="text-slate-500 font-mono">{liveResponses.length} Shops Responded</span>
-                </div>
+            {/* Trust Highlights */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-2.5 text-xs text-gray-700 font-medium">
+                <ShieldCheck className="w-4 h-4 text-[#00A859] shrink-0" />
+                <span>We notify verified local stores</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-xs text-gray-700 font-medium">
+                <Clock className="w-4 h-4 text-[#00A859] shrink-0" />
+                <span>You get responses in real-time</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-xs text-gray-700 font-medium">
+                <Shield className="w-4 h-4 text-[#00A859] shrink-0" />
+                <span>No spam. Only relevant stores</span>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'holds' ? (
 
-                <div className="space-y-3">
-                  {liveResponses.map(resp => (
-                    <div
-                      key={resp.id}
-                      className="border border-white/10 rounded-2xl p-5 bg-[#0B0C11] space-y-3 text-left"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="flex items-center gap-1.5 font-bold text-white text-sm">
-                            <span>{resp.storeName}</span>
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                          </div>
-                          <span className="text-xs text-slate-400 font-mono">{resp.storeArea} · {resp.distance}</span>
-                        </div>
+          /* ══════════════════════════════════════════════════════════════════
+              SCREEN 5: MY HOLDS
+          ══════════════════════════════════════════════════════════════════ */
+          <div className="animate-in fade-in duration-150 p-5 space-y-4">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-950 tracking-tight">My Holds</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Show this code at the store counter</p>
+            </div>
 
-                        <div className="text-right font-mono">
-                          <span className="text-base font-bold text-white">₹{resp.price.toLocaleString('en-IN')}</span>
-                          <span className="block text-[10px] text-emerald-400 font-bold uppercase">In Stock</span>
-                        </div>
-                      </div>
-
-                      <p className="text-xs text-slate-300 font-normal leading-relaxed border-l-2 border-white/20 pl-3">
-                        "{resp.conditionNote}"
-                      </p>
-
-                      <div className="flex items-center gap-3 pt-2 border-t border-white/5">
-                        <button
-                          onClick={() => {
-                            handleHoldItem(broadcastProduct, resp.storeName, resp.price);
-                            setActiveTab('holds');
-                          }}
-                          className="flex-1 py-2.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer text-center"
-                        >
-                          Accept &amp; Hold for 30m
-                        </button>
-
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${resp.storeName}, ${resp.storeArea}, Coimbatore`)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-4 py-2.5 rounded-full border border-white/15 text-xs text-slate-300 hover:text-white flex items-center gap-1 transition-colors cursor-pointer shrink-0"
-                        >
-                          <Navigation className="h-3 w-3" />
-                          <span>Directions</span>
-                        </a>
-                      </div>
+            {activeHold ? (
+              <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs space-y-4">
+                {/* Header Row: Thumbnail + Product Name + Active badge */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden shrink-0 p-1 border border-gray-100">
+                      <img
+                        src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80"
+                        alt={activeHold.productName}
+                        className="w-full h-full object-contain mix-blend-multiply"
+                      />
                     </div>
-                  ))}
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-950">{activeHold.productName}</h4>
+                      <p className="text-xs text-gray-500 mt-0.5">{activeHold.storeName}</p>
+                    </div>
+                  </div>
+
+                  <span className="bg-green-100 text-[#00A859] font-bold text-[10px] px-2 py-0.5 rounded-full">
+                    Active
+                  </span>
                 </div>
+
+                {/* Details row: Hold ID + Reserved until */}
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-100">
+                  <div>
+                    <div className="text-[11px] text-gray-400">Hold ID</div>
+                    <div className="text-xs font-bold text-gray-900 mt-0.5">{activeHold.holdId}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-gray-400">Reserved until</div>
+                    <div className="text-xs font-bold text-gray-900 mt-0.5">{activeHold.reservedUntil}</div>
+                  </div>
+                </div>
+
+                {/* Countdown Timer Box */}
+                <div className="bg-green-50/70 border border-green-100 rounded-xl p-3 text-center">
+                  <div className="text-2xl font-black font-mono text-[#00A859] tracking-wider">
+                    {formatTimer(activeHold.totalSeconds)}
+                  </div>
+                  <div className="text-[11px] font-medium text-green-700 mt-0.5">
+                    minutes remaining
+                  </div>
+                </div>
+
+                {/* QR Code Section */}
+                <div className="flex flex-col items-center justify-center pt-2">
+                  <div className="p-3 bg-white rounded-2xl border border-gray-200 shadow-xs">
+                    <MiniQRCode value={activeHold.qrCode} size={140} />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">Show this code at the store</p>
+                </div>
+
+                {/* Action button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedStore({
+                      name: activeHold.storeName,
+                      rating: 4.6,
+                      reviewsCount: 128,
+                      distance: '1.2 km',
+                      openStatus: 'Open • Closes at 9:00 PM',
+                      image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80'
+                    });
+                  }}
+                  className="w-full border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl py-2.5 text-xs font-semibold transition cursor-pointer text-center"
+                >
+                  View Store Details
+                </button>
+              </div>
+            ) : (
+              <div className="py-16 text-center text-gray-400 space-y-3">
+                <Clock className="w-10 h-10 mx-auto text-gray-300" />
+                <p className="text-xs">No active holds. Discover products and reserve before walking in!</p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('explore')}
+                  className="bg-[#00A859] text-white px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  Browse Products
+                </button>
               </div>
             )}
-
           </div>
-        )}
+        ) : (
 
-        {/* ========================================================
-            TAB 3: MY HOLDS (The 30-Minute Counter Pass & Timer)
-           ======================================================== */}
-        {activeTab === 'holds' && (
-          <div className="space-y-6 text-left max-w-2xl mx-auto">
-
-            {/* Header with live count */}
+          /* ══════════════════════════════════════════════════════════════════
+              SCREEN 6: ACCOUNT
+          ══════════════════════════════════════════════════════════════════ */
+          <div className="animate-in fade-in duration-150 p-5 space-y-4">
+            {/* Top Bar: Title + Settings gear */}
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-black text-white font-['Outfit']">My Holds</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Show pass code at store counter</p>
-              </div>
-              {activeHolds.length > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30">
-                  <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-                  <span className="text-xs font-bold text-amber-400">{activeHolds.length} Active</span>
-                </div>
-              )}
+              <h2 className="text-2xl font-bold text-gray-950 tracking-tight">Account</h2>
+              <button
+                type="button"
+                onClick={() => alert('Settings preferences saved.')}
+                className="p-1.5 text-gray-700 hover:text-gray-950 hover:bg-gray-100 rounded-full transition cursor-pointer"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* Active Holds List */}
-            <div className="space-y-4">
-              {holds.length === 0 ? (
-                <div className="border border-white/10 rounded-2xl p-10 text-center space-y-3">
-                  <Clock className="h-8 w-8 text-slate-600 mx-auto" />
-                  <div className="text-sm font-bold text-white">No active holds</div>
-                  <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                    When you reserve an item on Discover or Live Ask, your 30-minute counter ticket will appear here.
-                  </p>
-                  <button
-                    onClick={() => setActiveTab('discover')}
-                    className="px-6 py-2.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer mt-2"
-                  >
-                    Search In-Store Shelves
-                  </button>
-                </div>
-              ) : (
-                holds.map(hold => {
-                  const isHoldActive = hold.status === 'active' && hold.expiresAt > currentTime;
-                  const remainingSecs = Math.max(0, Math.floor((hold.expiresAt - currentTime) / 1000));
-                  const mins = Math.floor(remainingSecs / 60);
-                  const secs = remainingSecs % 60;
-                  const timeFormatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-                  return (
-                    <div key={hold.id} className="rounded-2xl overflow-hidden bg-[#0B0C11] border border-white/10">
-                      {/* Status strip */}
-                      <div className={`h-1 ${
-                        isHoldActive ? 'bg-gradient-to-r from-amber-400 to-emerald-400' : 'bg-white/10'
-                      }`} />
-
-                      <div className="p-5 space-y-4">
-                        {/* Pass code + timer badge */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-mono font-black text-white">#{hold.passCode}</span>
-                            {isHoldActive && <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />}
-                          </div>
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider ${
-                            isHoldActive
-                              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400'
-                              : 'bg-white/5 border border-white/10 text-slate-500'
-                          }`}>
-                            {isHoldActive ? `⏱ ${timeFormatted}` : hold.status}
-                          </span>
-                        </div>
-
-                        {/* Item card */}
-                        <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                          <div className="h-9 w-9 rounded-xl bg-amber-500/15 border border-amber-500/20 flex items-center justify-center shrink-0">
-                            <Clock className="h-4 w-4 text-amber-400" />
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className="text-sm font-bold text-white truncate">{hold.productName}</h4>
-                            <div className="text-xs text-slate-400 truncate">{hold.storeName}</div>
-                            <div className="text-[11px] text-slate-500 font-mono truncate">{hold.storeAddress}</div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-baseline justify-between text-xs font-mono">
-                          <span className="text-slate-500">Counter Price</span>
-                          <span className="text-white font-bold text-base">₹{hold.price.toLocaleString('en-IN')}</span>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() => setSelectedPassForSheet(hold)}
-                            className="py-2.5 rounded-xl bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
-                          >
-                            View Pass
-                          </button>
-                          <button
-                            onClick={() => setChatPass(hold)}
-                            className="py-2.5 rounded-xl border border-white/15 hover:border-white/30 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                          >
-                            <MessageSquare className="h-3.5 w-3.5" />
-                            Chat
-                          </button>
-                          <a
-                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${hold.storeName}, ${hold.storeAddress}`)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="col-span-2 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white font-mono text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                          >
-                            <Navigation className="h-3.5 w-3.5" />
-                            Get Directions
-                          </a>
-                        </div>
-
-                        {isHoldActive && (
-                          <div className="text-right">
-                            <button
-                              onClick={() => { if (confirm('Cancel reservation and release item?')) handleCancelHold(hold.id); }}
-                              className="text-[11px] font-mono text-slate-600 hover:text-red-400 transition-colors cursor-pointer"
-                            >
-                              Release Hold
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-          </div>
-        )}
-
-        {/* ========================================================
-            TAB 4: ACCOUNT & SAVED (Profile, Bookmarks, Merchant Link)
-           ======================================================== */}
-        {activeTab === 'account' && (
-          <div className="space-y-6 text-left max-w-2xl mx-auto">
-
-            {/* Profile Hero Card */}
-            <div className="flex items-center gap-4 p-5 rounded-2xl bg-gradient-to-r from-violet-950/60 to-[#0B0C11] border border-violet-500/20">
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-violet-500/20">
-                <User className="h-7 w-7 text-white" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-base font-bold text-white truncate">{customerProfile.name || 'Guest User'}</div>
-                <div className="text-xs text-slate-400 font-mono truncate">{customerProfile.phone}</div>
-                <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/25">
-                  <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-                  <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wider">Shopper</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Counter Reservation Identity Form */}
-            <form onSubmit={handleSaveProfile} className="border border-white/10 rounded-2xl p-5 bg-slate-900/80 backdrop-blur-md shadow-xl space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono uppercase tracking-wider text-white font-bold">Counter Identity</span>
-                <span className="text-[10px] text-slate-400 font-mono">· shown at store pickup</span>
+            {/* Profile Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 font-bold text-lg flex items-center justify-center shrink-0">
+                {userProfile.name ? userProfile.name.charAt(0) : 'S'}
               </div>
 
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-mono text-slate-300 block font-bold">Your Full Name</label>
-                  <input
-                    type="text"
-                    value={customerProfile.name}
-                    onChange={(e) => setCustomerProfile({ ...customerProfile, name: e.target.value })}
-                    placeholder="Enter your full name"
-                    className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none transition-all"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-mono text-slate-300 block font-bold">Mobile Number (For Pass SMS/Verification)</label>
-                  <input
-                    type="text"
-                    value={customerProfile.phone}
-                    onChange={(e) => setCustomerProfile({ ...customerProfile, phone: e.target.value })}
-                    placeholder="+91 98765 43210"
-                    className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none font-mono transition-all"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
-                >
-                  Save Counter Info
-                </button>
-
-                {profileSavedFeedback && (
-                  <span className="text-xs font-mono text-emerald-400 font-bold flex items-center gap-1">
-                    ✓ Saved to device
-                  </span>
-                )}
-              </div>
-            </form>
-
-            {/* Saved Stores List */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                <span className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold">
-                  Bookmarked Local Stores
-                </span>
-                <span className="text-[11px] font-mono text-slate-500">{savedStores.length} Saved</span>
-              </div>
-
-              {savedStores.length === 0 ? (
-                <div className="p-6 text-center text-xs text-slate-500 border border-white/5 rounded-xl">
-                  No bookmarked stores. Tap the bookmark icon on any store card to save it.
-                </div>
-              ) : (
-                <div className="divide-y divide-white/10">
-                  {savedStores.map(storeId => {
-                    const st = liveStores.find((s: Store) => s.id === storeId);
-                    if (!st) return null;
-                    return (
-                      <div key={st.id} className="py-3.5 flex items-center justify-between gap-4">
-                        <div 
-                          onClick={() => setSelectedStore(st)}
-                          className="cursor-pointer group"
-                        >
-                          <div className="text-sm font-bold text-white group-hover:underline">{st.name}</div>
-                          <div className="text-xs text-slate-400">{st.area} · {st.category}</div>
-                        </div>
-
-                        <button
-                          onClick={() => toggleSaveStore(st.id)}
-                          className="text-xs font-mono text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Store Owner & Vendor Passport Switcher */}
-            <div className="border border-emerald-500/30 rounded-2xl p-6 bg-gradient-to-br from-emerald-500/10 via-[#0B0C11] to-[#07080B] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono uppercase tracking-widest text-emerald-400 font-bold block">
-                    {isVendor ? 'Merchant OS · Active' : 'Store Owner Capability'}
-                  </span>
-                </div>
-                <div className="text-sm font-bold text-white">
-                  {isVendor 
-                    ? `Manage ${userProfile?.shops?.[0]?.name || 'Your Store'}` 
-                    : 'Own a physical shop in your city?'}
-                </div>
-                <p className="text-xs text-slate-400">
-                  {isVendor 
-                    ? 'Manage incoming live requests, shelf inventory, and customer 30-min hold passes.' 
-                    : 'Put your physical store on the discovery map under your existing account with zero setup.'}
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-gray-900 truncate">
+                  {userProfile.name || 'Surya'}
+                </h3>
+                <p className="text-xs text-gray-500 truncate">
+                  {userProfile.email || 'lpycho3@gmail.com'}
                 </p>
+                <span className="inline-block mt-1 bg-purple-50 text-purple-600 font-medium text-[10px] px-2 py-0.5 rounded-full">
+                  {userProfile.role || 'Shopper'}
+                </span>
               </div>
-
-              {isVendor ? (
-                <button
-                  onClick={onNavigateToVendor}
-                  className="px-6 py-3 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-mono font-bold transition-all cursor-pointer shrink-0 shadow-lg shadow-emerald-400/20 flex items-center gap-2"
-                >
-                  <StoreIcon className="h-4 w-4" />
-                  <span>Open Merchant OS →</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    if (onOpenRetailerModal) {
-                      onOpenRetailerModal();
-                    } else {
-                      onNavigateToVendor();
-                    }
-                  }}
-                  className="px-6 py-3 rounded-full bg-white hover:bg-slate-200 text-slate-950 text-xs font-mono font-bold transition-all cursor-pointer shrink-0 shadow-lg shadow-white/10 flex items-center gap-2"
-                >
-                  <StoreIcon className="h-4 w-4" />
-                  <span>Register Your Store →</span>
-                </button>
-              )}
             </div>
 
-          </div>
-        )}
+            {/* Menu List */}
+            <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100 overflow-hidden shadow-xs">
+              <button
+                type="button"
+                onClick={() => onOpenSignIn()}
+                className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <User className="w-4 h-4 text-gray-500" />
+                  <span className="font-medium">Edit Profile</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </button>
 
-      </main>
+              <button
+                type="button"
+                onClick={() => alert('You have 0 saved stores.')}
+                className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <Bookmark className="w-4 h-4 text-gray-500" />
+                  <span className="font-medium">Saved Stores</span>
+                </div>
+                <div className="flex items-center gap-1 text-gray-400">
+                  <span>0</span>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </button>
 
-      {/* ── STORE DETAIL & SHELF CATALOG MODAL ── */}
-      <AnimatePresence>
-        {selectedStore && (
-          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <motion.div
-              initial={{ opacity: 0, y: '100%' }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: '100%' }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full sm:max-w-lg bg-[#07080B] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto text-left selection:bg-white selection:text-black"
-            >
-              {/* Modal Header */}
-              <div className="sticky top-0 bg-[#07080B]/95 backdrop-blur-md px-6 py-4 border-b border-white/10 flex items-center justify-between z-10">
+              <button
+                type="button"
+                onClick={() => alert('Notifications are enabled.')}
+                className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <Bell className="w-4 h-4 text-gray-500" />
+                  <span className="font-medium">Notification Preferences</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenRetailerModal) {
+                    onOpenRetailerModal();
+                  } else {
+                    onNavigateToVendor();
+                  }
+                }}
+                className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <StoreIcon className="w-4 h-4 text-gray-500" />
+                  <span className="font-medium">Become a Store Owner</span>
+                </div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-white font-['Outfit']">{selectedStore.name}</h3>
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <span className="bg-green-100 text-[#00A859] font-bold text-[10px] px-2 py-0.5 rounded-full">
+                    New
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
                 </div>
-                <button
-                  onClick={() => setSelectedStore(null)}
-                  className="p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+              </button>
 
-              <div className="p-6 space-y-6">
-                {/* Store Meta */}
-                <div className="space-y-2 border-b border-white/10 pb-5 text-xs text-slate-300">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <MapPin className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                    <span>{selectedStore.address}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-400 font-mono">
-                    <Clock className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                    <span>{selectedStore.openStatus}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-400 font-mono">
-                    <Phone className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                    <span>+91 422 254 8890 (Counter Desk)</span>
-                  </div>
+              <button
+                type="button"
+                onClick={() => alert('Help & Support: email support@zooner.app')}
+                className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <HelpCircle className="w-4 h-4 text-gray-500" />
+                  <span className="font-medium">Help & Support</span>
                 </div>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </button>
 
-                {/* Available Shelf Inventory */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold">
-                      Available on Shelf Today
-                    </span>
-                  </div>
-
-                  <div className="divide-y divide-white/10">
-                    {liveProducts.filter((p: Product) => p.storeName.includes(selectedStore.name.split('·')[0].trim())).map((p: Product) => (
-                      <div key={p.id} className="py-3 flex items-center justify-between gap-3">
-                        <div>
-                          <div className="text-xs font-bold text-white">{p.name}</div>
-                          <div className="text-[11px] font-mono text-emerald-400">
-                            ₹{p.price.toLocaleString('en-IN')} · {p.stockCount} in stock
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => {
-                            handleHoldItem(p.name, selectedStore.name, p.price);
-                            setSelectedStore(null);
-                          }}
-                          className="px-4 py-1.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer shrink-0"
-                        >
-                          Hold 30m
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+              <button
+                type="button"
+                onClick={() => alert('Zooner v1.0.0 — Local Physical Shelf Discovery Platform.')}
+                className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <Info className="w-4 h-4 text-gray-500" />
+                  <span className="font-medium">About Zooner</span>
                 </div>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
 
-                {/* Navigation Button */}
-                <div className="pt-2">
-                  <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${selectedStore.name}, ${selectedStore.address}, Coimbatore`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-3.5 rounded-full bg-white text-slate-950 font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors cursor-pointer"
-                  >
-                    <Navigation className="h-3.5 w-3.5" />
-                    <span>Get Walking Directions</span>
-                  </a>
-                </div>
-
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* ── CANONICAL GLOBAL PRODUCT DETAIL SHEET (Store Comparison & Inventory Hold) ── */}
-      <AnimatePresence>
-        {selectedCanonicalProduct && (
-          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <motion.div
-              initial={{ opacity: 0, y: '100%' }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: '100%' }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full sm:max-w-lg bg-[#07080B] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto text-left selection:bg-white selection:text-black"
+            {/* Sign Out Button */}
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem('zooner_token');
+                localStorage.removeItem('zooner_user_profile');
+                onOpenSignIn();
+              }}
+              className="w-full flex items-center gap-2.5 text-xs font-semibold text-red-500 hover:text-red-600 px-4 py-3 transition cursor-pointer"
             >
-              <div className="sticky top-0 bg-[#07080B]/95 backdrop-blur-md px-6 py-4 border-b border-white/10 flex items-center justify-between z-10">
-                <span className="text-[11px] font-mono uppercase tracking-widest text-emerald-400 font-bold">
-                  Canonical Product · Carrying Stores ({selectedCanonicalProduct.carryingStores?.length || 0})
-                </span>
-                <button
-                  onClick={() => setSelectedCanonicalProduct(null)}
-                  className="p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="p-6 space-y-6">
-                {/* Canonical Header */}
-                <div className="flex items-start gap-4">
-                  <img 
-                    src={selectedCanonicalProduct.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80'} 
-                    alt={selectedCanonicalProduct.name} 
-                    className="h-20 w-20 rounded-2xl object-cover bg-zinc-900 border border-white/10 shrink-0" 
-                  />
-                  <div>
-                    <h3 className="text-lg font-bold text-white font-['Outfit']">{selectedCanonicalProduct.name}</h3>
-                    <div className="text-xs text-slate-400 mt-0.5">
-                      Brand: <strong className="text-white">{selectedCanonicalProduct.brandName}</strong>
-                      {selectedCanonicalProduct.modelNumber ? ` · Model: ${selectedCanonicalProduct.modelNumber}` : ''}
-                    </div>
-                    {selectedCanonicalProduct.categoryName && (
-                      <div className="text-[11px] font-mono text-emerald-400 mt-1">
-                        Category: {selectedCanonicalProduct.categoryName}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {selectedCanonicalProduct.description && (
-                  <p className="text-xs text-slate-400 bg-white/[0.03] p-3 rounded-xl border border-white/5 leading-relaxed">
-                    {selectedCanonicalProduct.description}
-                  </p>
-                )}
-
-                {/* Nearby Stores Carrying This Canonical Product */}
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                    <span className="text-xs font-mono uppercase tracking-widest text-slate-300 font-bold">
-                      Available Nearby Stores
-                    </span>
-                    <span className="text-[11px] font-mono text-slate-500">
-                      Real-Time Counter Inventory
-                    </span>
-                  </div>
-
-                  {!selectedCanonicalProduct.carryingStores || selectedCanonicalProduct.carryingStores.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-slate-400 bg-zinc-900/60 rounded-xl border border-white/10">
-                      No nearby store currently has active stock for this product.
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-white/10">
-                      {selectedCanonicalProduct.carryingStores.map((st: StoreInventoryItem) => {
-                        const distText = (st.distanceKm ?? 1) < 1 ? `${((st.distanceKm ?? 1) * 1000).toFixed(0)}m` : `${(st.distanceKm ?? 1).toFixed(1)} km`;
-                        const isAvailable = (st.availableQuantity ?? 0) > 0 && st.isAvailable !== false;
-
-                        return (
-                          <div key={st.inventoryId || st.storeId || st.variantId} className="py-4 space-y-2">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-white text-sm">{st.storeName}</span>
-                                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 border border-emerald-800 px-1.5 py-0.2 rounded">
-                                    {distText} away
-                                  </span>
-                                </div>
-                                <div className="text-xs text-slate-400 mt-0.5">{st.storeAddress}</div>
-                                {st.shelfLocation && (
-                                  <div className="text-[11px] font-mono text-indigo-300 mt-0.5">
-                                    Shelf: {st.shelfLocation}
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="text-right font-mono">
-                                <div className="text-base font-extrabold text-white">
-                                  ₹{st.price.toLocaleString('en-IN')}
-                                </div>
-                                <div className="text-[11px] font-bold text-emerald-400">
-                                  {isAvailable ? `${st.availableQuantity} available` : 'Out of Stock'}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-1">
-                              <button
-                                disabled={!isAvailable}
-                                onClick={() => handleHoldStoreInventory(
-                                  st.inventoryId || st.storeId,
-                                  selectedCanonicalProduct.name,
-                                  st.storeName,
-                                  st.price,
-                                  st.storeAddress,
-                                  st.storePhone
-                                )}
-                                className={`flex-1 py-2.5 rounded-full font-bold text-xs transition-all cursor-pointer text-center ${
-                                  isAvailable
-                                    ? 'bg-emerald-400 hover:bg-emerald-300 text-slate-950 shadow-md shadow-emerald-400/20 active:scale-95'
-                                    : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                                }`}
-                              >
-                                {isAvailable ? 'Hold 30 Mins at Counter' : 'Currently Unavailable'}
-                              </button>
-
-                              <a
-                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${st.storeName}, ${st.storeAddress}, Coimbatore`)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-2.5 rounded-full border border-white/20 hover:border-white/40 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
-                                title="Map Navigation"
-                              >
-                                <Navigation className="h-4 w-4" />
-                              </a>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
+              <LogOut className="w-4 h-4 text-red-500" />
+              <span>Sign Out</span>
+            </button>
           </div>
         )}
-      </AnimatePresence>
+      </div>
 
-      {/* ── PRODUCT DETAIL SHEET ── */}
-      <AnimatePresence>
-        {selectedProduct && (
-          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <motion.div
-              initial={{ opacity: 0, y: '100%' }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: '100%' }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full sm:max-w-md bg-[#07080B] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto text-left selection:bg-white selection:text-black"
-            >
-              <div className="sticky top-0 bg-[#07080B]/95 backdrop-blur-md px-6 py-4 border-b border-white/10 flex items-center justify-between z-10">
-                <span className="text-[11px] font-mono uppercase tracking-widest text-emerald-400 font-bold">
-                  Verified In-Store Stock
-                </span>
-                <button
-                  onClick={() => setSelectedProduct(null)}
-                  className="p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+      {/* ══════════════════════════════════════════════════════════════════
+          BOTTOM NAVIGATION BAR (4 TABS)
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="fixed bottom-0 left-0 right-0 max-w-[440px] mx-auto bg-white/95 backdrop-blur-md border-t border-gray-100 flex items-center justify-around py-2.5 px-3 z-30">
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedStore(null);
+            setIsSearching(false);
+            setActiveTab('explore');
+          }}
+          className={`flex flex-col items-center gap-1 transition cursor-pointer ${
+            activeTab === 'explore' && !selectedStore && !isSearching
+              ? 'text-[#00A859]'
+              : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          <Compass className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Explore</span>
+        </button>
 
-              <div className="p-6 space-y-5">
-                <div className="aspect-[4/3] rounded-xl overflow-hidden bg-zinc-900 border border-white/10">
-                  <img 
-                    src={selectedProduct.imageUrl} 
-                    alt={selectedProduct.name} 
-                    className="w-full h-full object-cover" 
-                  />
-                </div>
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedStore(null);
+            setIsSearching(false);
+            setActiveTab('live-ask');
+          }}
+          className={`flex flex-col items-center gap-1 transition cursor-pointer ${
+            activeTab === 'live-ask'
+              ? 'text-[#00A859]'
+              : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          <Radio className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Live Ask</span>
+        </button>
 
-                <div className="space-y-1">
-                  <h3 className="text-lg font-bold text-white">{selectedProduct.name}</h3>
-                  <div className="text-xs text-slate-400">{selectedProduct.storeName} · {selectedProduct.storeArea}</div>
-                </div>
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedStore(null);
+            setIsSearching(false);
+            setActiveTab('holds');
+          }}
+          className={`flex flex-col items-center gap-1 transition cursor-pointer relative ${
+            activeTab === 'holds'
+              ? 'text-[#00A859]'
+              : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          <Clock className="w-5 h-5" />
+          <span className="text-[10px] font-medium">My Holds</span>
+          {activeHold && (
+            <span className="absolute -top-0.5 right-2 w-2 h-2 rounded-full bg-[#00A859]" />
+          )}
+        </button>
 
-                <div className="flex items-baseline justify-between border-t border-b border-white/10 py-3 font-mono">
-                  <div>
-                    <span className="text-xl font-bold text-white">₹{selectedProduct.price.toLocaleString('en-IN')}</span>
-                    {selectedProduct.originalPrice && (
-                      <span className="text-xs text-slate-600 line-through ml-2">₹{selectedProduct.originalPrice.toLocaleString('en-IN')}</span>
-                    )}
-                  </div>
-                  <span className="text-xs font-bold text-emerald-400">{selectedProduct.stockCount} on Counter</span>
-                </div>
-
-                <div className="flex items-center gap-2 pt-2">
-                  <button
-                    onClick={() => {
-                      handleHoldItem(selectedProduct.name, selectedProduct.storeName, selectedProduct.price);
-                      setSelectedProduct(null);
-                    }}
-                    className="flex-1 py-3.5 rounded-full bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer text-center"
-                  >
-                    Hold for 30 Mins
-                  </button>
-
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedProduct.storeName}, Coimbatore`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-3.5 rounded-full border border-white/20 hover:border-white/40 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
-                    title="View Map"
-                  >
-                    <Navigation className="h-4 w-4" />
-                  </a>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* ── HOLD PASS TICKET SHEET ── */}
-      <HoldPassSheet
-        pass={selectedPassForSheet}
-        isOpen={Boolean(selectedPassForSheet)}
-        onClose={() => setSelectedPassForSheet(null)}
-        onCancelHold={handleCancelHold}
-        onOpenChat={(pass) => {
-          setSelectedPassForSheet(null);
-          setChatPass(pass);
-        }}
-      />
-
-      {/* ── DIRECT TEXT CHAT DRAWER ── */}
-      <DirectChatDrawer
-        pass={chatPass}
-        isOpen={Boolean(chatPass)}
-        onClose={() => setChatPass(null)}
-      />
-
-      {/* ── MOBILE WELCOME ENTRY SHEET ── */}
-      <MobileWelcomeModal
-        isOpen={isWelcomeModalOpen}
-        onClose={() => setIsWelcomeModalOpen(false)}
-        onContinueAsGuest={() => setIsWelcomeModalOpen(false)}
-        onOpenSignIn={(roleHint) => onOpenSignIn(roleHint)}
-      />
-
-      {/* ── NATIVE MOBILE BOTTOM NAVIGATION (4 Tabs) ── */}
-      <nav className="zooner-bottom-nav fixed bottom-0 left-0 right-0 z-40 safe-area-pb">
-        <div className="flex items-center justify-around px-2 pt-2 pb-3">
-
-          {/* Tab 1: Discover */}
-          <button
-            onClick={() => setActiveTab('discover')}
-            className="flex flex-col items-center gap-1.5 min-w-[64px] cursor-pointer group"
-          >
-            <div className={`flex items-center justify-center w-12 h-8 rounded-2xl transition-all duration-200 ${
-              activeTab === 'discover'
-                ? 'bg-indigo-500/20'
-                : 'group-hover:bg-white/5'
-            }`}>
-              <Compass className={`h-5 w-5 transition-colors ${
-                activeTab === 'discover' ? 'text-indigo-400' : 'text-slate-500'
-              }`} />
-            </div>
-            <span className={`text-[10px] font-semibold tracking-wide transition-colors ${
-              activeTab === 'discover' ? 'text-indigo-400' : 'text-slate-500'
-            }`}>Explore</span>
-          </button>
-
-          {/* Tab 2: Live Ask — center hero tab */}
-          <button
-            onClick={() => setActiveTab('requests')}
-            className="flex flex-col items-center gap-1.5 min-w-[64px] cursor-pointer group relative -mt-5"
-          >
-            <div className={`flex items-center justify-center w-14 h-14 rounded-2xl shadow-lg transition-all duration-200 ${
-              activeTab === 'requests'
-                ? 'bg-emerald-500 shadow-emerald-500/40 scale-105'
-                : 'bg-[#1A1D26] border border-white/10 group-hover:border-white/20'
-            }`}>
-              <Radio className={`h-6 w-6 ${
-                activeTab === 'requests' ? 'text-white' : 'text-slate-400'
-              }`} />
-              {liveResponses.length > 0 && activeTab !== 'requests' && (
-                <span className="absolute top-0 right-2 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-[#07080B]" />
-              )}
-            </div>
-            <span className={`text-[10px] font-semibold tracking-wide transition-colors ${
-              activeTab === 'requests' ? 'text-emerald-400' : 'text-slate-500'
-            }`}>Live Ask</span>
-          </button>
-
-          {/* Tab 3: My Holds */}
-          <button
-            onClick={() => setActiveTab('holds')}
-            className="flex flex-col items-center gap-1.5 min-w-[64px] cursor-pointer group relative"
-          >
-            <div className={`flex items-center justify-center w-12 h-8 rounded-2xl transition-all duration-200 relative ${
-              activeTab === 'holds'
-                ? 'bg-amber-500/20'
-                : 'group-hover:bg-white/5'
-            }`}>
-              <Clock className={`h-5 w-5 transition-colors ${
-                activeTab === 'holds' ? 'text-amber-400' : 'text-slate-500'
-              }`} />
-              {activeHolds.length > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-amber-400 text-[9px] font-black text-slate-950 flex items-center justify-center">
-                  {activeHolds.length}
-                </span>
-              )}
-            </div>
-            <span className={`text-[10px] font-semibold tracking-wide transition-colors ${
-              activeTab === 'holds' ? 'text-amber-400' : 'text-slate-500'
-            }`}>My Holds</span>
-          </button>
-
-          {/* Tab 4: Account */}
-          <button
-            onClick={() => setActiveTab('account')}
-            className="flex flex-col items-center gap-1.5 min-w-[64px] cursor-pointer group"
-          >
-            <div className={`flex items-center justify-center w-12 h-8 rounded-2xl transition-all duration-200 ${
-              activeTab === 'account'
-                ? 'bg-violet-500/20'
-                : 'group-hover:bg-white/5'
-            }`}>
-              <User className={`h-5 w-5 transition-colors ${
-                activeTab === 'account' ? 'text-violet-400' : 'text-slate-500'
-              }`} />
-            </div>
-            <span className={`text-[10px] font-semibold tracking-wide transition-colors ${
-              activeTab === 'account' ? 'text-violet-400' : 'text-slate-500'
-            }`}>Account</span>
-          </button>
-
-        </div>
-      </nav>
-
-      {toastNotice && (
-        <div className={`fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-xs font-semibold shadow-2xl flex items-center gap-2 border max-w-[90vw] text-center ${
-          toastNotice.isError 
-            ? 'bg-rose-950/95 text-rose-200 border-rose-800 backdrop-blur-md' 
-            : 'bg-emerald-950/95 text-emerald-200 border-emerald-800 backdrop-blur-md'
-        }`}>
-          <span>{toastNotice.message}</span>
-        </div>
-      )}
-
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedStore(null);
+            setIsSearching(false);
+            setActiveTab('account');
+          }}
+          className={`flex flex-col items-center gap-1 transition cursor-pointer ${
+            activeTab === 'account'
+              ? 'text-[#00A859]'
+              : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          <User className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Account</span>
+        </button>
+      </div>
     </div>
   );
 };

@@ -28,8 +28,8 @@ export function AppContent() {
     const hash = window.location.hash.toLowerCase();
     const path = window.location.pathname.toLowerCase();
     if (hash.includes('vendor') || path.includes('/vendor')) return 'vendor';
-    if (hash.includes('app') || hash.includes('customer') || path.includes('/app')) return 'customer';
-    return 'marketing';
+    if (hash.includes('marketing') || path.includes('/marketing')) return 'marketing';
+    return 'customer';
   });
 
   const [currentLocation, setCurrentLocation] = useState<LocationArea>(DEFAULT_LOCATION);
@@ -119,15 +119,17 @@ export function AppContent() {
   // ── EXPERIENCE 1B: CUSTOMER APPLICATION (Discovery & Shopping) ──
   if (Capacitor.isNativePlatform() || currentRoute === 'customer') {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black">
-        <CustomerAppPage
-          currentLocation={currentLocation}
-          onOpenLocationModal={() => setIsLocationModalOpen(true)}
-          onNavigateToHome={() => navigateTo('marketing')}
-          onNavigateToVendor={() => navigateTo('vendor')}
-          onOpenSignIn={() => setIsSignInModalOpen(true)}
-          onOpenRetailerModal={() => setIsRetailerModalOpen(true)}
-        />
+      <div className="min-h-screen bg-[#F0F2F5] text-gray-950 flex flex-col items-center justify-start selection:bg-[#00A859] selection:text-white sm:py-0">
+        <div className="w-full max-w-[440px] min-h-screen bg-white sm:shadow-2xl sm:border-x sm:border-gray-100 flex flex-col relative">
+          <CustomerAppPage
+            currentLocation={currentLocation}
+            onOpenLocationModal={() => setIsLocationModalOpen(true)}
+            onNavigateToHome={() => navigateTo('marketing')}
+            onNavigateToVendor={() => navigateTo('vendor')}
+            onOpenSignIn={() => setIsSignInModalOpen(true)}
+            onOpenRetailerModal={() => setIsRetailerModalOpen(true)}
+          />
+        </div>
         <LocationModal
           isOpen={isLocationModalOpen}
           onClose={() => setIsLocationModalOpen(false)}
