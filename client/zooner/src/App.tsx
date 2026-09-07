@@ -36,6 +36,7 @@ export function AppContent() {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isRetailerModalOpen, setIsRetailerModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
+  const [signInRoleHint, setSignInRoleHint] = useState<'C' | 'V' | 'VC'>('C');
 
   // Auto-detect real-time browser GPS location on startup
   useEffect(() => {
@@ -102,12 +103,18 @@ export function AppContent() {
           isOpen={isSignInModalOpen}
           onClose={() => setIsSignInModalOpen(false)}
           onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
+          initialRole={signInRoleHint}
+          onSuccessLogin={(role) => {
+            if (role === 'Vendor') navigateTo('vendor');
+            else navigateTo('customer');
+          }}
         />
         <RetailerModal
           isOpen={isRetailerModalOpen}
           onClose={() => setIsRetailerModalOpen(false)}
           onSuccess={() => navigateTo('vendor')}
           onOpenSignIn={() => {
+            setSignInRoleHint('V');
             setIsRetailerModalOpen(false);
             setIsSignInModalOpen(true);
           }}
@@ -126,7 +133,10 @@ export function AppContent() {
             onOpenLocationModal={() => setIsLocationModalOpen(true)}
             onNavigateToHome={() => navigateTo('marketing')}
             onNavigateToVendor={() => navigateTo('vendor')}
-            onOpenSignIn={() => setIsSignInModalOpen(true)}
+            onOpenSignIn={(hint) => {
+              setSignInRoleHint(hint || 'C');
+              setIsSignInModalOpen(true);
+            }}
             onOpenRetailerModal={() => setIsRetailerModalOpen(true)}
           />
         </div>
@@ -140,6 +150,11 @@ export function AppContent() {
           isOpen={isSignInModalOpen}
           onClose={() => setIsSignInModalOpen(false)}
           onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
+          initialRole={signInRoleHint}
+          onSuccessLogin={(role) => {
+            if (role === 'Vendor') navigateTo('vendor');
+            else navigateTo('customer');
+          }}
         />
         <RetailerModal
           isOpen={isRetailerModalOpen}
@@ -185,6 +200,11 @@ export function AppContent() {
         isOpen={isSignInModalOpen}
         onClose={() => setIsSignInModalOpen(false)}
         onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
+        initialRole={signInRoleHint}
+        onSuccessLogin={(role) => {
+          if (role === 'Vendor') navigateTo('vendor');
+          else navigateTo('customer');
+        }}
       />
 
       <RetailerModal
@@ -192,6 +212,7 @@ export function AppContent() {
         onClose={() => setIsRetailerModalOpen(false)}
         onSuccess={() => navigateTo('vendor')}
         onOpenSignIn={() => {
+          setSignInRoleHint('V');
           setIsRetailerModalOpen(false);
           setIsSignInModalOpen(true);
         }}

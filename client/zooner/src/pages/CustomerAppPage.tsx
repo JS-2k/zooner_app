@@ -30,6 +30,7 @@ import {
   searchProducts, 
   reserveInventoryHold,
   fetchMyActiveHolds,
+  syncUserProfile,
   type ShopProfileDto 
 } from '../services/api';
 import type { LocationArea, ProductSearchResult, StoreInventoryItem, CategoryDto } from '../types';
@@ -327,6 +328,14 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       }
       setUserProfile(null);
     };
+
+    const token = localStorage.getItem('zooner_token');
+    if (token) {
+      syncUserProfile().then((p: any) => {
+        if (p) setUserProfile(p);
+      }).catch(() => {});
+    }
+
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
@@ -1394,8 +1403,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                       {userProfile.email}
                     </p>
                   )}
-                  <span className="inline-block mt-1 bg-purple-50 text-purple-600 font-medium text-[10px] px-2 py-0.5 rounded-full">
-                    {userProfile.role || 'Shopper'}
+                  <span className={`inline-block mt-1 font-medium text-[10px] px-2 py-0.5 rounded-full ${
+                    userProfile.isVendor || userProfile.role === 'ShopOwner' || userProfile.role === 'Vendor'
+                      ? 'bg-green-50 text-[#00A859]'
+                      : 'bg-purple-50 text-purple-600'
+                  }`}>
+                    {userProfile.isVendor || userProfile.role === 'ShopOwner' || userProfile.role === 'Vendor' ? 'Store Owner' : (userProfile.role || 'Shopper')}
                   </span>
                 </div>
               </div>
@@ -1465,28 +1478,47 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (onOpenRetailerModal) {
-                    onOpenRetailerModal();
-                  } else {
-                    onNavigateToVendor();
-                  }
-                }}
-                className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <StoreIcon className="w-4 h-4 text-gray-500" />
-                  <span className="font-medium">Become a Store Owner</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="bg-green-100 text-[#00A859] font-bold text-[10px] px-2 py-0.5 rounded-full">
-                    New
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </div>
-              </button>
+              {userProfile?.isVendor || userProfile?.role === 'ShopOwner' || userProfile?.role === 'Vendor' ? (
+                <button
+                  type="button"
+                  onClick={() => onNavigateToVendor()}
+                  className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <StoreIcon className="w-4 h-4 text-[#00A859]" />
+                    <span className="font-semibold text-gray-900">Switch to Merchant Dashboard</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-green-100 text-[#00A859] font-bold text-[10px] px-2 py-0.5 rounded-full">
+                      Store Owner
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onOpenRetailerModal) {
+                      onOpenRetailerModal();
+                    } else {
+                      onNavigateToVendor();
+                    }
+                  }}
+                  className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <StoreIcon className="w-4 h-4 text-gray-500" />
+                    <span className="font-medium">Become a Store Owner</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-green-100 text-[#00A859] font-bold text-[10px] px-2 py-0.5 rounded-full">
+                      New
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
+              )}
 
               <button
                 type="button"
