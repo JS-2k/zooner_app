@@ -64,8 +64,6 @@ public class NearbyMatchingTests
             Longitude = 76.9600,
             CategoryIds = [apparelCat.Data!.Id]
         });
-        await shopService.ToggleLiveStatusAsync(owner.Id, shop3.Data!.Id, false);
-
         // Shop 4: Nearby, but Food category => CATEGORY MISMATCH
         var shop4 = await shopService.CreateShopAsync(owner.Id, new CreateShopRequest
         {
@@ -78,6 +76,16 @@ public class NearbyMatchingTests
         });
 
         // Query within 5 km radius for Apparel
+        var allShops = context.Shops.ToList();
+        foreach (var s in allShops)
+        {
+            s.VerificationStatus = ShopVerificationStatus.Approved;
+            s.IsLiveEnabled = true;
+        }
+        await context.SaveChangesAsync();
+
+        await shopService.ToggleLiveStatusAsync(owner.Id, shop3.Data!.Id, false);
+
         var matches = await shopService.FindNearbyEligibleShopsAsync(centerLat, centerLon, radiusKm: 5.0, categoryId: apparelCat.Data.Id);
 
         Assert.Single(matches);

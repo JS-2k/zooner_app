@@ -44,6 +44,11 @@ public class LiveRequestLifecycleTests
             CategoryIds = [category.Data!.Id]
         });
 
+        var shopInDb = await context.Shops.FindAsync(shop.Data!.Id);
+        shopInDb!.VerificationStatus = ShopVerificationStatus.Approved;
+        shopInDb.IsLiveEnabled = true;
+        await context.SaveChangesAsync();
+
         // 2. Customer creates Live Request
         var createReq = new CreateLiveRequest
         {
