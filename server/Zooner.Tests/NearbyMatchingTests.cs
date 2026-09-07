@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Zooner.Api.Models;
 using Zooner.Api.Models.DTOs;
@@ -7,11 +8,17 @@ namespace Zooner.Tests;
 
 public class NearbyMatchingTests
 {
+    private readonly IConfiguration _config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["AutoApproveShops"] = "true"
+    }).Build();
+
     [Fact]
     public async Task FindNearbyEligibleShops_Filters_By_Radius_Category_And_LiveStatus()
     {
         using var context = TestDbContextFactory.Create(nameof(FindNearbyEligibleShops_Filters_By_Radius_Category_And_LiveStatus));
-        var shopService = new ShopService(context, NullLogger<ShopService>.Instance);
+        var shopService = new ShopService(context, _config, NullLogger<ShopService>.Instance);
+
         var catService = new CategoryService(context);
 
         var owner = new User { Id = Guid.NewGuid(), FullName = "Owner", Email = "owner@test.com", PasswordHash = "h" };

@@ -29,13 +29,22 @@ public interface IInventoryService
         Guid ownerUserId
     );
 
-    Task<ApiResponse<bool>> ReserveInventoryHoldAsync(
+    Task<ApiResponse<InventoryHoldDto>> ReserveInventoryHoldAsync(
+        Guid storeId,
         Guid inventoryId,
+        Guid customerId,
         int quantityToHold = 1
     );
 
     Task<ApiResponse<bool>> ReleaseInventoryHoldAsync(
+        Guid storeId,
         Guid inventoryId,
-        int quantityToRelease = 1
+        Guid holdId,
+        Guid requestingUserId
+    );
+
+    Task<ApiResponse<List<InventoryHoldDto>>> GetActiveHoldsForCustomerAsync(
+        Guid customerId
     );
 }
+

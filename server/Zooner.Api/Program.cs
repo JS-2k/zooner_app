@@ -1,6 +1,8 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -10,8 +12,6 @@ using Zooner.Api.Models.DTOs;
 using Zooner.Api.Services;
 using Zooner.Api.Services.Background;
 using Zooner.Api.Services.Realtime;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,8 +20,31 @@ var dbProvider = builder.Configuration["DatabaseProvider"] ?? "SqlServer";
 var connectionString = dbProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase)
     ? (builder.Configuration.GetConnectionString("SqlServer") ?? builder.Configuration.GetConnectionString("DefaultConnection"))
     : dbProvider.Equals("PostgreSql", StringComparison.OrdinalIgnoreCase)
-        ? builder.Configuration.GetConnectionString("PostgreSql")
+        ? (builder.Configuration.GetConnectionString("PostgreSql") ?? builder.Configuration.GetConnectionString("DefaultConnection"))
         : builder.Configuration.GetConnectionString("Sqlite") ?? "Data Source=locallive.db";
+
+// Support standard production DATABASE_URL environment variable if provided
+var envDatabaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrEmpty(envDatabaseUrl) && (envDatabaseUrl.StartsWith("postgres://") || envDatabaseUrl.StartsWith("postgresql://")))
+{
+    if (Uri.TryCreate(envDatabaseUrl, UriKind.Absolute, out var uri))
+    {
+        var userInfo = uri.UserInfo.Split(':');
+        var npgsqlBuilder = new Npgsql.NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.Port > 0 ? uri.Port : 5432,
+            Username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "",
+            Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "",
+            Database = uri.AbsolutePath.TrimStart('/'),
+            SslMode = Npgsql.SslMode.Require
+        };
+
+        connectionString = npgsqlBuilder.ToString();
+        dbProvider = "PostgreSql";
+    }
+}
+
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
@@ -138,6 +161,42 @@ builder.Services.AddCors(options =>
 });
 
 
+// 6.1 Configure Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("auth-limit", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown_auth",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 15,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("hold-limit", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown_hold",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "global",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 200,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+});
+
 // 7. Add Controllers & Swagger with Bearer Support
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -197,7 +256,7 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
-// 9. Database Auto-Creation & Initial Data Seeding
+// 9. Database Migrations & Environment-Aware Initial Data Seeding
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -206,23 +265,20 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        var dbCreator = dbContext.GetService<IRelationalDatabaseCreator>();
-        if (dbCreator != null)
+        if (dbContext.Database.IsRelational())
         {
-            try
-            {
-                dbCreator.CreateTables();
-            }
-            catch
-            {
-                // Tables already exist or partially created
-            }
+            await dbContext.Database.MigrateAsync();
         }
-        await DbSeeder.SeedAsync(dbContext, logger);
+
+        // Seed development data only in Development environment
+        if (app.Environment.IsDevelopment())
+        {
+            await DbSeeder.SeedAsync(dbContext, logger);
+        }
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred while creating or seeding the database.");
+        logger.LogError(ex, "An error occurred while running database migrations or seeding.");
     }
 }
 
@@ -238,6 +294,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowClientApp");
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -246,3 +303,4 @@ app.MapControllers();
 app.MapHub<LiveHub>("/hubs/live");
 
 app.Run();
+

@@ -9,13 +9,22 @@ namespace Zooner.Api.Services;
 public class ShopService : IShopService
 {
     private readonly AppDbContext _context;
+    private readonly IConfiguration? _configuration;
     private readonly ILogger<ShopService> _logger;
 
-    public ShopService(AppDbContext context, ILogger<ShopService> logger)
+    public ShopService(AppDbContext context, IConfiguration? configuration, ILogger<ShopService> logger)
     {
         _context = context;
+        _configuration = configuration;
         _logger = logger;
     }
+
+    public ShopService(AppDbContext context, ILogger<ShopService> logger)
+        : this(context, null, logger)
+    {
+    }
+
+
 
     public async Task<ApiResponse<ShopDto>> CreateShopAsync(Guid ownerId, CreateShopRequest request)
     {
@@ -46,8 +55,12 @@ public class ShopService : IShopService
             Latitude = request.Latitude,
             Longitude = request.Longitude,
             ImageUrl = request.ImageUrl,
-            VerificationStatus = ShopVerificationStatus.Approved, // Auto-approve for dev/demo or default to Pending in strict mode
+            VerificationStatus = (_configuration?.GetValue<bool>("AutoApproveShops", false) ?? false)
+                ? ShopVerificationStatus.Approved 
+                : ShopVerificationStatus.Pending,
             IsActive = true,
+
+
             IsLiveEnabled = true,
             CreatedAtUtc = DateTime.UtcNow
         };

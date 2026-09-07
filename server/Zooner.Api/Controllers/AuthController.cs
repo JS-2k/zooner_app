@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Zooner.Api.Models.DTOs;
 using Zooner.Api.Services;
 
@@ -8,7 +9,9 @@ namespace Zooner.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("auth-limit")]
 public class AuthController : ControllerBase
+
 {
     private readonly IAuthService _authService;
     private readonly ILogger<AuthController> _logger;

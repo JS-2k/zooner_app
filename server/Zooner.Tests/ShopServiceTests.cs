@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Zooner.Api.Models;
 using Zooner.Api.Models.DTOs;
@@ -7,11 +8,13 @@ namespace Zooner.Tests;
 
 public class ShopServiceTests
 {
+    private readonly IConfiguration _config = new ConfigurationBuilder().Build();
+
     [Fact]
     public async Task CreateShop_Initializes_OperatingHours_And_Categories()
     {
         using var context = TestDbContextFactory.Create(nameof(CreateShop_Initializes_OperatingHours_And_Categories));
-        var shopService = new ShopService(context, NullLogger<ShopService>.Instance);
+        var shopService = new ShopService(context, _config, NullLogger<ShopService>.Instance);
         var catService = new CategoryService(context);
 
         var owner = new User { Id = Guid.NewGuid(), FullName = "Shop Owner", Email = "owner@test.com", PasswordHash = "hash", Role = "ShopOwner" };
@@ -42,7 +45,7 @@ public class ShopServiceTests
     public async Task UpdateShop_By_NonOwner_Fails()
     {
         using var context = TestDbContextFactory.Create(nameof(UpdateShop_By_NonOwner_Fails));
-        var shopService = new ShopService(context, NullLogger<ShopService>.Instance);
+        var shopService = new ShopService(context, _config, NullLogger<ShopService>.Instance);
 
         var owner = new User { Id = Guid.NewGuid(), FullName = "Owner", Email = "o@test.com", PasswordHash = "h" };
         var intruder = new User { Id = Guid.NewGuid(), FullName = "Intruder", Email = "i@test.com", PasswordHash = "h" };
@@ -71,7 +74,7 @@ public class ShopServiceTests
     public async Task ToggleLiveStatus_Toggles_Live_Availability()
     {
         using var context = TestDbContextFactory.Create(nameof(ToggleLiveStatus_Toggles_Live_Availability));
-        var shopService = new ShopService(context, NullLogger<ShopService>.Instance);
+        var shopService = new ShopService(context, _config, NullLogger<ShopService>.Instance);
 
         var owner = new User { Id = Guid.NewGuid(), FullName = "Owner", Email = "toggle@test.com", PasswordHash = "h" };
         context.Users.Add(owner);

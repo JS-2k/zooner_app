@@ -29,6 +29,7 @@ public class AppDbContext : DbContext
     public DbSet<BusinessSetting> BusinessSettings => Set<BusinessSetting>();
     public DbSet<AdminAction> AdminActions => Set<AdminAction>();
     public DbSet<PremiumAdvertisement> PremiumAdvertisements => Set<PremiumAdvertisement>();
+    public DbSet<InventoryHold> InventoryHolds => Set<InventoryHold>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -350,5 +351,30 @@ public class AppDbContext : DbContext
                 .HasForeignKey(si => si.ProductVariantId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        // InventoryHold
+        modelBuilder.Entity<InventoryHold>(entity =>
+        {
+            entity.HasKey(ih => ih.Id);
+            entity.HasIndex(ih => new { ih.CustomerId, ih.Status });
+            entity.HasIndex(ih => new { ih.StoreInventoryId, ih.Status });
+            entity.HasIndex(ih => ih.ExpiresAtUtc);
+
+            entity.HasOne(ih => ih.StoreInventory)
+                .WithMany()
+                .HasForeignKey(ih => ih.StoreInventoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ih => ih.Store)
+                .WithMany()
+                .HasForeignKey(ih => ih.StoreId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ih => ih.Customer)
+                .WithMany()
+                .HasForeignKey(ih => ih.CustomerId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }
+

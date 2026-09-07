@@ -179,3 +179,21 @@ export interface LiveRequestSummary {
   responses?: (RetailerResponse | RequestResponseDto)[];
 }
 
+export interface InventoryHoldDto {
+  holdId: string;
+  storeInventoryId: string;
+  storeId: string;
+  storeName: string;
+  storeAddress: string;
+  storePhone: string;
+  productName: string;
+  variantName: string;
+  price: number;
+  quantity: number;
+  holdCode: string;
+  status: string;
+  expiresAtUtc: string;
+  createdAtUtc: string;
+}
+
+

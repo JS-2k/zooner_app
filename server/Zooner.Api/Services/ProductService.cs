@@ -47,25 +47,21 @@ public class ProductService : IProductService
         // Intelligent Multi-Field Normalized Search
         if (!string.IsNullOrWhiteSpace(rawQuery))
         {
-            var terms = rawQuery.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var normTerms = normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
+            var rawLower = rawQuery.ToLower();
             dbQuery = dbQuery.Where(p =>
                 // 1. Direct GTIN / ModelNumber / MPN match
                 (p.GTIN != null && p.GTIN.Contains(rawQuery)) ||
-                (p.ModelNumber != null && p.ModelNumber.ToLower().Contains(rawQuery.ToLower())) ||
-                (p.MPN != null && p.MPN.ToLower().Contains(rawQuery.ToLower())) ||
+                (p.ModelNumber != null && p.ModelNumber.ToLower().Contains(rawLower)) ||
+                (p.MPN != null && p.MPN.ToLower().Contains(rawLower)) ||
                 // 2. Normalized Name match
                 p.NormalizedName.Contains(normalizedQuery) ||
-                // 3. Name or Brand contains terms
-                terms.All(term =>
-                    p.Name.ToLower().Contains(term) ||
-                    (p.Brand != null && p.Brand.Name.ToLower().Contains(term)) ||
-                    (p.ModelNumber != null && p.ModelNumber.ToLower().Contains(term)) ||
-                    p.Variants.Any(v => v.VariantName.ToLower().Contains(term) || (v.SKU != null && v.SKU.ToLower().Contains(term)))
-                )
+                // 3. Name or Brand contains query
+                p.Name.ToLower().Contains(rawLower) ||
+                (p.Brand != null && p.Brand.Name.ToLower().Contains(rawLower)) ||
+                p.Variants.Any(v => v.VariantName.ToLower().Contains(rawLower) || (v.SKU != null && v.SKU.ToLower().Contains(rawLower)))
             );
         }
+
 
         var productsList = await dbQuery
             .OrderByDescending(p => p.CreatedAtUtc)
@@ -83,7 +79,9 @@ public class ProductService : IProductService
                          si.ProductVariant != null && 
                          productIds.Contains(si.ProductVariant.ProductId) && 
                          si.Store != null && 
-                         si.Store.IsActive)
+                         si.Store.IsActive &&
+                         si.Store.VerificationStatus == ShopVerificationStatus.Approved)
+
             .AsNoTracking()
             .ToListAsync();
 
@@ -236,7 +234,9 @@ public class ProductService : IProductService
                          si.ProductVariant != null && 
                          si.ProductVariant.ProductId == productId && 
                          si.Store != null && 
-                         si.Store.IsActive)
+                         si.Store.IsActive &&
+                         si.Store.VerificationStatus == ShopVerificationStatus.Approved)
+
             .AsNoTracking()
             .ToListAsync();
 

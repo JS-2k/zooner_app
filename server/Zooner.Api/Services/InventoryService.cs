@@ -273,38 +273,199 @@ public class InventoryService : IInventoryService
         return ApiResponse<bool>.SuccessResponse(true, "Inventory record deactivated.");
     }
 
-    public async Task<ApiResponse<bool>> ReserveInventoryHoldAsync(Guid inventoryId, int quantityToHold = 1)
+    public async Task<ApiResponse<InventoryHoldDto>> ReserveInventoryHoldAsync(
+        Guid storeId,
+        Guid inventoryId,
+        Guid customerId,
+        int quantityToHold = 1)
     {
-        var inventory = await _context.StoreInventories.FirstOrDefaultAsync(si => si.Id == inventoryId && si.IsActive);
+        if (quantityToHold < 1 || quantityToHold > 5)
+        {
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("Quantity to hold must be between 1 and 5 items.");
+        }
+
+        var store = await _context.Shops.FirstOrDefaultAsync(s => s.Id == storeId && s.IsActive);
+        if (store == null)
+        {
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("Store not found or inactive.");
+        }
+
+        var inventory = await _context.StoreInventories
+            .Include(si => si.ProductVariant)
+            .ThenInclude(pv => pv!.Product)
+            .FirstOrDefaultAsync(si => si.Id == inventoryId && si.StoreId == storeId && si.IsActive);
+
         if (inventory == null)
         {
-            return ApiResponse<bool>.ErrorResponse("Inventory record not found.");
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("Inventory record not found for this store.");
+        }
+
+        // Clean up any naturally expired holds for this inventory item before checking stock
+        var expiredHolds = await _context.InventoryHolds
+            .Where(ih => ih.StoreInventoryId == inventoryId && ih.Status == InventoryHoldStatus.Active && ih.ExpiresAtUtc <= DateTime.UtcNow)
+            .ToListAsync();
+
+        if (expiredHolds.Any())
+        {
+            foreach (var eh in expiredHolds)
+            {
+                eh.Status = InventoryHoldStatus.Expired;
+                inventory.AvailableQuantity = Math.Min(inventory.Quantity, inventory.AvailableQuantity + eh.Quantity);
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        // Prevent duplicate concurrent active holds by the same customer on the same product item
+        var existingCustomerHold = await _context.InventoryHolds
+            .AnyAsync(ih => ih.StoreInventoryId == inventoryId && ih.CustomerId == customerId && ih.Status == InventoryHoldStatus.Active && ih.ExpiresAtUtc > DateTime.UtcNow);
+
+        if (existingCustomerHold)
+        {
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("You already have an active hold pass for this item.");
         }
 
         if (inventory.AvailableQuantity < quantityToHold)
         {
-            return ApiResponse<bool>.ErrorResponse($"Insufficient stock for 30-min hold. Available: {inventory.AvailableQuantity}");
+            return ApiResponse<InventoryHoldDto>.ErrorResponse($"Insufficient stock for 30-min hold. Available: {inventory.AvailableQuantity}");
         }
 
-        inventory.AvailableQuantity = Math.Max(0, inventory.AvailableQuantity - quantityToHold);
+        // Atomic deduction
+        inventory.AvailableQuantity -= quantityToHold;
         inventory.UpdatedAtUtc = DateTime.UtcNow;
+
+        var holdCode = $"H-{Random.Shared.Next(1000, 9999)}";
+        var hold = new InventoryHold
+        {
+            Id = Guid.NewGuid(),
+            StoreInventoryId = inventory.Id,
+            StoreId = store.Id,
+            CustomerId = customerId,
+            Quantity = quantityToHold,
+            HoldCode = holdCode,
+            Status = InventoryHoldStatus.Active,
+            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(30),
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        _context.InventoryHolds.Add(hold);
         await _context.SaveChangesAsync();
 
-        return ApiResponse<bool>.SuccessResponse(true, $"Reserved {quantityToHold} item(s) for 30 minutes.");
+        var dto = new InventoryHoldDto
+        {
+            HoldId = hold.Id,
+            StoreInventoryId = inventory.Id,
+            StoreId = store.Id,
+            StoreName = store.Name,
+            StoreAddress = store.Address,
+            StorePhone = store.Phone,
+            ProductName = inventory.ProductVariant?.Product?.Name ?? "Product Item",
+            VariantName = inventory.ProductVariant?.VariantName ?? "Standard",
+            Price = inventory.Price,
+            Quantity = hold.Quantity,
+            HoldCode = hold.HoldCode,
+            Status = hold.Status.ToString(),
+            ExpiresAtUtc = hold.ExpiresAtUtc,
+            CreatedAtUtc = hold.CreatedAtUtc
+        };
+
+        return ApiResponse<InventoryHoldDto>.SuccessResponse(dto, $"Reserved {quantityToHold} item(s) for 30 minutes with code {holdCode}.");
     }
 
-    public async Task<ApiResponse<bool>> ReleaseInventoryHoldAsync(Guid inventoryId, int quantityToRelease = 1)
+    public async Task<ApiResponse<bool>> ReleaseInventoryHoldAsync(
+        Guid storeId,
+        Guid inventoryId,
+        Guid holdId,
+        Guid requestingUserId)
     {
-        var inventory = await _context.StoreInventories.FirstOrDefaultAsync(si => si.Id == inventoryId && si.IsActive);
-        if (inventory == null)
+        var hold = await _context.InventoryHolds
+            .Include(ih => ih.Store)
+            .Include(ih => ih.StoreInventory)
+            .FirstOrDefaultAsync(ih => ih.Id == holdId && ih.StoreId == storeId && ih.StoreInventoryId == inventoryId);
+
+        if (hold == null)
         {
-            return ApiResponse<bool>.ErrorResponse("Inventory record not found.");
+            return ApiResponse<bool>.ErrorResponse("Hold reservation not found.");
         }
 
-        inventory.AvailableQuantity = Math.Min(inventory.Quantity, inventory.AvailableQuantity + quantityToRelease);
-        inventory.UpdatedAtUtc = DateTime.UtcNow;
+        // Authorization: Only the Customer who reserved it, the Store Owner, or an Admin can release it
+        var isCustomer = hold.CustomerId == requestingUserId;
+        var isStoreOwner = hold.Store?.OwnerId == requestingUserId;
+        var isAdmin = await _context.Users.AnyAsync(u => u.Id == requestingUserId && u.Role == "Admin");
+
+
+        if (!isCustomer && !isStoreOwner && !isAdmin)
+        {
+            return ApiResponse<bool>.ErrorResponse("Unauthorized: You do not have permission to release this hold pass.");
+        }
+
+        if (hold.Status != InventoryHoldStatus.Active)
+        {
+            return ApiResponse<bool>.ErrorResponse($"Hold is already in '{hold.Status}' status.");
+        }
+
+        hold.Status = InventoryHoldStatus.Released;
+        hold.ReleasedAtUtc = DateTime.UtcNow;
+
+        if (hold.StoreInventory != null)
+        {
+            hold.StoreInventory.AvailableQuantity = Math.Min(hold.StoreInventory.Quantity, hold.StoreInventory.AvailableQuantity + hold.Quantity);
+            hold.StoreInventory.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
         await _context.SaveChangesAsync();
 
-        return ApiResponse<bool>.SuccessResponse(true, $"Released {quantityToRelease} item(s) back to available inventory.");
+        return ApiResponse<bool>.SuccessResponse(true, "Hold pass released and inventory restored to available stock.");
+    }
+
+    public async Task<ApiResponse<List<InventoryHoldDto>>> GetActiveHoldsForCustomerAsync(Guid customerId)
+    {
+        // Expire any outdated holds first
+        var expired = await _context.InventoryHolds
+            .Include(ih => ih.StoreInventory)
+            .Where(ih => ih.CustomerId == customerId && ih.Status == InventoryHoldStatus.Active && ih.ExpiresAtUtc <= DateTime.UtcNow)
+            .ToListAsync();
+
+        if (expired.Any())
+        {
+            foreach (var eh in expired)
+            {
+                eh.Status = InventoryHoldStatus.Expired;
+                if (eh.StoreInventory != null)
+                {
+                    eh.StoreInventory.AvailableQuantity = Math.Min(eh.StoreInventory.Quantity, eh.StoreInventory.AvailableQuantity + eh.Quantity);
+                }
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        var activeHolds = await _context.InventoryHolds
+            .Where(ih => ih.CustomerId == customerId && ih.Status == InventoryHoldStatus.Active)
+            .Include(ih => ih.Store)
+            .Include(ih => ih.StoreInventory)
+                .ThenInclude(si => si!.ProductVariant)
+                .ThenInclude(pv => pv!.Product)
+            .OrderByDescending(ih => ih.CreatedAtUtc)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var dtos = activeHolds.Select(h => new InventoryHoldDto
+        {
+            HoldId = h.Id,
+            StoreInventoryId = h.StoreInventoryId,
+            StoreId = h.StoreId,
+            StoreName = h.Store?.Name ?? string.Empty,
+            StoreAddress = h.Store?.Address ?? string.Empty,
+            StorePhone = h.Store?.Phone ?? string.Empty,
+            ProductName = h.StoreInventory?.ProductVariant?.Product?.Name ?? "Product Item",
+            VariantName = h.StoreInventory?.ProductVariant?.VariantName ?? "Standard",
+            Price = h.StoreInventory?.Price ?? 0,
+            Quantity = h.Quantity,
+            HoldCode = h.HoldCode,
+            Status = h.Status.ToString(),
+            ExpiresAtUtc = h.ExpiresAtUtc,
+            CreatedAtUtc = h.CreatedAtUtc
+        }).ToList();
+
+        return ApiResponse<List<InventoryHoldDto>>.SuccessResponse(dtos);
     }
 }

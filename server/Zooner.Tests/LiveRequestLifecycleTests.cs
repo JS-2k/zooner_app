@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Zooner.Api.Models;
@@ -9,13 +10,19 @@ namespace Zooner.Tests;
 
 public class LiveRequestLifecycleTests
 {
+    private readonly IConfiguration _config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["AutoApproveShops"] = "true"
+    }).Build();
+
     [Fact]
     public async Task LiveRequest_Full_Lifecycle_And_Duplicate_Response_Prevention()
     {
         using var context = TestDbContextFactory.Create(nameof(LiveRequest_Full_Lifecycle_And_Duplicate_Response_Prevention));
         var notifierMock = new Mock<IRealtimeNotifier>();
 
-        var shopService = new ShopService(context, NullLogger<ShopService>.Instance);
+        var shopService = new ShopService(context, _config, NullLogger<ShopService>.Instance);
+
         var liveRequestService = new LiveRequestService(context, shopService, notifierMock.Object, NullLogger<LiveRequestService>.Instance);
         var catService = new CategoryService(context);
 
@@ -95,8 +102,9 @@ public class LiveRequestLifecycleTests
         using var context = TestDbContextFactory.Create(nameof(Respond_To_Expired_Request_Fails));
         var notifierMock = new Mock<IRealtimeNotifier>();
 
-        var shopService = new ShopService(context, NullLogger<ShopService>.Instance);
+        var shopService = new ShopService(context, _config, NullLogger<ShopService>.Instance);
         var liveRequestService = new LiveRequestService(context, shopService, notifierMock.Object, NullLogger<LiveRequestService>.Instance);
+
 
         var customer = new User { Id = Guid.NewGuid(), FullName = "C", Email = "c@test.com", PasswordHash = "h" };
         var owner = new User { Id = Guid.NewGuid(), FullName = "O", Email = "o@test.com", PasswordHash = "h" };

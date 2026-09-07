@@ -20,7 +20,17 @@ import {
   Store as StoreIcon
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
-import { fetchShops, fetchCategories, sendLiveRequest, searchProducts, reserveInventoryHold } from '../services/api';
+import { 
+
+  fetchShops, 
+  fetchCategories, 
+  sendLiveRequest, 
+  searchProducts, 
+  reserveInventoryHold,
+  releaseInventoryHold,
+  fetchMyActiveHolds
+} from '../services/api';
+
 import { HoldPassSheet, type HoldPass } from '../components/HoldPassSheet';
 import { DirectChatDrawer } from '../components/DirectChatDrawer';
 import { MobileWelcomeModal } from '../components/MobileWelcomeModal';
@@ -274,6 +284,38 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     localStorage.setItem('zooner_customer_holds', JSON.stringify(updated));
   };
 
+  // Sync active holds from backend
+  useEffect(() => {
+    const token = localStorage.getItem('zooner_token');
+    if (token) {
+      fetchMyActiveHolds().then(remoteHolds => {
+        if (remoteHolds && remoteHolds.length > 0) {
+          const mapped: HoldPass[] = remoteHolds.map(rh => ({
+            id: rh.holdId,
+            holdId: rh.holdId,
+            storeId: rh.storeId,
+            storeInventoryId: rh.storeInventoryId,
+            passCode: rh.holdCode,
+            productName: rh.productName,
+            storeName: rh.storeName,
+            storeAddress: rh.storeAddress,
+            storePhone: rh.storePhone,
+            price: rh.price,
+            customerName: userProfile?.name || 'Customer',
+            customerPhone: userProfile?.phone || '',
+            createdAt: new Date(rh.createdAtUtc).getTime(),
+            expiresAt: new Date(rh.expiresAtUtc).getTime(),
+            status: rh.status.toLowerCase() === 'active' ? 'active' : 'expired'
+          }));
+          saveHolds(mapped);
+        }
+      }).catch(err => {
+        console.debug('Active holds sync skipped:', err);
+      });
+    }
+  }, [userProfile]);
+
+
   const handleHoldItem = React.useCallback((
     prodName: string, 
     storeName: string, 
@@ -317,29 +359,64 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     storeAddress?: string,
     storePhone?: string
   ) => {
-    // 1. Call backend API to reserve hold (decrements AvailableQuantity)
+    const token = localStorage.getItem('zooner_token');
+    if (!token) {
+      onOpenSignIn('C');
+      return;
+    }
+
     const carryingStore = selectedCanonicalProduct?.carryingStores?.find((s) => s.inventoryId.toString() === storeInventoryId.toString());
-    const storeId = carryingStore ? carryingStore.storeId.toString() : '1';
+    const storeId = carryingStore ? carryingStore.storeId.toString() : '';
 
-    await reserveInventoryHold(storeId, storeInventoryId.toString(), 1);
-    
-    // 2. Generate local pass ticket sheet
-    handleHoldItem(productName, storeName, price, storeAddress, storePhone);
+    if (!storeId) {
+      alert('Unable to identify store for this item.');
+      return;
+    }
 
-    // 3. Refresh search data
+    const res = await reserveInventoryHold(storeId, storeInventoryId.toString(), 1);
+    if (!res.success) {
+      alert(res.error || 'Failed to reserve hold pass. Insufficient stock or active hold already exists.');
+      return;
+    }
+
+    const timestamp = Date.now();
+    const newPass: HoldPass = {
+      id: res.hold?.holdId || `hold-${timestamp}`,
+      holdId: res.hold?.holdId,
+      storeId: storeId,
+      storeInventoryId: storeInventoryId.toString(),
+      passCode: res.hold?.holdCode || `ZN-${Math.floor(1000 + Math.random() * 9000)}`,
+      productName: res.hold?.productName || productName,
+      storeName: res.hold?.storeName || storeName,
+      storeAddress: res.hold?.storeAddress || storeAddress || 'Store Address',
+      storePhone: res.hold?.storePhone || storePhone || '',
+      price: res.hold?.price || price,
+      customerName: userProfile?.name || customerProfile.name || 'Customer',
+      customerPhone: userProfile?.phone || customerProfile.phone || '',
+      createdAt: timestamp,
+      expiresAt: res.hold?.expiresAtUtc ? new Date(res.hold.expiresAtUtc).getTime() : timestamp + 30 * 60 * 1000,
+      status: 'active'
+    };
+
+    const updated = [newPass, ...holds];
+    saveHolds(updated);
+    setSelectedPassForSheet(newPass);
+
     refreshCanonicalSearch();
-
-    // 4. Close canonical product detail modal if open
     if (selectedCanonicalProduct) {
       setSelectedCanonicalProduct(null);
     }
   };
 
-
-  const handleCancelHold = (passId: string) => {
-    const updated = holds.map(h => h.id === passId ? { ...h, status: 'cancelled' as const } : h);
+  const handleCancelHold = async (passId: string) => {
+    const pass = holds.find(h => h.id === passId || h.holdId === passId);
+    if (pass && pass.holdId && pass.storeId && pass.storeInventoryId) {
+      await releaseInventoryHold(pass.storeId, pass.storeInventoryId, pass.holdId);
+    }
+    const updated = holds.map(h => (h.id === passId || h.holdId === passId) ? { ...h, status: 'cancelled' as const } : h);
     saveHolds(updated);
   };
+
 
   const toggleSaveStore = (storeId: string) => {
     setSavedStores(prev => {

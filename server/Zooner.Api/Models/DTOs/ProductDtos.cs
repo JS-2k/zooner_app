@@ -135,3 +135,28 @@ public class DuplicateCheckResultDto
     public string Reason { get; set; } = string.Empty;
     public ProductSearchResultDto? MatchedProduct { get; set; }
 }
+
+public class InventoryHoldDto
+{
+    public Guid HoldId { get; set; }
+    public Guid StoreInventoryId { get; set; }
+    public Guid StoreId { get; set; }
+    public string StoreName { get; set; } = string.Empty;
+    public string StoreAddress { get; set; } = string.Empty;
+    public string StorePhone { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public string VariantName { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public int Quantity { get; set; }
+    public string HoldCode { get; set; } = string.Empty;
+    public string Status { get; set; } = "Active";
+    public DateTime ExpiresAtUtc { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+}
+
+public class CreateHoldRequest
+{
+    [Range(1, 5, ErrorMessage = "Hold quantity must be between 1 and 5 items.")]
+    public int Quantity { get; set; } = 1;
+}
+

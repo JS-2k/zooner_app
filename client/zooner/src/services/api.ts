@@ -5,7 +5,8 @@ import type {
   ProductSearchResult,
   LiveRequestSummary,
   AuthResponse,
-  UserDto
+  UserDto,
+  InventoryHoldDto
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (Capacitor.isNativePlatform() ? 'http://10.0.2.2:5000/api' : 'http://localhost:5000/api');
@@ -15,6 +16,74 @@ export interface ApiResponse<T> {
   message: string;
   data: T;
   errors?: string[];
+}
+
+let isRefreshing = false;
+let refreshPromise: Promise<string | null> | null = null;
+
+export async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem('zooner_refresh_token');
+  if (!refreshToken) return null;
+
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/Auth/refresh-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken })
+      });
+
+      if (!res.ok) {
+        logoutUser();
+        return null;
+      }
+
+      const body: ApiResponse<AuthResponse> = await res.json();
+      if (body.success && body.data) {
+        localStorage.setItem('zooner_token', body.data.accessToken);
+        if (body.data.refreshToken) {
+          localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
+        }
+        return body.data.accessToken;
+      }
+
+      logoutUser();
+      return null;
+    } catch {
+      logoutUser();
+      return null;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
+export async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  let token = localStorage.getItem('zooner_token');
+  const headers = new Headers(options.headers || {});
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  let res = await fetch(url, { ...options, headers });
+
+  if (res.status === 401) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers.set('Authorization', `Bearer ${newToken}`);
+      res = await fetch(url, { ...options, headers });
+    }
+  }
+
+  return res;
 }
 
 function authHeaders(): Record<string, string> {
@@ -78,6 +147,9 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
     const body: ApiResponse<AuthResponse> = await res.json();
     if (body.success && body.data) {
       localStorage.setItem('zooner_token', body.data.accessToken);
+      if (body.data.refreshToken) {
+        localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
+      }
       
       // Save initial profile
       localStorage.setItem('zooner_user_profile', JSON.stringify({
@@ -120,6 +192,9 @@ export async function registerUser(userData: {
     const body: ApiResponse<AuthResponse> = await res.json();
     if (body.success && body.data) {
       localStorage.setItem('zooner_token', body.data.accessToken);
+      if (body.data.refreshToken) {
+        localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
+      }
       localStorage.setItem('zooner_user_profile', JSON.stringify({
         id: body.data.user.id,
         name: body.data.user.fullName,
@@ -144,7 +219,7 @@ export async function registerUser(userData: {
 
 export async function getCurrentUser(): Promise<UserDto | null> {
   try {
-    const res = await fetch(`${API_BASE_URL}/Auth/me`, { headers: authHeaders() });
+    const res = await authenticatedFetch(`${API_BASE_URL}/Auth/me`);
     return responseData<UserDto>(res);
   } catch {
     return null;
@@ -152,10 +227,20 @@ export async function getCurrentUser(): Promise<UserDto | null> {
 }
 
 export function logoutUser(): void {
+  const refreshToken = localStorage.getItem('zooner_refresh_token');
+  if (refreshToken) {
+    fetch(`${API_BASE_URL}/Auth/logout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken })
+    }).catch(() => {});
+  }
   localStorage.removeItem('zooner_token');
+  localStorage.removeItem('zooner_refresh_token');
   localStorage.removeItem('zooner_user_profile');
   window.dispatchEvent(new Event('storage'));
 }
+
 
 // ── SHOPS & STORES API METHODS ──
 
@@ -510,16 +595,59 @@ export async function deleteStoreInventory(storeId: string, inventoryId: string)
   }
 }
 
-export async function reserveInventoryHold(storeId: string, inventoryId: string, quantity = 1): Promise<boolean> {
+export async function reserveInventoryHold(storeId: string, inventoryId: string, quantity = 1): Promise<{
+  success: boolean;
+  hold?: InventoryHoldDto;
+  error?: string;
+}> {
   try {
-    const res = await fetch(`${API_BASE_URL}/Stores/${storeId}/Inventory/${inventoryId}/hold?quantity=${quantity}`, {
-      method: 'POST'
+    const res = await authenticatedFetch(`${API_BASE_URL}/Stores/${storeId}/Inventory/${inventoryId}/hold`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantity })
     });
-    return res.ok;
+
+    const json: ApiResponse<InventoryHoldDto> = await res.json();
+    if (res.ok && json.success) {
+      return { success: true, hold: json.data };
+    }
+    return { success: false, error: json.message || 'Failed to reserve hold' };
   } catch (error) {
     console.error('Failed to reserve inventory hold:', error);
-    return false;
+    return { success: false, error: 'Unable to connect to server. Please try again.' };
   }
 }
+
+export async function releaseInventoryHold(storeId: string, inventoryId: string, holdId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Stores/${storeId}/Inventory/${inventoryId}/holds/${holdId}/release`, {
+      method: 'POST'
+    });
+
+    const json: ApiResponse<boolean> = await res.json();
+    if (res.ok && json.success) {
+      return { success: true };
+    }
+    return { success: false, error: json.message || 'Failed to release hold pass' };
+  } catch (error) {
+    console.error('Failed to release inventory hold:', error);
+    return { success: false, error: 'Unable to connect to server.' };
+  }
+}
+
+export async function fetchMyActiveHolds(): Promise<InventoryHoldDto[]> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/holds/my-holds`);
+    if (!res.ok) return [];
+    const json: ApiResponse<InventoryHoldDto[]> = await res.json();
+    return json.data || [];
+  } catch {
+    return [];
+  }
+}
+
 
 

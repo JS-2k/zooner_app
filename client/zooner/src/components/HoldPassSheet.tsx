@@ -24,7 +24,11 @@ export interface HoldPass {
   createdAt: number;
   expiresAt: number;
   status: 'active' | 'completed' | 'cancelled' | 'expired';
+  holdId?: string;
+  storeId?: string;
+  storeInventoryId?: string;
 }
+
 
 interface HoldPassSheetProps {
   pass: HoldPass | null;
