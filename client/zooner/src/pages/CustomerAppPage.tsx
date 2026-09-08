@@ -413,28 +413,6 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
   return (
     <div className="flex-1 flex flex-col bg-white text-gray-900 font-sans pb-20 select-none">
-      
-      {/* ── TOP MOBILE STATUS BAR (9:41, Cellular, Wifi, Battery) ── */}
-      <div className="w-full flex items-center justify-between px-6 pt-3 pb-1 text-xs font-semibold text-gray-900 bg-white z-20">
-        <span>9:41</span>
-        <div className="flex items-center gap-1.5 text-gray-900">
-          <svg className="w-4 h-3.5" viewBox="0 0 17 12" fill="currentColor">
-            <rect x="0" y="9" width="3" height="3" rx="0.5" />
-            <rect x="4" y="6" width="3" height="6" rx="0.5" />
-            <rect x="8" y="3" width="3" height="9" rx="0.5" />
-            <rect x="12" y="0" width="3" height="12" rx="0.5" />
-          </svg>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M5 12.55a11 11 0 0 1 14.08 0" />
-            <path d="M1.42 9a16 16 0 0 1 21.16 0" />
-            <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-            <line x1="12" y1="20" x2="12.01" y2="20" strokeWidth="3" strokeLinecap="round" />
-          </svg>
-          <div className="w-5 h-2.5 border border-gray-900 rounded-xs p-0.5 flex items-center">
-            <div className="h-full w-full bg-gray-900 rounded-2xs" />
-          </div>
-        </div>
-      </div>
 
       {/* ── MAIN SCREEN CONTAINER ── */}
       <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar">
