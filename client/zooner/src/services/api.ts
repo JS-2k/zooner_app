@@ -11,9 +11,13 @@ import type {
 
 const isNative = Capacitor.isNativePlatform();
 const isProd = import.meta.env.PROD;
-const API_BASE_URL = import.meta.env.VITE_API_URL || (
+let API_BASE_URL = import.meta.env.VITE_API_URL || (
   isProd ? (isNative ? 'https://zooner-app.onrender.com/api' : '/api') : (isNative ? 'http://10.0.2.2:5000/api' : 'http://localhost:5000/api')
 );
+if (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.endsWith('/api')) {
+  // If the user provided the backend domain but forgot /api, append it automatically
+  API_BASE_URL = `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`;
+}
 
 export interface ApiResponse<T> {
   success: boolean;
