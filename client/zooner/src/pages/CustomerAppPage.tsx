@@ -635,7 +635,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </div>
             )}
           </div>
-        ) : isSearching || searchQuery.trim().length > 0 ? (
+        ) : false ? (
 
           /* ══════════════════════════════════════════════════════════════════
               SCREEN 2: SEARCH RESULTS (Single Source of Truth, Task 2 & 8)
@@ -884,36 +884,49 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </p>
             </div>
 
-            {/* Search Bar */}
-            <div 
-              onClick={() => setIsSearching(true)}
-              className="w-full bg-white border border-gray-200 rounded-xl py-3 px-3.5 flex items-center gap-2.5 shadow-xs cursor-pointer hover:border-gray-300 transition"
-            >
-              <Search className="w-4 h-4 text-gray-400 shrink-0" />
-              <span className="text-xs text-gray-400 select-none">
-                Search for products (e.g., iPhone, milk, shoe...)
-              </span>
+            {/* Real Search Bar */}
+            <div className="relative flex items-center w-full shadow-xs">
+              <Search className="absolute left-3.5 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search for products (e.g., iPhone, milk, shoe...)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             {/* Radius Pills (Task 4: Dynamic Radius Selection) */}
-            <div className="flex items-center gap-2">
-              {(['2 km', '5 km', '10 km', '15 km'] as const).map((rad) => (
-                <button
-                  key={rad}
-                  type="button"
-                  onClick={() => setRadiusFilter(rad)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
-                    radiusFilter === rad
-                      ? 'bg-[#00A859] text-white shadow-xs'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {rad}
-                </button>
-              ))}
-            </div>
+            {!searchQuery && (
+              <div className="flex items-center gap-2">
+                {(['2 km', '5 km', '10 km', '15 km'] as const).map((rad) => (
+                  <button
+                    key={rad}
+                    type="button"
+                    onClick={() => setRadiusFilter(rad)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+                      radiusFilter === rad
+                        ? 'bg-[#00A859] text-white shadow-xs'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {rad}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Browse by Category (Task 9: API-driven Categories) */}
+            {!searchQuery && (
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-bold text-gray-900">Browse by category</h3>
@@ -961,22 +974,23 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 </div>
               )}
             </div>
+            )}
 
             {/* Nearby Verified Products Section (Task 2 & 8: Real backend data or clean empty state) */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-900">Nearby Products</h3>
+                <h3 className="text-sm font-bold text-gray-900">{searchQuery ? 'Search Results' : 'Nearby Products'}</h3>
                 <span className="text-xs text-gray-400">{radiusFilter} radius</span>
               </div>
 
               {isLoadingCatalog ? (
                 <div className="py-10 text-center text-gray-400 space-y-2">
                   <Loader2 className="w-6 h-6 mx-auto animate-spin text-[#00A859]" />
-                  <p className="text-xs">Loading nearby inventory...</p>
+                  <p className="text-xs">{searchQuery ? 'Searching nearby inventory...' : 'Loading nearby inventory...'}</p>
                 </div>
               ) : dbProducts.length > 0 ? (
                 <div className="space-y-3">
-                  {dbProducts.slice(0, 5).map((prod) => {
+                  {(searchQuery ? dbProducts : dbProducts.slice(0, 5)).map((prod) => {
                     const store = prod.carryingStores && prod.carryingStores.length > 0 ? prod.carryingStores[0] : null;
                     const price = prod.minPrice || (store ? store.price : 0);
                     const stock = prod.totalAvailableQuantity ?? (store ? store.availableQuantity : 0);
@@ -1079,6 +1093,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             </div>
 
             {/* Nearby Verified Stores (Task 10) */}
+            {!searchQuery && (
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-bold text-gray-900">Nearby Local Stores</h3>
@@ -1129,8 +1144,10 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 </div>
               )}
             </div>
+            )}
 
             {/* Support local stores banner */}
+            {!searchQuery && (
             <div className="rounded-2xl bg-[#FFF8EE] border border-amber-100/80 p-4 flex items-center justify-between overflow-hidden relative shadow-xs">
               <div className="space-y-0.5 max-w-[200px]">
                 <h4 className="text-xs font-bold text-gray-950">Support local stores</h4>
@@ -1153,6 +1170,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 </div>
               </div>
             </div>
+            )}
           </div>
         ) : activeTab === 'live-ask' ? (
 
