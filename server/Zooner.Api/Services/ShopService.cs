@@ -152,8 +152,11 @@ public class ShopService : IShopService
         shop.Description = request.Description.Trim();
         shop.Phone = request.Phone.Trim();
         shop.Address = request.Address.Trim();
-        shop.Latitude = request.Latitude;
-        shop.Longitude = request.Longitude;
+        if (request.Latitude != 0 && request.Longitude != 0)
+        {
+            shop.Latitude = request.Latitude;
+            shop.Longitude = request.Longitude;
+        }
         shop.ImageUrl = request.ImageUrl;
         shop.UpdatedAtUtc = DateTime.UtcNow;
 

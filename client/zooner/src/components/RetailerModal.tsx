@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Store, CheckCircle, ArrowRight, ShieldCheck, Upload, MapPin, Loader2, AlertCircle, LogIn } from 'lucide-react';
+import { X, Store, CheckCircle, ArrowRight, ShieldCheck, Upload, MapPin, Loader2, AlertCircle, LogIn, Navigation } from 'lucide-react';
 import { createShop, fetchCategories, becomeVendor } from '../services/api';
 
 interface RetailerModalProps {
@@ -13,8 +13,12 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
   const [step, setStep] = useState<1 | 2>(1);
   const [storeName, setStoreName] = useState('');
   const [category, setCategory] = useState('Footwear & Sports');
-  const [area, setArea] = useState('RS Puram, Coimbatore');
-  const [address, setAddress] = useState('42, DB Road, RS Puram');
+  const [area, setArea] = useState('');
+  const [address, setAddress] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [locationFeedback, setLocationFeedback] = useState<string | null>(null);
   const [ownerName, setOwnerName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -27,6 +31,7 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
   useEffect(() => {
     if (isOpen) {
       setErrorMessage(null);
+      setLocationFeedback(null);
       try {
         const stored = localStorage.getItem('zooner_user_profile');
         if (stored) {
@@ -40,6 +45,87 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
       }
     }
   }, [isOpen]);
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setErrorMessage('Geolocation is not supported by your browser. Please type your address manually.');
+      return;
+    }
+
+    setIsDetectingLocation(true);
+    setErrorMessage(null);
+    setLocationFeedback(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const accuracy = position.coords.accuracy ? Math.round(position.coords.accuracy) : null;
+        setLatitude(lat);
+        setLongitude(lng);
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 6000);
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            {
+              headers: { 'Accept-Language': 'en' },
+              signal: controller.signal
+            }
+          );
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            const data = await response.json();
+            const addr = data.address || {};
+
+            const neighborhood = addr.suburb || addr.neighbourhood || addr.residential || addr.commercial || addr.quarter || addr.city_district || '';
+            const city = addr.city || addr.town || addr.municipality || addr.village || addr.county || addr.state_district || '';
+            const state = addr.state || '';
+            const postcode = addr.postcode || '';
+
+            const areaParts = [neighborhood, city].filter(Boolean);
+            const detectedArea = areaParts.length > 0 ? areaParts.join(', ') : (city || state || '');
+
+            const streetParts = [
+              addr.house_number,
+              addr.building,
+              addr.road || addr.pedestrian || addr.footway || addr.path,
+              postcode ? `PIN: ${postcode}` : ''
+            ].filter(Boolean);
+
+            const detectedAddress = streetParts.length > 0
+              ? streetParts.join(', ')
+              : (data.display_name ? data.display_name.split(',').slice(0, 3).join(', ') : '');
+
+            if (detectedArea) setArea(detectedArea);
+            if (detectedAddress) setAddress(detectedAddress);
+
+            setLocationFeedback(
+              `📍 Location pinned: ${detectedArea || 'Current GPS'} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°${accuracy ? ` · ±${accuracy}m` : ''})`
+            );
+          } else {
+            setLocationFeedback(`📍 Location pinned: (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
+          }
+        } catch (geoErr) {
+          console.warn('Reverse geocoding error or timeout:', geoErr);
+          setLocationFeedback(`📍 Location pinned: (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
+        } finally {
+          setIsDetectingLocation(false);
+        }
+      },
+      (error) => {
+        setIsDetectingLocation(false);
+        let msg = 'Unable to detect location.';
+        if (error.code === 1) msg = 'Location access denied. Please enable GPS permissions or enter your address manually.';
+        else if (error.code === 2) msg = 'Location unavailable. Please enter your address manually.';
+        else if (error.code === 3) msg = 'Location request timed out. Please enter your address manually.';
+        setErrorMessage(msg);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  };
 
   if (!isOpen) return null;
 
@@ -72,13 +158,17 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
         }
       } catch {}
 
-      // 3. Create shop on backend
+      // 3. Create shop on backend with detected GPS or fallback coordinates
+      const finalLat = latitude ?? 11.0168;
+      const finalLng = longitude ?? 76.9558;
+      const combinedAddress = [address.trim(), area.trim()].filter(Boolean).join(', ') || 'Physical Storefront';
+
       const shop = await createShop({
         name: storeName.trim() || 'Partner Store',
         phone: phone.startsWith('+') ? phone.trim() : `+91 ${phone.trim()}`,
-        address: `${address.trim()}, ${area.trim()}`,
-        latitude: 11.0168,
-        longitude: 76.9558,
+        address: combinedAddress,
+        latitude: finalLat,
+        longitude: finalLng,
         categoryIds
       });
 
@@ -237,6 +327,48 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
                     </div>
                   </div>
 
+                  {/* Auto-Detect Location Button */}
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleDetectLocation}
+                      disabled={isDetectingLocation}
+                      className="flex w-full items-center justify-between rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/80 p-3.5 text-left transition-all hover:bg-indigo-100/70 dark:hover:bg-indigo-900/40 cursor-pointer disabled:opacity-60 group shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/30 shrink-0">
+                          {isDetectingLocation ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <Navigation className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                          )}
+                          {latitude && longitude && (
+                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <span>{isDetectingLocation ? 'Pinpointing GPS Coordinates...' : 'Auto-Detect Store Location (GPS)'}</span>
+                            {latitude && longitude && (
+                              <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                Verified GPS
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {locationFeedback || 'Tap to automatically fill your neighborhood, address & GPS coordinates'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-0.5 transition-transform shrink-0">
+                        {isDetectingLocation ? 'Detecting...' : latitude ? 'Re-Detect' : 'Detect →'}
+                      </span>
+                    </button>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
@@ -267,7 +399,7 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
                           required
                           value={area}
                           onChange={(e) => setArea(e.target.value)}
-                          placeholder="e.g. RS Puram, Coimbatore"
+                          placeholder="e.g. Indiranagar, Bengaluru or RS Puram, Coimbatore"
                           className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none shadow-sm"
                         />
                       </div>
@@ -281,7 +413,7 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
                     <input
                       type="text"
                       required
-                      placeholder="Street, Landmark, Near Metro/Bus Stop"
+                      placeholder="Shop #, Street Name, Landmark (e.g. #42, 100ft Road, Near Metro)"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 py-2.5 px-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none shadow-sm"

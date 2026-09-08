@@ -20,7 +20,8 @@ import {
   Loader2,
   QrCode,
   Scan,
-  Shield
+  Shield,
+  Navigation
 } from 'lucide-react';
 import { 
   searchProducts, 
@@ -76,6 +77,10 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const [storeAddress, setStoreAddress] = useState('');
   const [storePhone, setStorePhone] = useState('');
   const [storeHours, setStoreHours] = useState('10:00 AM – 9:30 PM (Mon–Sun)');
+  const [storeLat, setStoreLat] = useState<number | undefined>(undefined);
+  const [storeLng, setStoreLng] = useState<number | undefined>(undefined);
+  const [isDetectingStoreGps, setIsDetectingStoreGps] = useState(false);
+  const [storeGpsFeedback, setStoreGpsFeedback] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [actionNotice, setActionNotice] = useState<{ message: string; isError: boolean } | null>(null);
 
@@ -197,6 +202,8 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     setStoreAddress(shop.address || '');
     setStorePhone(shop.phone || '');
     setStoreCategory(shop.categories?.map((c) => c.name).join(', ') || shop.categoryName || '');
+    setStoreLat(shop.latitude);
+    setStoreLng(shop.longitude);
     setIsLiveOnline(Boolean(shop.isLiveEnabled));
     setInventoryLoading(true);
     try {
@@ -234,6 +241,8 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           setStoreAddress(shops[0].address || '');
           setStorePhone(shops[0].phone || '');
           setStoreCategory(shops[0].categories?.map((c) => c.name).join(', ') || shops[0].categoryName || '');
+          setStoreLat(shops[0].latitude);
+          setStoreLng(shops[0].longitude);
           setIsLiveOnline(Boolean(shops[0].isLiveEnabled));
           const incoming = await getIncomingRequests(storeId);
           setRequests(incoming.map((request) => ({ ...request, product: request.requestText, status: request.status?.toLowerCase() || 'pending', distance: request.distanceToShopKm ? `${request.distanceToShopKm.toFixed(1)} km away` : 'Nearby', timeAgo: new Date(request.createdAtUtc).toLocaleString() })));
@@ -295,6 +304,82 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     }
   };
 
+  // Detect store GPS location & reverse-geocode address
+  const handleDetectStoreLocation = () => {
+    if (!navigator.geolocation) {
+      showToast('Geolocation is not supported by your browser.', true);
+      return;
+    }
+
+    setIsDetectingStoreGps(true);
+    setStoreGpsFeedback(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const accuracy = position.coords.accuracy ? Math.round(position.coords.accuracy) : null;
+        setStoreLat(lat);
+        setStoreLng(lng);
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 6000);
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            {
+              headers: { 'Accept-Language': 'en' },
+              signal: controller.signal
+            }
+          );
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            const data = await response.json();
+            const addr = data.address || {};
+
+            const neighborhood = addr.suburb || addr.neighbourhood || addr.residential || addr.commercial || addr.quarter || addr.city_district || '';
+            const city = addr.city || addr.town || addr.municipality || addr.village || addr.county || addr.state_district || '';
+            const postcode = addr.postcode || '';
+
+            const streetParts = [
+              addr.house_number,
+              addr.building,
+              addr.road || addr.pedestrian || addr.footway || addr.path,
+              neighborhood,
+              city,
+              postcode ? `PIN: ${postcode}` : ''
+            ].filter(Boolean);
+
+            const detectedAddress = streetParts.length > 0
+              ? streetParts.join(', ')
+              : (data.display_name ? data.display_name.split(',').slice(0, 3).join(', ') : '');
+
+            if (detectedAddress) setStoreAddress(detectedAddress);
+
+            setStoreGpsFeedback(
+              `📍 Detected: ${city || neighborhood || 'Current GPS'} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°${accuracy ? ` · ±${accuracy}m` : ''})`
+            );
+            showToast('Store GPS coordinates and address auto-detected!', false);
+          } else {
+            setStoreGpsFeedback(`📍 Location Pinned: (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
+            showToast('Store GPS coordinates pinned!', false);
+          }
+        } catch (geoErr) {
+          console.warn('Reverse geocode error or timeout:', geoErr);
+          setStoreGpsFeedback(`📍 Location Pinned: (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
+        } finally {
+          setIsDetectingStoreGps(false);
+        }
+      },
+      (error) => {
+        setIsDetectingStoreGps(false);
+        showToast(`Location error: ${error.message || 'Unable to retrieve GPS coordinates.'}`, true);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  };
+
   // Save Store Settings
   const handleSaveStoreSettings = async () => {
     if (!currentStoreId) {
@@ -305,11 +390,13 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     const updated = await updateShop(currentStoreId, {
       name: storeName,
       phone: storePhone,
-      address: storeAddress
+      address: storeAddress,
+      latitude: storeLat,
+      longitude: storeLng
     });
     setIsSavingSettings(false);
     if (updated) {
-      showToast('Store profile updated successfully in database!', false);
+      showToast('Store profile & GPS coordinates updated successfully in database!', false);
     } else {
       showToast('Failed to update store settings.', true);
     }
@@ -999,13 +1086,37 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Physical Address</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-300 block">Physical Address</label>
+                    <button
+                      type="button"
+                      onClick={handleDetectStoreLocation}
+                      disabled={isDetectingStoreGps}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {isDetectingStoreGps ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Navigation className="h-3.5 w-3.5" />
+                      )}
+                      <span>{isDetectingStoreGps ? 'Detecting GPS...' : 'Auto-Detect via GPS'}</span>
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={storeAddress}
                     onChange={(e) => setStoreAddress(e.target.value)}
+                    placeholder="Shop #, Street Name, Area, City"
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
                   />
+                  {storeGpsFeedback && (
+                    <p className="text-[11px] text-emerald-400 mt-1 font-mono">{storeGpsFeedback}</p>
+                  )}
+                  {storeLat !== undefined && storeLng !== undefined && !storeGpsFeedback && (
+                    <p className="text-[11px] text-slate-400 mt-1 font-mono">
+                      📍 Pinned GPS: {storeLat.toFixed(4)}°, {storeLng.toFixed(4)}°
+                    </p>
+                  )}
                 </div>
 
                 <div>
