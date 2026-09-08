@@ -60,12 +60,15 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
       await becomeVendor();
 
       // 2. Fetch categories
-      let categoryId = 'cat-1';
+      let categoryIds: string[] = [];
+      const isGuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
       try {
         const cats = await fetchCategories();
         if (cats && cats.length > 0) {
           const matchedCat = cats.find(c => c.name.toLowerCase().includes(category.toLowerCase().split(' ')[0])) || cats[0];
-          if (matchedCat) categoryId = matchedCat.id;
+          if (matchedCat && isGuid(matchedCat.id)) {
+            categoryIds = [matchedCat.id];
+          }
         }
       } catch {}
 
@@ -76,7 +79,7 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
         address: `${address.trim()}, ${area.trim()}`,
         latitude: 11.0168,
         longitude: 76.9558,
-        categoryIds: [categoryId]
+        categoryIds
       });
 
       if (!shop) {

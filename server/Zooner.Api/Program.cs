@@ -323,11 +323,8 @@ using (var scope = app.Services.CreateScope())
             await dbContext.Database.MigrateAsync();
         }
 
-        // Seed development data only in Development environment
-        if (app.Environment.IsDevelopment())
-        {
-            await DbSeeder.SeedAsync(dbContext, logger);
-        }
+        // Seed essential initial business settings and master categories if tables are empty
+        await DbSeeder.SeedAsync(dbContext, logger);
     }
     catch (Exception ex)
     {

@@ -493,10 +493,16 @@ export async function createShop(shopData: {
   categoryIds: string[];
 }): Promise<ShopProfileDto | null> {
   try {
+    const isGuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    const sanitizedData = {
+      ...shopData,
+      categoryIds: (shopData.categoryIds || []).filter(isGuid)
+    };
+
     const res = await authenticatedFetch(`${API_BASE_URL}/Shops`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(shopData)
+      body: JSON.stringify(sanitizedData)
     });
     if (res.ok) {
       const result = await responseData<ShopProfileDto>(res);
@@ -505,6 +511,8 @@ export async function createShop(shopData: {
         return result;
       }
     }
+    const errBody = await res.json().catch(() => null);
+    console.error('Create shop error response:', errBody);
     return null;
   } catch (error) {
     console.error('Failed to create shop:', error);
