@@ -101,6 +101,23 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
   };
 
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem('zooner_user_profile');
+      if (!stored) {
+        onSwitchToCustomer();
+        return;
+      }
+      const parsed = JSON.parse(stored);
+      if (parsed?.role !== 'Admin') {
+        onSwitchToCustomer();
+        return;
+      }
+    } catch {
+      onSwitchToCustomer();
+    }
+  }, []);
+
+  useEffect(() => {
     loadData();
   }, [activeTab]);
 
