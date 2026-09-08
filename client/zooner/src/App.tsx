@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar';
 import { PublicLandingPage } from './pages/PublicLandingPage';
 import { CustomerAppPage } from './pages/CustomerAppPage';
 import { VendorDashboardPage } from './pages/VendorDashboardPage';
+import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { LocationModal } from './components/LocationModal';
 import { RetailerModal } from './components/RetailerModal';
 import { SignInModal } from './components/SignInModal';
@@ -20,13 +21,14 @@ const DEFAULT_LOCATION: LocationArea = {
   lng: 76.9558
 };
 
-export type AppRoute = 'marketing' | 'customer' | 'vendor';
+export type AppRoute = 'marketing' | 'customer' | 'vendor' | 'admin';
 
 export function AppContent() {
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(() => {
     if (Capacitor.isNativePlatform()) return 'customer';
     const hash = window.location.hash.toLowerCase();
     const path = window.location.pathname.toLowerCase();
+    if (hash.includes('admin') || path.includes('/admin')) return 'admin';
     if (hash.includes('vendor') || path.includes('/vendor')) return 'vendor';
     if (hash.includes('marketing') || path.includes('/marketing')) return 'marketing';
     return 'customer';
@@ -64,7 +66,9 @@ export function AppContent() {
     const handleHashChange = () => {
       const hash = window.location.hash.toLowerCase();
       const path = window.location.pathname.toLowerCase();
-      if (hash.includes('register-store') || hash.includes('registerstore')) {
+      if (hash.includes('admin') || path.includes('/admin')) {
+        setCurrentRoute('admin');
+      } else if (hash.includes('register-store') || hash.includes('registerstore')) {
         setIsRetailerModalOpen(true);
       } else if (hash.includes('login') || hash.includes('signin') || hash.includes('register')) {
         setIsSignInModalOpen(true);
@@ -82,7 +86,9 @@ export function AppContent() {
 
   const navigateTo = (route: AppRoute) => {
     setCurrentRoute(route);
-    if (route === 'vendor') {
+    if (route === 'admin') {
+      window.location.hash = '#admin';
+    } else if (route === 'vendor') {
       window.location.hash = '#vendor';
     } else if (route === 'customer') {
       window.location.hash = '#app';
@@ -92,12 +98,25 @@ export function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // ── EXPERIENCE 3: ADMIN DASHBOARD (Platform Control) ──
+  if (currentRoute === 'admin') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+        <AdminDashboardPage
+          onSwitchToCustomer={() => navigateTo('customer')}
+          onSwitchToVendor={() => navigateTo('vendor')}
+        />
+      </div>
+    );
+  }
+
   // ── EXPERIENCE 2: VENDOR DASHBOARD (Merchant OS) ──
   if (currentRoute === 'vendor') {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black">
         <VendorDashboardPage
           onSwitchToCustomer={() => navigateTo('customer')}
+          onNavigateToAdmin={() => navigateTo('admin')}
         />
         <SignInModal
           isOpen={isSignInModalOpen}
@@ -133,6 +152,7 @@ export function AppContent() {
             onOpenLocationModal={() => setIsLocationModalOpen(true)}
             onNavigateToHome={() => navigateTo('marketing')}
             onNavigateToVendor={() => navigateTo('vendor')}
+            onNavigateToAdmin={() => navigateTo('admin')}
             onOpenSignIn={(hint) => {
               setSignInRoleHint(hint || 'C');
               setIsSignInModalOpen(true);

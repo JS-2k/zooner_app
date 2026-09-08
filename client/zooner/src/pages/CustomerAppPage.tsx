@@ -40,6 +40,7 @@ interface CustomerAppPageProps {
   onOpenLocationModal: () => void;
   onNavigateToHome: () => void;
   onNavigateToVendor: () => void;
+  onNavigateToAdmin?: () => void;
   onOpenSignIn: (roleHint?: 'C' | 'V' | 'VC') => void;
   onOpenRetailerModal?: () => void;
 }
@@ -137,6 +138,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   onOpenLocationModal,
   onNavigateToHome,
   onNavigateToVendor,
+  onNavigateToAdmin,
   onOpenSignIn,
   onOpenRetailerModal,
 }) => {
@@ -1495,6 +1497,25 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </button>
+
+              {userProfile?.role === 'Admin' && onNavigateToAdmin && (
+                <button
+                  type="button"
+                  onClick={onNavigateToAdmin}
+                  className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100/70 transition cursor-pointer border-b border-indigo-100"
+                >
+                  <div className="flex items-center gap-3">
+                    <Shield className="w-4 h-4 text-indigo-600" />
+                    <span className="font-bold">Admin Control Panel</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-indigo-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">
+                      Admin
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-indigo-400" />
+                  </div>
+                </button>
+              )}
 
               {userProfile?.isVendor || userProfile?.role === 'ShopOwner' || userProfile?.role === 'Vendor' ? (
                 <button

@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   Loader2,
   QrCode,
-  Scan
+  Scan,
+  Shield
 } from 'lucide-react';
 import { 
   searchProducts, 
@@ -46,6 +47,7 @@ import type { StoreInventoryItem, ProductSearchResult, CategoryDto, LiveRequestS
 interface VendorDashboardPageProps {
   onSwitchToCustomer: () => void;
   onNavigateToVendorLanding?: () => void;
+  onNavigateToAdmin?: () => void;
 }
 
 type DashboardTab = 'requests' | 'inventory' | 'holds' | 'analytics' | 'settings';
@@ -62,6 +64,7 @@ interface VendorRequestItem extends LiveRequestSummary {
 export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   onSwitchToCustomer,
   onNavigateToVendorLanding: _onNavigateToVendorLanding,
+  onNavigateToAdmin,
 }) => {
   const [activeTab, setActiveTab] = useState<DashboardTab>('requests');
   const [isLiveOnline, setIsLiveOnline] = useState(false);
@@ -573,6 +576,17 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
             <Settings className="h-4 w-4" />
             <span>Store Profile & Hours</span>
           </button>
+
+          {onNavigateToAdmin && (
+            <button
+              type="button"
+              onClick={onNavigateToAdmin}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-indigo-400 bg-indigo-950/40 border border-indigo-800/40 hover:bg-indigo-900/40 transition-all cursor-pointer mt-2"
+            >
+              <Shield className="h-4 w-4 text-indigo-400" />
+              <span>Admin Control Panel</span>
+            </button>
+          )}
         </aside>
 
         {/* ── RIGHT MAIN PANEL ── */}

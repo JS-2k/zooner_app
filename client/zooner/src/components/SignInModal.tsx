@@ -285,7 +285,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 onClick={() => setSelectedRole('Vendor')}
                 className={`py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   selectedRole === 'Vendor'
-                    ? 'bg-[#00A859] text-white shadow-xs'
+                    ? 'bg-white text-gray-950 shadow-xs'
                     : 'text-gray-500 hover:text-gray-900'
                 }`}
               >
@@ -454,7 +454,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 onClick={() => setSelectedRole('Vendor')}
                 className={`py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   selectedRole === 'Vendor'
-                    ? 'bg-[#00A859] text-white shadow-xs'
+                    ? 'bg-white text-gray-950 shadow-xs'
                     : 'text-gray-500 hover:text-gray-900'
                 }`}
               >

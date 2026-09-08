@@ -962,5 +962,176 @@ export async function collectHold(storeId: string, holdId: string): Promise<{ su
   }
 }
 
+// ── ADMIN PANEL API METHODS ──
+
+export interface PendingShopDto {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  imageUrl?: string;
+  verificationStatus: string;
+  isActive: boolean;
+  createdAtUtc: string;
+  ownerId: string;
+  ownerName?: string;
+  categories: { categoryId: string; name: string }[];
+}
+
+export interface AdminUserDto {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber?: string;
+  role: string;
+  isActive: boolean;
+  createdAtUtc: string;
+  shopsCount?: number;
+}
+
+export interface AdminSettingDto {
+  key: string;
+  value: string;
+  description?: string;
+  updatedAtUtc?: string;
+}
+
+export interface AdminAuditLogDto {
+  id: string;
+  adminId: string;
+  adminEmail?: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  details?: string;
+  createdAtUtc: string;
+}
+
+export async function getPendingShops(): Promise<PendingShopDto[]> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/shops/pending`);
+    if (res.ok) {
+      const json: ApiResponse<PendingShopDto[]> = await res.json();
+      return json.data || [];
+    }
+    return [];
+  } catch (err) {
+    console.error('getPendingShops error:', err);
+    return [];
+  }
+}
+
+export async function verifyShop(shopId: string, status: 'Approved' | 'Rejected', reason?: string): Promise<boolean> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/shops/${shopId}/verify`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, reason })
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('verifyShop error:', err);
+    return false;
+  }
+}
+
+export async function getAdminUsers(page = 1, pageSize = 50): Promise<AdminUserDto[]> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/users?page=${page}&pageSize=${pageSize}`);
+    if (res.ok) {
+      const json: ApiResponse<AdminUserDto[]> = await res.json();
+      return json.data || [];
+    }
+    return [];
+  } catch (err) {
+    console.error('getAdminUsers error:', err);
+    return [];
+  }
+}
+
+export async function toggleUserStatus(userId: string, isActive: boolean, reason?: string): Promise<boolean> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/users/${userId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive, reason })
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('toggleUserStatus error:', err);
+    return false;
+  }
+}
+
+export async function getAdminSettings(): Promise<AdminSettingDto[]> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/settings`);
+    if (res.ok) {
+      const json: ApiResponse<AdminSettingDto[]> = await res.json();
+      return json.data || [];
+    }
+    return [];
+  } catch (err) {
+    console.error('getAdminSettings error:', err);
+    return [];
+  }
+}
+
+export async function updateAdminSetting(key: string, value: string, description?: string): Promise<boolean> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/settings/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value, description })
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('updateAdminSetting error:', err);
+    return false;
+  }
+}
+
+export async function getAdminAuditLogs(page = 1, pageSize = 50): Promise<AdminAuditLogDto[]> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/audit-logs?page=${page}&pageSize=${pageSize}`);
+    if (res.ok) {
+      const json: ApiResponse<AdminAuditLogDto[]> = await res.json();
+      return json.data || [];
+    }
+    return [];
+  } catch (err) {
+    console.error('getAdminAuditLogs error:', err);
+    return [];
+  }
+}
+
+export async function createAdminCategory(data: { name: string; slug: string; description?: string; icon?: string; displayOrder?: number }): Promise<boolean> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('createAdminCategory error:', err);
+    return false;
+  }
+}
+
+export async function toggleAdminCategoryStatus(id: string, isActive: boolean): Promise<boolean> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/categories/${id}/status?isActive=${isActive}`, {
+      method: 'PATCH'
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('toggleAdminCategoryStatus error:', err);
+    return false;
+  }
+}
+
 
 
