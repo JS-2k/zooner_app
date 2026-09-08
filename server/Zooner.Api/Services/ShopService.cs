@@ -308,7 +308,7 @@ public class ShopService : IShopService
                      && s.VerificationStatus == ShopVerificationStatus.Approved
                      && s.Latitude >= bbox.MinLat && s.Latitude <= bbox.MaxLat
                      && s.Longitude >= bbox.MinLon && s.Longitude <= bbox.MaxLon
-                     && s.ShopCategories.Any(sc => sc.CategoryId == categoryId))
+                     && (!s.ShopCategories.Any() || s.ShopCategories.Any(sc => sc.CategoryId == categoryId)))
             .Include(s => s.OperatingHours)
             .AsNoTracking()
             .ToListAsync();

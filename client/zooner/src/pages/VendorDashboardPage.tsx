@@ -253,6 +253,24 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     initVendorData();
   }, []);
 
+  // Poll for live shopper broadcast requests every 4 seconds
+  useEffect(() => {
+    if (!currentStoreId) return;
+    const interval = setInterval(async () => {
+      try {
+        const incoming = await getIncomingRequests(currentStoreId);
+        setRequests(incoming.map((request) => ({
+          ...request,
+          product: request.requestText,
+          status: request.status?.toLowerCase() || 'pending',
+          distance: request.distanceToShopKm ? `${request.distanceToShopKm.toFixed(1)} km away` : 'Nearby',
+          timeAgo: new Date(request.createdAtUtc).toLocaleString()
+        })));
+      } catch {}
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [currentStoreId]);
+
   // Debounced Catalog Search
   useEffect(() => {
     const query = catalogSearchQuery.trim();

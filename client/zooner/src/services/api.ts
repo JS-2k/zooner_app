@@ -565,6 +565,32 @@ export async function setShopLiveStatus(shopId: string, isLiveEnabled: boolean):
   }
 }
 
+export async function createLiveRequest(data: {
+  requestText: string;
+  categoryId: string;
+  latitude: number;
+  longitude: number;
+  searchRadiusKm: number;
+}): Promise<LiveRequestSummary | null> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      console.error('Create live request failed:', err);
+      return null;
+    }
+    const json: ApiResponse<LiveRequestSummary> = await res.json();
+    return json.data || null;
+  } catch (err) {
+    console.error('createLiveRequest error:', err);
+    return null;
+  }
+}
+
 export async function getIncomingRequests(shopId: string): Promise<LiveRequestSummary[]> {
   try {
     const response = await authenticatedFetch(`${API_BASE_URL}/Shops/${shopId}/incoming-requests`);

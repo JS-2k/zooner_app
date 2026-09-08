@@ -31,6 +31,7 @@ import {
   reserveInventoryHold,
   fetchMyActiveHolds,
   syncUserProfile,
+  createLiveRequest,
   type ShopProfileDto 
 } from '../services/api';
 import type { LocationArea, ProductSearchResult, StoreInventoryItem, CategoryDto } from '../types';
@@ -364,19 +365,62 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     setBookmarkedIds(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleBroadcast = (e: React.FormEvent) => {
+  const handleBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!askProductName.trim()) return;
+
+    const token = localStorage.getItem('zooner_token');
+    if (!token) {
+      onOpenSignIn('C');
+      return;
+    }
+
     setIsBroadcasting(true);
-    setTimeout(() => {
-      setIsBroadcasting(false);
+    try {
+      const radiusNumber = parseInt(askRadius.replace(/[^0-9]/g, ''), 10) || 5;
+      const isGuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+      
+      let categoryId = '';
+      if (selectedCategory && selectedCategory !== 'all' && isGuid(selectedCategory)) {
+        categoryId = selectedCategory;
+      } else if (dbCategories.length > 0) {
+        const found = dbCategories.find(c => isGuid(c.id));
+        if (found) categoryId = found.id;
+      }
+
+      if (!categoryId) {
+        const fetchedCats = await fetchCategories();
+        if (fetchedCats && fetchedCats.length > 0) {
+          const found = fetchedCats.find(c => isGuid(c.id));
+          if (found) categoryId = found.id;
+        }
+      }
+
+      const requestText = askVariant.trim()
+        ? `${askProductName.trim()} (Variant: ${askVariant.trim()})`
+        : askProductName.trim();
+
+      if (categoryId) {
+        await createLiveRequest({
+          requestText,
+          categoryId,
+          latitude: currentLocation.lat || 11.0168,
+          longitude: currentLocation.lng || 76.9558,
+          searchRadiusKm: radiusNumber
+        });
+      }
+
       setBroadcastDone(true);
       setTimeout(() => {
         setBroadcastDone(false);
         setAskProductName('');
         setAskVariant('');
       }, 4000);
-    }, 1200);
+    } catch (err) {
+      console.error('Failed broadcasting request:', err);
+    } finally {
+      setIsBroadcasting(false);
+    }
   };
 
   // Real hold reservation (Task 5 & 6)
