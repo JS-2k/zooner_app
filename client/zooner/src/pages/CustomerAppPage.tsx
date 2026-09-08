@@ -187,6 +187,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     email?: string;
     role?: string;
     isVendor?: boolean;
+    shops?: any[];
   } | null>(() => {
     const saved = localStorage.getItem('zooner_user_profile');
     if (saved) {
@@ -194,6 +195,23 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     }
     return null;
   });
+
+  // Sync user profile & listen to storage events
+  useEffect(() => {
+    const handleStorage = () => {
+      const saved = localStorage.getItem('zooner_user_profile');
+      if (saved) {
+        try { setUserProfile(JSON.parse(saved)); } catch {}
+      } else {
+        setUserProfile(null);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    syncUserProfile().then(p => {
+      if (p) setUserProfile(p);
+    });
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   // Numeric radius in kilometers
   const radiusKm = useMemo(() => {
@@ -1495,7 +1513,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 </button>
               )}
 
-              {userProfile?.isVendor || userProfile?.role === 'ShopOwner' || userProfile?.role === 'Vendor' ? (
+              {userProfile?.isVendor || userProfile?.role === 'ShopOwner' || userProfile?.role === 'Vendor' || userProfile?.role === 'Admin' || (userProfile?.shops && userProfile.shops.length > 0) ? (
                 <button
                   type="button"
                   onClick={() => onNavigateToVendor()}
